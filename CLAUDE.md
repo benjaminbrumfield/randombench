@@ -1,37 +1,48 @@
 # randombench
 
-An LLM benchmark built with the [`kaggle_benchmarks`](https://github.com/Kaggle/kaggle-benchmarks) library and published to Kaggle Benchmarks with the `kaggle` CLI.
+randombench measures how well LLMs generate random integers from 0 to 99 and scores their answers for biases, such as favoring primes or round numbers. It's built with [`kaggle_benchmarks`](https://github.com/Kaggle/kaggle-benchmarks) and runs on Kaggle Benchmarks.
+
+[PLAN.md](PLAN.md) holds the design, the decisions and the build steps. Read it before starting work, and record decisions there.
+
+## How we work
+
+- **One step at a time.** Each PLAN.md step is one small commit. This is a learning project, so explain what each step shows, and raise open decisions instead of settling them quietly.
+- **Ask before any LLM call.** Local task runs, probe scripts and `kaggle b t run` all spend Model Proxy quota. Say which models and how many calls, then wait for a yes. Read-only commands such as `kaggle b t models` are fine.
+
+## Writing tasks
+
+The `kaggle-benchmarks` skill covers the general rules. On top of those:
+
+- Keep the slug in `@kbench.task(name=...)` stable, so a push makes a new version rather than a new task.
+- A push uploads only the task file, so everything the task needs on Kaggle (prompts, parsing) must be in it.
+- Pass `seed=None` to `llm.prompt()`. The default seed, 0, could make a model give the same answer every time.
+
+## Commands
+
+```bash
+# Setup, once (Git Bash, Python 3.11+)
+python -m venv .venv && source .venv/Scripts/activate && pip install -r requirements.txt
+kaggle auth login && kaggle b init -y
+
+# Run locally. Ask first if the task calls a model.
+set -a && source .env && set +a && PYTHONUTF8=1 python <task>.py
+
+# Push, then run on Kaggle. Ask first: the run calls models.
+kaggle b t push <slug> -f <task>.py --wait
+kaggle b t run <slug> -m <model> --wait
+
+# Check a run and download its results into results/ (gitignored)
+kaggle b t status <slug>
+kaggle b t download <slug> -o results
+
+# Make the task public. This can't be undone from the CLI, so ask first.
+kaggle b t publish <slug>
+```
+
+- `PYTHONUTF8=1` is needed on Windows. Without it, the console UI's emoji crash the default cp1252 encoding.
+- Local runs reach only the models in `LLMS_AVAILABLE` in `.env`.
+- The API key in `.env` is short-lived; refresh it with `kaggle b auth -y`. Never commit `.env`.
 
 ## Skills
 
-Two Claude Code skills are vendored in `.claude/skills/` and load automatically:
-
-- `kaggle-benchmarks`: writing tasks (decorators, schemas, assertions, judges, `.evaluate()`).
-- `kaggle-cli`: `kaggle benchmarks` push / run / status / download / publish, plus auth.
-
-They are unmodified upstream copies pinned to specific commits; see [.claude/skills/SOURCES.md](.claude/skills/SOURCES.md). Don't edit them. Project-specific rules go in this file.
-
-When the `kaggle-benchmarks` skill says to check `src/kaggle_benchmarks/`, use the installed package instead. Find it with `python -c "import kaggle_benchmarks; print(kaggle_benchmarks.__file__)"`.
-
-## Task files
-
-- Percent-format `.py` scripts: `# %%` cells, `.run()` / `.evaluate()` at top level, never inside `if __name__ == "__main__":`.
-- The slug from `@kbench.task(name=...)` is what every `kaggle b t` command takes. Keep it stable so a push creates a new version of the task, not a new task.
-- One leaderboard task per file; helper sub-tasks use `store_task=False`.
-- Keep IPython magics commented (`# !pip install ...`) so files run locally.
-
-## Iteration loop
-
-1. One-time setup (Python 3.11+): `python -m venv .venv && source .venv/Scripts/activate && pip install -r requirements.txt`, then `kaggle auth login`, then `kaggle b init -y`. Init writes `.env`, plus `example_task.py` and `kaggle_benchmarks_reference.md`, which are gitignored scaffolding.
-2. Local run (Git Bash): `set -a && source .env && set +a && PYTHONUTF8=1 python <task>.py`. Check the assertion output and the `.run.json`. `PYTHONUTF8=1` is needed on Windows: the console UI prints emoji and crashes under the default cp1252 encoding.
-3. Push a new version: `kaggle b t push <slug> -f <task>.py --wait`
-4. Run on Kaggle: `kaggle b t run <slug> -m <model> [-m <model> ...] --wait` (`kaggle b t models` lists slugs).
-5. Inspect: `kaggle b t status <slug>`, `kaggle b t logs <slug>`, `kaggle b t download <slug> -o results`.
-6. Release: `kaggle b t publish <slug>`. This makes the task public and can't be undone from the CLI, so confirm with the user first.
-
-Local runs only reach the models in `LLMS_AVAILABLE`. Validate on the target models server-side before drawing conclusions.
-
-## Secrets and outputs
-
-- `.env` holds `MODEL_PROXY_API_KEY`. Never commit it. The key is short-lived; refresh it with `kaggle b auth -y`.
-- Local `*.run.json` / `*.task.json` files and `results/` are gitignored. Commit specific results deliberately when the README cites them.
+`.claude/skills/` holds two vendored skills, `kaggle-benchmarks` and `kaggle-cli`. They're unmodified upstream copies pinned in [SOURCES.md](.claude/skills/SOURCES.md), so don't edit them. Where `kaggle-benchmarks` points at `src/kaggle_benchmarks/`, read the installed package instead: `python -c "import kaggle_benchmarks; print(kaggle_benchmarks.__file__)"`.
