@@ -1,0 +1,3 @@
+# Vendored upstream skills: store byte-for-byte (no line-ending conversion)
+# so they stay identical to the pinned commits in .claude/skills/SOURCES.md.
+.claude/skills/** -text

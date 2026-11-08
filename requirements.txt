@@ -1,0 +1,3 @@
+# Python 3.11+. Pinned to the releases the vendored skills describe; see .claude/skills/SOURCES.md.
+kaggle-benchmarks==0.6.2
+kaggle==2.2.5
