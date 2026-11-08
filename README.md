@@ -4,6 +4,8 @@
 
 People are famously bad at it. We avoid round numbers, shy away from the ends of the range and reach for 7 more often than chance would. Language models learned from what people write, so they may have the same habits. RandomBench measures how random their numbers really are.
 
+For a fun look at the human side, watch Veritasium's [Why is this number everywhere?](https://www.youtube.com/watch?v=d6iQrh2TK98)
+
 ## How it works
 
 1. Ask a model for a random integer from 0 to 99, about 600 times. Each request is a fresh conversation, so the model never sees its earlier answers.
