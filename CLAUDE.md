@@ -1,6 +1,6 @@
-# randombench
+# RandomBench
 
-randombench measures how well LLMs generate random integers from 0 to 99 and scores their answers for biases, such as favoring primes or round numbers. It's built with [`kaggle_benchmarks`](https://github.com/Kaggle/kaggle-benchmarks) and runs on Kaggle Benchmarks.
+RandomBench measures how well LLMs generate random integers from 0 to 99 and scores their answers for biases, such as favoring primes or round numbers. It's built with [`kaggle_benchmarks`](https://github.com/Kaggle/kaggle-benchmarks) and runs on Kaggle Benchmarks.
 
 [PLAN.md](PLAN.md) holds the design, the decisions and the build steps. Read it before starting work, and record decisions there.
 
