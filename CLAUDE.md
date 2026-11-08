@@ -23,7 +23,7 @@ When the `kaggle-benchmarks` skill says to check `src/kaggle_benchmarks/`, use t
 ## Iteration loop
 
 1. One-time setup (Python 3.11+): `python -m venv .venv && source .venv/Scripts/activate && pip install -r requirements.txt`, then `kaggle auth login`, then `kaggle b init -y`. Init writes `.env`, plus `example_task.py` and `kaggle_benchmarks_reference.md`, which are gitignored scaffolding.
-2. Local run (Git Bash): `set -a && source .env && set +a && python <task>.py`. Check the assertion output and the `.run.json`.
+2. Local run (Git Bash): `set -a && source .env && set +a && PYTHONUTF8=1 python <task>.py`. Check the assertion output and the `.run.json`. `PYTHONUTF8=1` is needed on Windows: the console UI prints emoji and crashes under the default cp1252 encoding.
 3. Push a new version: `kaggle b t push <slug> -f <task>.py --wait`
 4. Run on Kaggle: `kaggle b t run <slug> -m <model> [-m <model> ...] --wait` (`kaggle b t models` lists slugs).
 5. Inspect: `kaggle b t status <slug>`, `kaggle b t logs <slug>`, `kaggle b t download <slug> -o results`.
