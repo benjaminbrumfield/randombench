@@ -49,8 +49,8 @@ Some checks overlap. For example, 7, 17, 37, 47, 67 and 97 are all primes ending
 
 ### Phase 0: groundwork
 
-- [ ] **0.1** Commit the remaining environment fix: `PYTHONUTF8=1` in `CLAUDE.md`. The `hishel` pin is already committed in `91ef7a4`.
-- [ ] **0.2** Commit this plan.
+- [x] **0.1** Commit the environment fixes: the `hishel` pin (`91ef7a4`) and `PYTHONUTF8=1` in `CLAUDE.md` (`38cfc5f`).
+- [x] **0.2** Commit this plan (`7c8488d`).
 
 ### Phase 1: learn the platform without spending quota
 
