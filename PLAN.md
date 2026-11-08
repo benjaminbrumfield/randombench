@@ -9,6 +9,7 @@ Measure how well LLMs generate random integers in [0, 99]. Each model answers hu
 ## Decided
 
 - **Range:** integers 0–99.
+- **Names:** the Kaggle Benchmark is called RandomBench. A Benchmark is the page that groups tasks and shows the leaderboard. The task gets a different name (D10). Benchmark and task slugs are both scoped to their owner (`/benchmarks/{owner}/{slug}` and `/benchmarks/tasks/{owner}/{slug}`), so nobody else can take ours and there's nothing to reserve early. Benchmarks are created on the Kaggle website; the CLI handles only tasks.
 - **Calls:** single-turn, in a fresh conversation each time. No tools, and the model never sees its earlier answers.
 - **Prompts:** a fixed set of at least six, stored in the repo, each with a stable id and an author. Each draw uses a prompt picked at random.
 - **Volume:** the target is 600 draws per model per run. Failed calls are recorded, not dropped, and a run that stops early keeps what it collected.
@@ -121,3 +122,4 @@ These steps use only stored draws and simulated random numbers. No quota.
 | D7 | How does a measured bias become a sub-score in [0, 1]? | Based on effect size | 3.3 |
 | D8 | How is the headline score computed? | Harmonic mean, still to be decided | 3.5 |
 | D9 | Prompt assignment: pick a prompt independently at random for each draw, or shuffle a balanced schedule with each prompt used exactly 100 times? | A balanced shuffle. The order is still random, and equal counts make prompts easier to compare. | 2.4 |
+| D10 | What is the collection task's name? Its slug must stay stable once pushed, because a new slug makes a new task instead of a new version. | — | Before the real task's first push |
