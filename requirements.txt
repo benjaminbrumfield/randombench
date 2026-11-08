@@ -1,3 +1,5 @@
 # Python 3.11+. Pinned to the releases the vendored skills describe; see .claude/skills/SOURCES.md.
 kaggle-benchmarks==0.6.2
 kaggle==2.2.5
+# kaggle-benchmarks 0.6.2 declares hishel>1.1.8 unbounded, but hishel 2.0 removed BaseFilter, which it imports.
+hishel[httpx]==1.4.0
