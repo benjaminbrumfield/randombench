@@ -1,6 +1,6 @@
 # RandomBench
 
-**How well do language models generate random numbers?**
+**How well can language models pick numbers at random?**
 
 People are famously bad at it. We avoid round numbers, shy away from the ends of the range and reach for 7 more often than chance would. Language models learned from what people write, so they may have the same habits. RandomBench measures how random their numbers really are.
 
