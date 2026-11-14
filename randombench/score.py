@@ -55,6 +55,7 @@ def score_draws(draws: list[dict]) -> list[ModelScores]:
 
 # Column headings for the table, in score_answers' order.
 _HEADINGS = {
+    "headline": "HEADLINE",
     "invalid_answers": "invalid",
     "uniformity": "uniform",
     "primes": "primes",
@@ -91,8 +92,9 @@ def main(argv: list[str] | None = None) -> None:
         print(f"no draws in {args.data}")
         return
     print(format_table(results))
-    print("\nScores are in [0, 1], about 1 for a perfect generator. N counts valid answers;"
-          " the checks after 'invalid' score only those, and show — below 2.")
+    print("\nScores are in [0, 1], about 1 for a perfect generator. The headline is the valid"
+          " share times uniformity. N counts valid answers; the checks after 'invalid' score"
+          " only those, and they and the headline show — below 2.")
 
 
 if __name__ == "__main__":

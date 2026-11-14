@@ -24,7 +24,8 @@ valid answers neither gains nor loses by chance (3.3):
   one out: how often an answer equals the favorite of all the other answers.
 
 score_answers() gives all the sub-scores for a model's parsed replies,
-including the invalid-answer score, which a perfect generator never loses.
+including the invalid-answer score, which a perfect generator never loses,
+and the headline: the share of valid replies times uniformity (D8).
 It takes parsed answers rather than raw replies, so this module needs no
 parser and can be copied into a task file on its own (D6).
 """
@@ -200,17 +201,31 @@ def invalid_answers(answers) -> float:
     return 1 - sum(a is None for a in answers) / len(answers)
 
 
+def headline(scores: dict[str, float | None]) -> float | None:
+    """The headline: the share of replies that are valid times uniformity (D8).
+
+    Uniformity already reflects every bias in the distribution, so the other
+    checks only show which biases lie behind it, and none counts twice. It's
+    None when uniformity is, below MIN_VALID valid answers.
+    """
+    if scores["uniformity"] is None:
+        return None
+    return scores["invalid_answers"] * scores["uniformity"]
+
+
 def score_answers(answers) -> dict[str, float | None]:
-    """Return every sub-score for a model's parsed replies, in the bias table's order.
+    """Return the headline and every sub-score for a model's parsed replies, in
+    the bias table's order.
 
     answers holds an int in 0..99 for each valid reply and None for each
     invalid one. Failed calls have no reply, so the caller leaves them out,
     and they don't count as invalid (3.4). The distribution checks score only
-    the valid answers, and give None when there are fewer than MIN_VALID.
+    the valid answers, pooled across prompts (3.5), and give None when there
+    are fewer than MIN_VALID.
     """
     valid = [a for a in answers if a is not None]
     scores = {"invalid_answers": invalid_answers(answers)}
     counts = counts_of(valid)
     for name, check in CHECKS.items():
         scores[name] = float(check(counts)) if len(valid) >= MIN_VALID else None
-    return scores
+    return {"headline": headline(scores), **scores}

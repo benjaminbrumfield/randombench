@@ -4,7 +4,7 @@ This is how RandomBench gets built, one small step at a time. Each step is one c
 
 ## Goal
 
-Measure how well LLMs generate random integers in [0, 99]. Each model answers hundreds of independent single-turn prompts, and its answers are checked for known biases: favoring primes, round numbers, and so on. Each check yields a sub-score in [0, 1], and a headline score combines them.
+Measure how well LLMs generate random integers in [0, 99]. Each model answers hundreds of independent single-turn prompts, and its answers are checked for known biases: favoring primes, round numbers, and so on. Each check yields a sub-score in [0, 1]. The headline is the share of valid replies times the uniformity score (D8), and the other sub-scores show which biases lie behind it.
 
 ## Decided
 
@@ -12,7 +12,7 @@ Measure how well LLMs generate random integers in [0, 99]. Each model answers hu
 - **Names:** the Kaggle Benchmark is called RandomBench. A Benchmark is the page that groups tasks and shows the leaderboard. The task gets a different name (D10). Benchmark and task slugs are both scoped to their owner (`/benchmarks/{owner}/{slug}` and `/benchmarks/tasks/{owner}/{slug}`), so nobody else can take ours and there's nothing to reserve early. Benchmarks are created on the Kaggle website; the CLI handles only tasks.
 - **Calls:** single-turn, in a fresh conversation each time. No tools, and the model never sees its earlier answers.
 - **Replies:** plain text for every model, read by one parser of our own (2.2). No structured output (`schema=`). kaggle-benchmarks 0.6.2 sends a schema natively to most models, but gemma, qwen, deepseek and meta models get it only as text in a system message (`kaggle_benchmarks/kaggle/model_proxy.py`, lines 73–79). The models would then answer under different conditions, and their invalid-answer rates couldn't be compared. The prompt states the range, and an answer outside it counts as invalid.
-- **Prompts:** six, in [randombench/prompts.py](randombench/prompts.py), each with a name, an author and its text. D9 decides which prompt each draw gets.
+- **Prompts:** six, in [randombench/prompts.py](randombench/prompts.py), each with a name, an author and its text. D9 decides which prompt each draw gets. The checks pool a model's answers across all six prompts (D17).
   - **Ids:** a prompt's id is its name plus the first 8 hex digits of its text's SHA-256, such as `plain-47858739`. Editing the text gives a new id by itself, and a test pins every id, so no edit goes unnoticed, not even to whitespace. Once a prompt has been used in a run, it's never edited or deleted, and a change means adding a new prompt. A way to retire a prompt can wait until one first needs replacing.
   - **Authors:** Claude drafted all six (`claude-opus-5-5`). A prompt the user rewords lists `benjaminbrumfield` instead.
   - **Style:** every prompt asks for a random integer, gives the range as 0 to 99 with both ends included, and asks for the number only. A model that wasn't asked to be random can't be faulted for having a favorite. No prompt gives an example number or names a bias, since either could steer the answer. Beyond that, the prompts differ in wording, tone, length and framing, so no score depends on a single phrasing. A test checks the rules code can check.
@@ -52,7 +52,9 @@ A perfect generator gives each value probability 1/100. Every check but the firs
 
 Each sub-score estimates the model's true score with sampling noise removed on average, so a model's expected score doesn't depend on its number of valid answers (3.3). [randombench/calibration.py](randombench/calibration.py) simulates any distribution at any N, and the tests use it to check that.
 
-Some checks overlap. For example, 7, 17, 37, 47, 67 and 97 are all primes ending in 7. This matters when combining sub-scores into the headline.
+The headline is the invalid-answer score times the uniformity score (D8). It's `None` whenever uniformity is, below 2 valid answers.
+
+Some checks overlap. For example, 7, 17, 37, 47, 67 and 97 are all primes ending in 7. The headline uses only uniformity and validity, so an overlapping bias isn't counted twice. Uniformity already reflects every bias in the distribution, and the other checks show which ones lie behind it.
 
 ## Steps
 
@@ -247,7 +249,25 @@ These steps use only stored draws and simulated random numbers. No quota.
   - A failed call doesn't count as an invalid answer. It's the provider's failure, and no answer came back to judge. The invalid-answer score is invalid replies out of replies, and the report shows failed calls in a column of their own.
   - Below 2 valid answers, the eight distribution checks give `None`, shown as `—`. A scoring task can return `False` for it, which shows as FAIL and is left out of the leaderboard's average (1.3). The invalid-answer score still shows what went wrong. Whether a higher minimum is needed waits for real invalid rates in the pilot (4.1).
   - On 2.4's 12 real replies per model, from 2.5's trial records, Gemini 3.1 Flash-Lite scores 0.010 on uniformity, 0.000 on the favorite and 0.100 on the last digit. Nano scores 0.051, 0.589 and 0.314. Both score 0.80 on edges only because neither gave an answer in 0–9 or 90–99 in 12 draws. Twelve draws show the method works, not how biased the models are.
-- [ ] **3.5 Headline score.** Decide together. Harmonic mean is the starting candidate. Watch for two problems: it drops to 0 if any single sub-score is 0, and overlapping checks penalize the same bias twice. Settles D8.
+- [x] **3.5 Headline score.** Decide together. Harmonic mean is the starting candidate. Watch for two problems: it drops to 0 if any single sub-score is 0, and overlapping checks penalize the same bias twice. Settles D8 and D17.
+
+  `score_answers` in [randombench/checks.py](randombench/checks.py) now gives the headline first: the invalid-answer score times the uniformity score. `python -m randombench.score` shows it as the first score column.
+
+  *Found:*
+  - Any average of the nine sub-scores fails, harmonic included. The share checks are lenient by design (their lowest scores are 0.25 and up), so they swamp the rest. Invalid answers are only one sub-score in nine, so they barely count. Average over 200 simulated runs of 600 draws, 100 per prompt:
+
+    | Model | Valid × uniformity | Mean of 9 | Geometric mean of 9 | Harmonic mean of 9 |
+    |---|---|---|---|---|
+    | Perfect | 0.992 | 0.996 | 0.996 | 0.996 |
+    | Perfect, 30% invalid | 0.692 | 0.961 | 0.956 | 0.949 |
+    | LLM-like (a fair pick among 11) | 0.107 | 0.732 | 0.625 | 0.445 |
+    | One value | 0.010 | 0.586 | 0 | 0 |
+
+    The harmonic mean's drop to 0 comes only from the favorite, which scores 0 for one value.
+  - Valid share × uniformity reads plainly: "a fair pick among K values, scaled down by the share of replies that are valid". It drops to 0 only when no reply is valid. It's `None` below 2 valid answers, like uniformity, so a model that almost never answers validly would show FAIL on Kaggle, not 0.
+  - Pooling answers across prompts flatters a model whose answer depends on the wording. If each prompt gets its own constant answer, the pooled uniformity is 0.061 ("a fair pick among 6"), against 0.010 measured within each prompt. If each prompt has its own 50% favorite, it's 0.206 against 0.039. The checks stay pooled anyway (D17), and the README must say so (5.1).
+  - With the headline as its own task, D15's leaning still works: weight only the headline task, and the Benchmark ranks models by it.
+  - On 2.4's 12 draws per model, the headline is 0.010 for Gemini 3.1 Flash-Lite and 0.051 for nano, the same as uniformity, because every reply was valid.
 - [ ] **3.6 Scoring tasks.** One task per sub-score and one for the headline, built from the shared scoring code (D6, D13). Each recomputes its score from the stored draws of the model it's run with, and never prompts that model.
 
 ### Phase 4: real runs on Kaggle
@@ -261,7 +281,7 @@ These steps use only stored draws and simulated random numbers. No quota.
 
 ### Phase 5: release
 
-- [ ] **5.1 README.** Covers the method, the results, and the limitations, such as no temperature control and reliance on provider defaults.
+- [ ] **5.1 README.** Covers the method, the results, and the limitations, such as no temperature control, reliance on provider defaults, and scores pooled across prompts, which flatter a model whose answer depends on the wording (D17).
 - [ ] **5.2 Publish.** A public Benchmark needs public tasks (1.3), so the collection task and every scoring task get published. `kaggle b t publish` can't be undone from the CLI, so each one needs an explicit go-ahead.
 
 ## Open decisions
@@ -275,7 +295,7 @@ These steps use only stored draws and simulated random numbers. No quota.
 | D5 | Data layout: one committed file per run under `data/`? How large do reasoning traces make it? | **Settled:** one JSON Lines file per run, `data/<model>/<run_id>.jsonl`, one draw per line, committed. Only runs downloaded from Kaggle, because only their download path holds a run id and a task version (2.5). A 600-draw run is about 230 KB. The default reasoning returns no traces (2.3), so traces add nothing unless D1 changes. | 2.5 |
 | D6 | A push uploads a single `.py` file, but the offline analysis needs the same parsing and scoring code. Options: a source module plus a script that copies it into the pushed task file; the task file as the only copy; or code in an attached Kaggle dataset. | **Settled:** a copy in the task file. Each task file holds the `randombench` modules it uses between `# --- begin <path> ---` and `# --- end <path> ---` markers, and `python -m randombench.sync` refreshes the copies, so the file run locally is exactly the file pushed. Tests fail when a copy is out of date, when a task imports `randombench`, or when converting a task to a notebook would change a line (3.1). A copied module can't import `randombench` itself. | 3.1 |
 | D7 | How does a measured bias become a sub-score in [0, 1]? | **Settled:** each sub-score is an effect size whose sampling noise cancels on average, so its expected value is the model's true score at any N, and no floor is subtracted. Uniformity and the last digit score the effective number of values out of 100 (of last digits, out of 10), from the unbiased repeat rate. The share checks score 1 − the gap from the ideal share, from an unbiased estimate of the squared gap. The favorite scores 1 − its leave-one-out share above 1%, scaled to [0, 1]. This replaced 3.2's TVD for uniformity and the last digit, because TVD has no unbiased estimate (3.3). | 3.3 |
-| D8 | How is the headline score computed? | Harmonic mean, still to be decided. The sub-scores bottom out at different levels: 0.01 for uniformity, 0.25 for primes, 0 for the favorite (3.3). | 3.5 |
+| D8 | How is the headline score computed? | **Settled:** the share of replies that are valid times the uniformity score (the effective number of values out of 100). Uniformity already reflects every bias, so the other seven checks are diagnostics shown beside it and none counts twice. Any average of the nine failed in simulation: the share checks, whose lowest scores are 0.25 and up, lifted a model that always answers 42 to 0.59 with the plain mean, and invalid answers barely counted (3.5). | 3.5 |
 | D9 | Prompt assignment: pick a prompt independently at random for each draw, or shuffle a balanced schedule with each prompt used exactly 100 times? | **Settled:** a balanced shuffle. The order is still random, and equal counts make prompts easier to compare. `balanced_schedule` in [tasks/collect.py](tasks/collect.py) does it (2.4). | 2.4 |
 | D10 | What is the collection task's name? Its slug must stay stable once pushed, because a new slug makes a new task instead of a new version. | — | Before the real task's first push |
 | D11 | Should the draw sub-task catch its own errors and return them in its result, rather than letting the library mark the draw `ERRORED`? An errored sub-run keeps no result, so its prompt id would be lost, and the library won't retry inside a parent task anyway (1.1). | **Settled:** catch and return. Each draw's result always holds its draw index and prompt id, plus either the reply or the error (2.4). | 2.4 |
@@ -284,3 +304,4 @@ These steps use only stored draws and simulated random numbers. No quota.
 | D14 | What does the collection task itself return? Its Result is a leaderboard cell too. If it returned the headline from its own run's draws, that could disagree with the scoring tasks once they score draws merged from several runs (D3). | The number of draws it collected, so every score comes from a scoring task | 3.6 |
 | D15 | The Benchmark shows its own average for each model and ranks by it (1.3). Public Benchmarks label it "Avg N tasks". One averages only some of its tasks, and another shows a 95% interval beside it. How is it computed, and how does it fit our headline (D8)? A plain mean over all our tasks would mix the headline with the sub-scores it's built from. It would also count the creation runs' FAIL against `gemini-3.8-flash`, unless that model can be left out. Can our tasks' intervals appear? | Settings offer six kinds of overall score (1.3). Use "weighted average of task scores, with confidence interval", weighting only the headline task. That needs two things: a weight can be 0, and the interval comes from the task's own `(value, CI)`. The ranking is then our headline with its interval, and the sub-scores show as columns beside it. Otherwise use "no overall score", with the headline as one column among the others. The private page didn't show the interval (1.3), so check it once RandomBench is public. The setting is a dropdown that can be changed at any time. Weighting the sub-score tasks instead would hand D8 to Kaggle, and its interval would treat sub-scores computed from the same 600 draws as independent. | Before 4.4 |
 | D16 | What temperature do the models actually sample at? The library sends none, and it's unknown whether Model Proxy then uses the provider's default or a lower one of its own. Gemini 3.1 Flash-Lite answered 42 on all 12 draws (2.4). If the effective temperature were 0, RandomBench would measure each model's single likeliest answer, not its sampled distribution. The library can send a temperature: building the model with `ModelProxy(..., support_temperature=True)` overrides its `setdefault` (`model_proxy.py`, line 102). It's switched off because of an unresolved bug (b/439876083), whose nature isn't stated. | **Settled:** keep the provider's default. With `temperature=1.0` sent explicitly, all 12 Gemini draws were 42 again (2.4b), so the 42s come from the model, not from a low default. One caveat: if Model Proxy silently ignored the parameter, the probe would look exactly the same. Sending 2.0 would test that, but it isn't needed to keep the default. | 2.4b |
+| D17 | Should the checks score a model's answers pooled across the six prompts, or within each prompt? | **Settled:** pooled. All of a model's valid answers count together. This flatters a model whose answer depends on the wording: one constant answer per prompt pools to uniformity 0.061, a fair pick among 6, against 0.010 within each prompt (3.5). The varied wording then supplies some of the randomness, which a user could do too. The README states this limitation (5.1). | 3.5 |

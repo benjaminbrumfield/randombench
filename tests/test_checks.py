@@ -183,8 +183,8 @@ def test_rejects_the_wrong_number_of_counts():
 # All the sub-scores for parsed replies
 
 
-def test_score_answers_gives_every_sub_score_in_the_bias_tables_order():
-    assert list(score_answers([1, 2])) == ["invalid_answers", *CHECKS]
+def test_score_answers_gives_the_headline_then_the_bias_tables_order():
+    assert list(score_answers([1, 2])) == ["headline", "invalid_answers", *CHECKS]
 
 
 def test_score_answers_scores_only_the_valid_answers():
@@ -192,17 +192,28 @@ def test_score_answers_scores_only_the_valid_answers():
     assert scores["invalid_answers"] == pytest.approx(10 / 12)
     assert scores["uniformity"] == pytest.approx(0.01)  # the Nones don't count as answers
     assert scores["favorite"] == 0
+    assert scores["headline"] == pytest.approx(10 / 12 * 0.01)
 
 
 def test_score_answers_with_no_invalid_replies():
-    assert score_answers(list(range(100)) * 6) == {"invalid_answers": 1, **{name: 1 for name in CHECKS}}
+    expected = {"headline": 1, "invalid_answers": 1, **{name: 1 for name in CHECKS}}
+    assert score_answers(list(range(100)) * 6) == expected
+
+
+def test_the_headline_is_the_valid_share_times_uniformity():
+    # nano's 12 draws from 2.4, plus 4 invalid replies.
+    scores = score_answers([42] * 5 + [37, 47, 73] * 2 + [57] + [None] * 4)
+    assert scores["headline"] == pytest.approx(12 / 16 * (132 / 26 / 100))
+    # Biases that uniformity already reflects don't lower the headline again.
+    assert scores["headline"] == pytest.approx(scores["invalid_answers"] * scores["uniformity"])
 
 
 @pytest.mark.parametrize("answers", [[42, None, None], [None], [None, None]])
-def test_score_answers_gives_no_distribution_scores_below_2_valid(answers):
+def test_score_answers_gives_no_distribution_scores_or_headline_below_2_valid(answers):
     scores = score_answers(answers)
     assert scores["invalid_answers"] == pytest.approx(1 - answers.count(None) / len(answers))
     assert all(scores[name] is None for name in CHECKS)
+    assert scores["headline"] is None
 
 
 def test_score_answers_needs_a_reply():
