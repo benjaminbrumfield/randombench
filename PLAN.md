@@ -55,16 +55,25 @@ Some checks overlap. For example, 7, 17, 37, 47, 67 and 97 are all primes ending
 
 ### Phase 1: learn the platform without spending quota
 
-- [ ] **1.1 Fake-draw task, run locally.** This is a throwaway task whose "draws" come from Python's `random`, not from an LLM:
-  - A sub-task runs 600 times through `.evaluate(on_failure="continue")`, with a few failures injected on purpose.
+- [x] **1.1 Fake-draw task, run locally.** [probes/fake_draws.py](probes/fake_draws.py) is a throwaway task whose "draws" come from Python's `random`, not from an LLM:
+  - A sub-task runs 600 times through `.evaluate(on_failure="continue")`, with failures injected on purpose at 6 rows.
   - A parent task returns a dict of made-up sub-scores.
 
   *Learn:* what a `.run.json` contains, where sub-task results end up, and how failures are recorded. It makes no LLM calls.
-- [ ] **1.2 Fake-draw task, on Kaggle.** Push and run the same task, plus a variant that crashes halfway through. `kaggle b t run` needs a model, but the task never calls it. Because this is a server run, it waits for a go-ahead anyway.
+
+  *Found:*
+  - The parent's `.run.json` embeds all 600 sub-runs, each with its state, result, conversation and timing. Each sub-run is also written to its own file as it finishes, named by its row (`param_id_37`). The run took 5 seconds and left 602 files (3.4 MB) in the working directory.
+  - A sub-run record doesn't hold its parameters. With `n_jobs=8`, the `subruns` array is in completion order (305 of 600 out of place). Inside the parent file, only a draw's own result can tie it to its row and prompt. This raises D11.
+  - A failed sub-run has state `ERRORED` and the full traceback in `errorMessage`. Its result is replaced by `booleanResult: false`.
+  - Numbers in a dict result become floats (`594` is stored as `594.0`), because the dict is stored as a protobuf `Struct`. Extraction must convert them back.
+  - Every sub-run repeats the sub-task's source code in `taskVersion`, which made up 42% of the parent file here. This matters for D5.
+  - From the library source, not this run: `.evaluate()` inside a parent task forces `max_attempts=1`, so the library won't retry failed draws in our setup. This matters for D3.
+  - The parent records the model as `google/gemini-3-flash-preview` (`LLM_DEFAULT`), even though it never called it.
+- [ ] **1.2 Fake-draw task, on Kaggle.** Push and run the same task, plus a variant that crashes halfway through. `kaggle b t run` needs a model, but the task never calls it. Because this is a server run, it waits for a go-ahead anyway. The server doesn't support `kaggle b t delete` yet, so the probe stays on the account as a private task.
 
   *Learn:*
   - how a dict result appears on the leaderboard (settles D2)
-  - what `kaggle b t download` returns
+  - what `kaggle b t download` returns, and whether it includes the 600 per-draw files and the ATIF companion files (`.atif.json`, `.result.json`) that are switched off locally
   - whether a run that crashes partway keeps anything (informs D3)
 
 ### Phase 2: from one call to a dataset
@@ -123,3 +132,4 @@ These steps use only stored draws and simulated random numbers. No quota.
 | D8 | How is the headline score computed? | Harmonic mean, still to be decided | 3.5 |
 | D9 | Prompt assignment: pick a prompt independently at random for each draw, or shuffle a balanced schedule with each prompt used exactly 100 times? | A balanced shuffle. The order is still random, and equal counts make prompts easier to compare. | 2.4 |
 | D10 | What is the collection task's name? Its slug must stay stable once pushed, because a new slug makes a new task instead of a new version. | — | Before the real task's first push |
+| D11 | Should the draw sub-task catch its own errors and return them in its result, rather than letting the library mark the draw `ERRORED`? An errored sub-run keeps no result, so its prompt id would be lost, and the library won't retry inside a parent task anyway (1.1). | Catch and return. Each draw's result then always holds its draw index and prompt id, plus either the reply or the error. | 2.4 |
