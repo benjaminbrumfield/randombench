@@ -71,10 +71,17 @@ Some checks overlap. For example, 7, 17, 37, 47, 67 and 97 are all primes ending
   - Numbers in a dict result become floats (`594` is stored as `594.0`), because the dict is stored as a protobuf `Struct`. Extraction must convert them back.
   - Every sub-run repeats the sub-task's source code in `taskVersion`, which made up 42% of the parent file here. This matters for D5.
   - From the library source, not this run: `.evaluate()` inside a parent task forces `max_attempts=1`, so the library won't retry failed draws in our setup. This matters for D3.
-  - The parent records the model as `google/gemini-3-flash-preview` (`LLM_DEFAULT`), even though it never called it.
+  - The parent records the model as `google/gemini-3-flash-preview` (`LLM_DEFAULT`), even though it never called it. Fixed in 1.1b.
+- [x] **1.1b Label the probe's model honestly.** The library labels a run with the first `LLMChat` passed to the task (`evaluated_subject` in `kaggle_benchmarks/runs.py`), whether or not that model was prompted. The label goes into `modelVersion.slug` and into every file name. The probe now passes a stand-in, `PythonRandom`, named `python-random`, whose `invoke` raises, so a stray prompt fails loudly instead of reaching a model.
+
+  *Found:*
+  - All 601 records (the parent and 600 sub-runs) and all their file names now say `python-random`.
+  - The probe runs without `.env`: with no Model Proxy credentials loaded, it can't spend quota.
+  - In the real task the label will be right, because the model passed in is the model prompted.
 - [ ] **1.2 Fake-draw task, on Kaggle.** Push and run the same task, plus a variant that crashes halfway through. `kaggle b t run` needs a model, but the task never calls it. Because this is a server run, it waits for a go-ahead anyway. The server doesn't support `kaggle b t delete` yet, so the probe stays on the account as a private task.
 
   *Learn:*
+  - which model the leaderboard shows for a run labelled `python-random`: the stand-in, the `-m` model, or neither because the run is rejected. If it's rejected, run again with `kbench.llm` so D2 can still be settled.
   - how a dict result appears on the leaderboard (settles D2)
   - what `kaggle b t download` returns, and whether it includes the 600 per-draw files and the ATIF companion files (`.atif.json`, `.result.json`) that are switched off locally
   - whether a run that crashes partway keeps anything (informs D3)
