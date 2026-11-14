@@ -1,0 +1,3 @@
+# Local-only tools, on top of requirements.txt. A push uploads only the task file, so Kaggle never installs these.
+-r requirements.txt
+pytest==9.2.0

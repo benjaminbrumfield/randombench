@@ -11,21 +11,23 @@ Measure how well LLMs generate random integers in [0, 99]. Each model answers hu
 - **Range:** integers 0–99.
 - **Names:** the Kaggle Benchmark is called RandomBench. A Benchmark is the page that groups tasks and shows the leaderboard. The task gets a different name (D10). Benchmark and task slugs are both scoped to their owner (`/benchmarks/{owner}/{slug}` and `/benchmarks/tasks/{owner}/{slug}`), so nobody else can take ours and there's nothing to reserve early. Benchmarks are created on the Kaggle website; the CLI handles only tasks.
 - **Calls:** single-turn, in a fresh conversation each time. No tools, and the model never sees its earlier answers.
+- **Replies:** plain text for every model, read by one parser of our own (2.2). No structured output (`schema=`). kaggle-benchmarks 0.6.2 sends a schema natively to most models, but gemma, qwen, deepseek and meta models get it only as text in a system message (`kaggle_benchmarks/kaggle/model_proxy.py`, lines 73–79). The models would then answer under different conditions, and their invalid-answer rates couldn't be compared. The prompt states the range, and an answer outside it counts as invalid.
 - **Prompts:** a fixed set of at least six, stored in the repo, each with a stable id and an author. Each draw uses a prompt picked at random.
 - **Volume:** 600 draws per model per run. That gives a 95% margin of error of at most ±4 percentage points on any share a check measures, and 6 expected answers per value, above the usual minimum of 5 for a chi-squared test. Halving the margin would take 4× the draws. 600 also splits evenly across six prompts (D9). If the pilot shows spare quota, 1,200 is the next step up: ±2.8 points for twice the calls. Failed calls are recorded, not dropped, and a run that stops early keeps what it collected.
 - **Raw data:** every raw response is stored. Parsed values and scores are always recomputed from the raw text, so a new bias check or a new parsing rule never requires calling the models again.
 - **Invalid answers:** the rate of invalid answers is its own sub-score.
 - **Temperature:** the provider's default. This was not our choice: kaggle-benchmarks 0.6.2 never sends temperature through Model Proxy (`kaggle_benchmarks/kaggle/model_proxy.py`, line 101).
 - **Seed:** `seed=None`, so providers sample freshly, as in normal API use. The library's default seed is 0, and it is sent to every non-Google model. A backend that honors seeds could then return the same number every time, which would look like a bias. It's unverified whether every backend accepts a null seed. If one rejects it, the fallback is a distinct seed on every call.
-- **Models:**
-  - gpt-5.4-nano
-  - gemini-3.1-flash-lite-preview
-  - gemini-3.5-flash-lite
-  - claude-haiku-4-5
-  - gemma-4-26b-a4b-it
-  - gpt-oss-120b
+- **Models:** six, with their exact ids. Kaggle slugs come from `kaggle b t models`, and local ids from `LLMS_AVAILABLE` in `.env` (both checked 2026-11-14). Local development uses the first two. gpt-oss-120b is also available locally.
 
-  Local development uses the first two, which are available both locally and on Kaggle.
+| Model | Kaggle slug (`-m`) | Local id |
+|---|---|---|
+| GPT-5.4 nano | `gpt-5.4-nano-2026-03-17` | `openai/gpt-5.4-nano-2026-03-17` |
+| Gemini 3.1 Flash-Lite (preview) | `gemini-3.1-flash-lite-preview` | `google/gemini-3.1-flash-lite-preview` |
+| Gemini 3.5 Flash-Lite | `gemini-3.5-flash-lite` | — |
+| Claude Haiku 4.5 | `claude-haiku-4-5-20251001` | — |
+| Gemma 4 26B A4B | `gemma-4-26b-a4b-it` | — |
+| gpt-oss-120b | `gpt-oss-120b` | `openai/gpt-oss-120b` |
 
 ## Bias checks (planned, not implemented)
 
@@ -52,6 +54,7 @@ Some checks overlap. For example, 7, 17, 37, 47, 67 and 97 are all primes ending
 
 - [x] **0.1** Commit the environment fixes: the `hishel` pin (`91ef7a4`) and `PYTHONUTF8=1` in `CLAUDE.md` (`38cfc5f`).
 - [x] **0.2** Commit this plan (`7c8488d`).
+- [x] **0.3** Set the working method: quiz blanks for offline code (in `CLAUDE.md`), pytest in `requirements-dev.txt`, exact model ids, and plain-text replies for every model.
 
 ### Phase 1: learn the platform without spending quota
 
