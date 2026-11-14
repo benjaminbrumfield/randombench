@@ -2,7 +2,7 @@
 
 **How well can language models pick numbers at random?**
 
-People are famously bad at it. We avoid round numbers, shy away from the ends of the range and reach for 7 more often than chance would. Language models learned from what people write, so they may have the same habits. RandomBench measures how random their numbers really are.
+People are famously bad at it. We avoid round numbers, shy away from the ends of the range and reach for 7 more often than chance would. Are language models any better? RandomBench measures how random their numbers really are.
 
 For a fun look at the human side, watch Veritasium's [Why is this number everywhere?](https://www.youtube.com/watch?v=d6iQrh2TK98)
 
