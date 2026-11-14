@@ -1,17 +1,30 @@
-"""Each bias check's raw measurement (PLAN.md 3.2, "Bias checks").
+"""Each bias check's sub-score (PLAN.md 3.3, D7).
 
-A measurement takes the counts of a model's valid answers: 100 counts, where
+A check takes the counts of a model's valid answers: 100 counts, where
 counts[v] is how often the model answered v. It also takes a batch of them,
-shaped (..., 100), and then gives one value for each. That's how the
-calibration harness measures thousands of simulated runs at once.
+shaped (..., 100), and then gives one score for each. A score is in [0, 1]:
+about 1 for a perfect generator, lower the more biased the model.
 
-These are measurements, not scores. A prime share of 0.31 is only that. How
-far a measurement may stray depends on how far a perfect generator strays
-at the same number of answers (calibration.py), and turning a measurement
-into a sub-score in [0, 1] is decided in 3.3 (D7).
+Each score estimates a property of the model's true distribution, and the
+estimate is built so that sampling noise cancels on average. A model's
+expected score is then its true score at any N, so a model with fewer
+valid answers neither gains nor loses by chance (3.3):
 
-Invalid replies aren't counted here. Their rate is measured from the parsed
-replies, and a perfect generator never gives one.
+- Uniformity and last digit: the effective number of values K, as K/100
+  (K/10 for the last digits). A fair pick among K values repeats itself as
+  often as the model does. The repeat rate, the chance that two answers are
+  equal, has an exactly unbiased estimate: the share of pairs of answers
+  that are equal.
+- Primes, round numbers, edges and repeated digits: 1 minus the gap
+  between the model's share and the ideal share, which is the share of
+  answers that would have to change. The gap is the square root of an
+  unbiased estimate of its square.
+- Favorite: 1 minus how far the favorite's share exceeds 1%, scaled so that
+  one value taking every answer scores 0. The share is estimated by leaving
+  one out: how often an answer equals the favorite of all the other answers.
+
+Invalid replies aren't counted here. Their rate is scored from the parsed
+replies (3.4), and a perfect generator never gives one.
 """
 
 import numpy as np
@@ -39,71 +52,131 @@ def counts_of(values) -> np.ndarray:
     return np.bincount(values, minlength=N_VALUES)
 
 
-def _shares(counts) -> np.ndarray:
-    """Each value's share of the answers, shaped like counts."""
+def _validated(counts) -> tuple[np.ndarray, np.ndarray]:
+    """Return the counts as an array and the number of answers in each run."""
     counts = np.asarray(counts)
     if counts.shape[-1] != N_VALUES:
         raise ValueError(f"expected {N_VALUES} counts, got {counts.shape[-1]}")
-    n = counts.sum(axis=-1, keepdims=True)
-    if np.any(n == 0):
-        raise ValueError("no valid answers to measure")
-    return counts / n
+    n = counts.sum(axis=-1)
+    if np.any(n < 2):
+        raise ValueError("a score needs at least 2 valid answers")
+    return counts, n
 
 
-def _distance_from_uniform(shares) -> np.ndarray:
-    """Total variation distance: half the sum of the gaps between the observed
-    and the ideal shares. It's the share of answers that would have to change
-    to make the distribution uniform: 0 when it is, nearly 1 when one answer
-    takes everything."""
-    ideal = 1 / shares.shape[-1]
-    return 0.5 * np.abs(shares - ideal).sum(axis=-1)
+# The estimates the scores are built from
+
+
+def _repeat_rate(binned: np.ndarray) -> np.ndarray:
+    """The share of pairs of answers in the same bin, for counts over any bins."""
+    n = binned.sum(axis=-1)
+    return (binned * (binned - 1)).sum(axis=-1) / (n * (n - 1))
+
+
+def _effective(binned: np.ndarray) -> np.ndarray:
+    with np.errstate(divide="ignore"):
+        return 1 / _repeat_rate(binned)
+
+
+def repeat_rate(counts) -> np.ndarray:
+    """An unbiased estimate of the chance that two answers are equal: the share
+    of pairs of answers that are. A perfect generator's is 1/100."""
+    return _repeat_rate(_validated(counts)[0])
+
+
+def effective_values(counts) -> np.ndarray:
+    """How many values a fair pick would need to repeat itself as often as the
+    model: 1 / repeat rate. Infinite when no two answers are equal."""
+    return _effective(_validated(counts)[0])
+
+
+def last_digit_counts(counts) -> np.ndarray:
+    """The 10 counts of the answers' last digits, shaped (..., 10)."""
+    counts = np.asarray(counts)
+    # Value v = 10 * tens + last, so reshaping puts the last digit on the final axis.
+    return counts.reshape(*counts.shape[:-1], 10, 10).sum(axis=-2)
+
+
+def share_gap(counts, mask) -> np.ndarray:
+    """How far the share of answers in the mask is from its ideal, mask.mean().
+
+    The observed squared gap is too big on average by the share's sampling
+    variance, s(1 - s)/n. Subtracting an unbiased estimate of that variance,
+    s(1 - s)/(n - 1), leaves an unbiased estimate of the true squared gap.
+    It can come out negative, as it should for a perfect generator about half
+    the time, and is floored at 0 before the square root.
+    """
+    counts, n = _validated(counts)
+    s = counts[..., mask].sum(axis=-1) / n
+    squared = (s - mask.mean()) ** 2 - s * (1 - s) / (n - 1)
+    return np.sqrt(np.maximum(0, squared))
+
+
+def favorite_share(counts) -> np.ndarray:
+    """How often an answer equals the favorite of all the other answers.
+
+    This leave-one-out share estimates, without bias, the chance that a new
+    answer equals the model's current favorite: exactly 1/100 for a perfect
+    generator, where the plain top share is about 2.2% at N = 600. Ties among
+    the other answers' favorites count fractionally.
+
+    Only a value that leads alone can match: take one of its answers away and
+    it must still be among the most common. If its lead is exactly one, it
+    then ties with every value in second place.
+    """
+    counts, n = _validated(counts)
+    ordered = np.sort(counts, axis=-1)
+    top, second = ordered[..., -1], ordered[..., -2]
+    tied_after = 1 + np.where(top - 1 == second, (counts == second[..., None]).sum(axis=-1), 0)
+    return np.where(top > second, top / n / tied_after, 0.0)
+
+
+# The sub-scores
 
 
 def uniformity(counts) -> np.ndarray:
-    """How far the whole distribution is from uniform, as a total variation distance."""
-    return _distance_from_uniform(_shares(counts))
-
-
-def primes(counts) -> np.ndarray:
-    """The share of answers that are prime: 25 of the 100 values."""
-    return _shares(counts)[..., PRIME].sum(axis=-1)
-
-
-def multiples_of_10(counts) -> np.ndarray:
-    """The share of answers that are multiples of 10, 0 included: 10 values."""
-    return _shares(counts)[..., MULTIPLE_OF_10].sum(axis=-1)
-
-
-def multiples_of_5(counts) -> np.ndarray:
-    """The share of answers that are multiples of 5, 0 included: 20 values."""
-    return _shares(counts)[..., MULTIPLE_OF_5].sum(axis=-1)
-
-
-def favorite(counts) -> np.ndarray:
-    """The share of answers taken by the single most common value."""
-    return _shares(counts).max(axis=-1)
-
-
-def edges(counts) -> np.ndarray:
-    """The share of answers in 0-9 or 90-99: 20 values."""
-    return _shares(counts)[..., EDGE].sum(axis=-1)
-
-
-def repeated_digits(counts) -> np.ndarray:
-    """The share of answers 11, 22, ..., 99: 9 values."""
-    return _shares(counts)[..., REPEATED_DIGITS].sum(axis=-1)
+    """The effective number of values, out of 100."""
+    return np.minimum(1, effective_values(counts) / N_VALUES)
 
 
 def last_digit(counts) -> np.ndarray:
-    """How far the last digits' shares are from 10% each, as a total variation distance."""
-    shares = _shares(counts)
-    # Value v = 10 * tens + last, so reshaping puts the last digit on the final axis.
-    by_last_digit = shares.reshape(*shares.shape[:-1], 10, 10).sum(axis=-2)
-    return _distance_from_uniform(by_last_digit)
+    """The effective number of last digits, out of 10."""
+    counts, _ = _validated(counts)
+    return np.minimum(1, _effective(last_digit_counts(counts)) / 10)
+
+
+def primes(counts) -> np.ndarray:
+    """1 minus the gap from 25% primes."""
+    return 1 - share_gap(counts, PRIME)
+
+
+def multiples_of_10(counts) -> np.ndarray:
+    """1 minus the gap from 10% multiples of 10, 0 included."""
+    return 1 - share_gap(counts, MULTIPLE_OF_10)
+
+
+def multiples_of_5(counts) -> np.ndarray:
+    """1 minus the gap from 20% multiples of 5, 0 included."""
+    return 1 - share_gap(counts, MULTIPLE_OF_5)
+
+
+def favorite(counts) -> np.ndarray:
+    """1 minus the favorite's excess over 1%, scaled so that 100% scores 0."""
+    excess = (favorite_share(counts) - 1 / N_VALUES) / (1 - 1 / N_VALUES)
+    return np.clip(1 - excess, 0, 1)
+
+
+def edges(counts) -> np.ndarray:
+    """1 minus the gap from 20% of answers in 0-9 or 90-99."""
+    return 1 - share_gap(counts, EDGE)
+
+
+def repeated_digits(counts) -> np.ndarray:
+    """1 minus the gap from 9% of answers in 11, 22, ..., 99."""
+    return 1 - share_gap(counts, REPEATED_DIGITS)
 
 
 # In the order of PLAN.md's bias table, after the invalid-answer rate.
-MEASUREMENTS = {
+CHECKS = {
     "uniformity": uniformity,
     "primes": primes,
     "multiples_of_10": multiples_of_10,

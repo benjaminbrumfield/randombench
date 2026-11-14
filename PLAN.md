@@ -35,22 +35,22 @@ Measure how well LLMs generate random integers in [0, 99]. Each model answers hu
 | Gemma 4 26B A4B | `gemma-4-26b-a4b-it` | — |
 | gpt-oss-120b | `gpt-oss-120b` | `openai/gpt-oss-120b` |
 
-## Bias checks (measured, not yet scored)
+## Bias checks
 
-A perfect generator gives each value probability 1/100, so the expected rates are as below. Every check but the first measures only the valid answers, in [randombench/checks.py](randombench/checks.py) (3.2). A distance is the total variation distance: half the sum of the gaps between the observed and the ideal shares, which is the share of answers that would have to change.
+A perfect generator gives each value probability 1/100. Every check but the first scores only the valid answers, in [randombench/checks.py](randombench/checks.py). Each sub-score is in [0, 1]: about 1 for a perfect generator, and lower the more biased the model (D7). A gap is the share of answers that would have to change.
 
-| Check | What it measures | Expected from a perfect generator | At N = 600 (mean, 95% range) |
-|---|---|---|---|
-| Invalid answers | Share of replies that aren't a single integer in [0, 99] | 0% | 0% |
-| Uniformity | Distance of the whole distribution from uniform | Calibrated: 0 only as N grows | 0.160 (0.137–0.185) |
-| Primes | Share of answers that are prime (2, 3, 5, …, 97: 25 values) | 25% | 25.0% (21.5–28.5%) |
-| Round numbers | Share of multiples of 10, and separately of 5 | 10% (20%) | 10.0% (7.7–12.3%), 20.0% (16.8–23.2%) |
-| Favorite number | Share of answers taken by the single most common value | Calibrated: 1% only as N grows | 2.2% (1.8–2.7%) |
-| Edges | Share of answers in 0–9 or 90–99 | 20% | 20.0% (16.8–23.2%) |
-| Repeated digits | Share of 11, 22, …, 99 | 9% | 9.0% (6.8–11.3%) |
-| Last digit | Distance of the last digits' shares from 10% each (7 is the usual suspect) | Calibrated: 0 only as N grows | 0.049 (0.027–0.075) |
+| Check | Sub-score | Ideal | Lowest | Perfect generator at N = 600 (mean, 95% range) |
+|---|---|---|---|---|
+| Invalid answers | 1 − the share of replies that aren't a single integer in [0, 99] (3.4) | 0% | 0 | 1 |
+| Uniformity | The effective number of values K, as K/100. A fair pick among K values repeats itself as often as the model does | K = 100 | 0.01, one value | 0.991 (0.952–1) |
+| Primes | 1 − the gap between the share of primes (2, 3, 5, …, 97: 25 values) and 25% | 25% | 0.25, all prime | 0.994 (0.965–1) |
+| Round numbers | 1 − the gap from 10% multiples of 10, and separately from 20% multiples of 5 | 10% (20%) | 0.10 (0.20) | 0.996 (0.976–1), 0.994 (0.967–1) |
+| Favorite number | 1 − the favorite's share above 1%, scaled so that 100% scores 0 | 1% | 0, one value | 0.996 (0.983–1) |
+| Edges | 1 − the gap from 20% of answers in 0–9 or 90–99 | 20% | 0.20 | 0.994 (0.968–1) |
+| Repeated digits | 1 − the gap from 9% of answers in 11, 22, …, 99 | 9% | 0.09 | 0.996 (0.977–1) |
+| Last digit | The effective number of last digits K, as K/10 (7 is the usual suspect) | K = 10 | 0.10, one digit | 0.997 (0.983–1) |
 
-"Calibrated" means even a perfect generator misses the ideal value in a finite run, by an amount that depends on N. [randombench/calibration.py](randombench/calibration.py) simulates one at any N (3.2), and models are compared against that.
+Each sub-score estimates the model's true score with sampling noise removed on average, so a model's expected score doesn't depend on its number of valid answers (3.3). [randombench/calibration.py](randombench/calibration.py) simulates any distribution at any N, and the tests use it to check that.
 
 Some checks overlap. For example, 7, 17, 37, 47, 67 and 97 are all primes ending in 7. This matters when combining sub-scores into the headline.
 
@@ -219,8 +219,27 @@ These steps use only stored draws and simulated random numbers. No quota.
   - Turning a share into a gap from its ideal brings back a floor too, since |share − ideal| is never negative. Every sub-score therefore needs calibration, not only the three marked "Calibrated" (D7).
   - Calibrating at five sizes took 0.8 s, so a scoring task could calibrate at its model's N on Kaggle instead of embedding a table (D13). `calibration.py` imports `checks.py`, though, so the sync would refuse to copy it, the same limit 3.1 found for scoring code that uses the parser.
   - The tests check the harness against exact values that need no simulation. A share's expected value is its set's size over 100. A distance's expected value is the sum of each value's expected gap, by linearity, because one value's count is Binomial(N, 1/100) even though the counts depend on each other. The simulated means match both to within 0.001.
-- [ ] **3.3 Score mapping.** Decide together how a measured bias becomes a sub-score in [0, 1]. Base it on how big the bias is (effect size), not on p-values. A p-value gets more extreme as N grows, so more draws would make every model look worse. Settles D7.
-- [ ] **3.4 Sub-scores,** one commit each, in the order of the bias table. Each turns its check's measurement (3.2) into a sub-score by 3.3's mapping. The invalid-answer rate comes from the parsed replies.
+- [x] **3.3 Score mapping.** Decide together how a measured bias becomes a sub-score in [0, 1]. Base it on how big the bias is (effect size), not on p-values. A p-value gets more extreme as N grows, so more draws would make every model look worse. Settles D7.
+
+  [randombench/checks.py](randombench/checks.py) now gives each check's sub-score, as the bias table describes. [randombench/calibration.py](randombench/calibration.py) simulates any distribution, not only a perfect one. One decision fixed all eight distribution checks, so they were built together here, not one at a time in 3.4.
+
+  *Found:*
+  - Subtracting a perfect generator's floor, the obvious use of 3.2's calibration, fails. A value the model never picks adds exactly 0.01 to the TVD, with no noise, so a biased model's TVD has almost no floor to subtract. Raw TVD fails the other way, and it has no unbiased estimate, so no correction fixes it. Average uniformity score over 4,000 simulated runs of made-up models, at N = 100 / 600 / 1200:
+
+    | Model | 1 − TVD (true) | 1 − TVD | 1 − (TVD − perfect floor) | Effective values / 100 (true) | Effective values / 100 |
+    |---|---|---|---|---|---|
+    | Perfect | 1.000 | 0.63 / 0.84 / 0.89 | 0.99 / 1.00 / 1.00 | 1.000 | 0.95 / 0.99 / 1.00 |
+    | Prime-leaning | 0.775 | 0.59 / 0.74 / 0.76 | 0.96 / 0.90 / 0.88 | 0.787 | 0.80 / 0.79 / 0.79 |
+    | LLM-like | 0.330 | 0.30 / 0.33 / 0.33 | 0.67 / 0.49 / 0.44 | 0.107 | 0.11 / 0.11 / 0.11 |
+    | One value | 0.010 | 0.01 / 0.01 / 0.01 | 0.38 / 0.17 / 0.12 | 0.010 | 0.01 / 0.01 / 0.01 |
+
+  - The fix is to score quantities whose noise cancels on average, so that a model's expected score is its true score at any N, and nothing needs subtracting. The chance that two answers are equal has an exactly unbiased estimate, the share of pairs of answers that are equal. Its inverse is the effective number of values. A share's squared gap has one too: subtract the share's estimated sampling variance, s(1 − s)/(N − 1). On a linear scale the shares' raw floors were small (a perfect generator's raw primes score was 0.986 at N = 600), but they're corrected all the same.
+  - The plain top share is biased upward, because whichever value leads by chance becomes the favorite. Leaving one answer out fixes that: count how often an answer equals the favorite of all the other answers, with ties counted fractionally. This estimates, without bias, the chance that a new answer equals the current favorite. For a perfect generator it averaged 1.00% at N = 20, 100 and 600, where the plain top share is 2.2% at N = 600. A test checks it against a brute-force version.
+  - A test checks the central claim: for seven made-up models, from a perfect generator to one value, at N = 300, 600 and 1200, every check's average score is within 0.02 of the model's true score. A perfect generator averages 0.991–0.997 at N = 600 and 0.952–0.994 at N = 100, lowest on uniformity, whose estimate is the curved 1/rate and capped at 1.
+  - Scoring no longer needs calibration, so a scoring task needs only `checks.py` and the parser, and neither imports `randombench`. That settles 3.2's worry about copying `calibration.py`. Code that parses replies and counts them would import both, though (3.4).
+  - The sub-scores bottom out at different levels: 0.01 for uniformity, 0.25 for primes, 0 for the favorite (D8).
+  - On 2.4's 12 draws, nano behaves like a fair pick among 5.1 values (uniformity 0.051), and Gemini 3.1 Flash-Lite like a pick among one (0.01).
+- [ ] **3.4 Invalid answers and scoring stored draws.** Score the invalid-answer rate, and turn a model's stored replies into all its sub-scores: parse each reply (2.2), count the valid answers, and run every check (3.3). Decide whether a failed call counts as an invalid answer, and what a model with fewer than 2 valid answers scores, since the checks need at least 2.
 - [ ] **3.5 Headline score.** Decide together. Harmonic mean is the starting candidate. Watch for two problems: it drops to 0 if any single sub-score is 0, and overlapping checks penalize the same bias twice. Settles D8.
 - [ ] **3.6 Scoring tasks.** One task per sub-score and one for the headline, built from the shared scoring code (D6, D13). Each recomputes its score from the stored draws of the model it's run with, and never prompts that model.
 
@@ -248,8 +267,8 @@ These steps use only stored draws and simulated random numbers. No quota.
 | D4 | How strict is parsing? | **Settled:** lenient on formatting, strict on content. Only digits count, and they must be one integer in 0–99. A restated range, number words and `47.0` make a reply invalid. See "Parsing" under Decided. | 2.2 |
 | D5 | Data layout: one committed file per run under `data/`? How large do reasoning traces make it? | **Settled:** one JSON Lines file per run, `data/<model>/<run_id>.jsonl`, one draw per line, committed. Only runs downloaded from Kaggle, because only their download path holds a run id and a task version (2.5). A 600-draw run is about 230 KB. The default reasoning returns no traces (2.3), so traces add nothing unless D1 changes. | 2.5 |
 | D6 | A push uploads a single `.py` file, but the offline analysis needs the same parsing and scoring code. Options: a source module plus a script that copies it into the pushed task file; the task file as the only copy; or code in an attached Kaggle dataset. | **Settled:** a copy in the task file. Each task file holds the `randombench` modules it uses between `# --- begin <path> ---` and `# --- end <path> ---` markers, and `python -m randombench.sync` refreshes the copies, so the file run locally is exactly the file pushed. Tests fail when a copy is out of date, when a task imports `randombench`, or when converting a task to a notebook would change a line (3.1). A copied module can't import `randombench` itself. | 3.1 |
-| D7 | How does a measured bias become a sub-score in [0, 1]? | Based on effect size, judged against a perfect generator at the model's own number of valid answers. Every gap from the ideal has a floor at finite N, and for the distances and the favorite's share it falls roughly as 1/√N (3.2). | 3.3 |
-| D8 | How is the headline score computed? | Harmonic mean, still to be decided | 3.5 |
+| D7 | How does a measured bias become a sub-score in [0, 1]? | **Settled:** each sub-score is an effect size whose sampling noise cancels on average, so its expected value is the model's true score at any N, and no floor is subtracted. Uniformity and the last digit score the effective number of values out of 100 (of last digits, out of 10), from the unbiased repeat rate. The share checks score 1 − the gap from the ideal share, from an unbiased estimate of the squared gap. The favorite scores 1 − its leave-one-out share above 1%, scaled to [0, 1]. This replaced 3.2's TVD for uniformity and the last digit, because TVD has no unbiased estimate (3.3). | 3.3 |
+| D8 | How is the headline score computed? | Harmonic mean, still to be decided. The sub-scores bottom out at different levels: 0.01 for uniformity, 0.25 for primes, 0 for the favorite (3.3). | 3.5 |
 | D9 | Prompt assignment: pick a prompt independently at random for each draw, or shuffle a balanced schedule with each prompt used exactly 100 times? | **Settled:** a balanced shuffle. The order is still random, and equal counts make prompts easier to compare. `balanced_schedule` in [tasks/collect.py](tasks/collect.py) does it (2.4). | 2.4 |
 | D10 | What is the collection task's name? Its slug must stay stable once pushed, because a new slug makes a new task instead of a new version. | — | Before the real task's first push |
 | D11 | Should the draw sub-task catch its own errors and return them in its result, rather than letting the library mark the draw `ERRORED`? An errored sub-run keeps no result, so its prompt id would be lost, and the library won't retry inside a parent task anyway (1.1). | **Settled:** catch and return. Each draw's result always holds its draw index and prompt id, plus either the reply or the error (2.4). | 2.4 |
