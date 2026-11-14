@@ -12,7 +12,10 @@ Measure how well LLMs generate random integers in [0, 99]. Each model answers hu
 - **Names:** the Kaggle Benchmark is called RandomBench. A Benchmark is the page that groups tasks and shows the leaderboard. The task gets a different name (D10). Benchmark and task slugs are both scoped to their owner (`/benchmarks/{owner}/{slug}` and `/benchmarks/tasks/{owner}/{slug}`), so nobody else can take ours and there's nothing to reserve early. Benchmarks are created on the Kaggle website; the CLI handles only tasks.
 - **Calls:** single-turn, in a fresh conversation each time. No tools, and the model never sees its earlier answers.
 - **Replies:** plain text for every model, read by one parser of our own (2.2). No structured output (`schema=`). kaggle-benchmarks 0.6.2 sends a schema natively to most models, but gemma, qwen, deepseek and meta models get it only as text in a system message (`kaggle_benchmarks/kaggle/model_proxy.py`, lines 73–79). The models would then answer under different conditions, and their invalid-answer rates couldn't be compared. The prompt states the range, and an answer outside it counts as invalid.
-- **Prompts:** a fixed set of at least six, stored in the repo, each with a stable id and an author. Each draw uses a prompt picked at random.
+- **Prompts:** six, in [randombench/prompts.py](randombench/prompts.py), each with a name, an author and its text. D9 decides which prompt each draw gets.
+  - **Ids:** a prompt's id is its name plus the first 8 hex digits of its text's SHA-256, such as `plain-47858739`. Editing the text gives a new id by itself, and a test pins every id, so no edit goes unnoticed, not even to whitespace. Once a prompt has been used in a run, it's never edited or deleted, and a change means adding a new prompt. A way to retire a prompt can wait until one first needs replacing.
+  - **Authors:** Claude drafted all six (`claude-opus-5-5`). A prompt the user rewords lists `benjaminbrumfield` instead.
+  - **Style:** every prompt asks for a random integer, gives the range as 0 to 99 with both ends included, and asks for the number only. A model that wasn't asked to be random can't be faulted for having a favorite. No prompt gives an example number or names a bias, since either could steer the answer. Beyond that, the prompts differ in wording, tone, length and framing, so no score depends on a single phrasing. A test checks the rules code can check.
 - **Volume:** 600 draws per model per run. That gives a 95% margin of error of at most ±4 percentage points on any share a check measures, and 6 expected answers per value, above the usual minimum of 5 for a chi-squared test. Halving the margin would take 4× the draws. 600 also splits evenly across six prompts (D9). If the pilot shows spare quota, 1,200 is the next step up: ±2.8 points for twice the calls. Failed calls are recorded, not dropped, and a run that stops early keeps what it collected.
 - **Raw data:** every raw response is stored. Parsed values and scores are always recomputed from the raw text, so a new bias check or a new parsing rule never requires calling the models again.
 - **Invalid answers:** the rate of invalid answers is its own sub-score.
@@ -133,7 +136,7 @@ Some checks overlap. For example, 7, 17, 37, 47, 67 and 97 are all primes ending
 
 ### Phase 2: from one call to a dataset
 
-- [ ] **2.1 Prompts.** Add the six or more prompts, each with a stable id and an author. Rule: editing a prompt's text gives it a new id, so every stored draw points at the exact text it answered.
+- [x] **2.1 Prompts.** Add the six or more prompts, each with a stable id and an author. Rule: editing a prompt's text gives it a new id, so every stored draw points at the exact text it answered.
 - [ ] **2.2 Parser and tests.** Write a function that turns a raw reply into an integer or "invalid", with unit tests on sample replies: `47`, `**47**`, `Sure! 47`, `47 or 52`, `100`, `3.5` and a refusal. No quota. Settles D4.
 - [ ] **2.3 One real draw.** **Quota: 2 calls**, one per local model, with `seed=None`.
 

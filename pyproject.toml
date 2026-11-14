@@ -1,0 +1,4 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Lets a bare `pytest` (VS Code's test runner, for one) import randombench.
+pythonpath = ["."]
