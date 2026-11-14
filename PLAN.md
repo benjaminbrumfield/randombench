@@ -22,7 +22,7 @@ Measure how well LLMs generate random integers in [0, 99]. Each model answers hu
 - **Invalid answers:** the rate of invalid answers is its own sub-score.
 - **Leaderboard:** every sub-score and the headline appear on Kaggle, and no model is ever called twice for the same draw (D2, settled in 1.2). A notebook puts only one task on the leaderboard, and a dict result shows a blank Result. So the collection task makes each model's draws, and each score gets a scoring task of its own. A scoring task never prompts a model: run with `-m X`, it recomputes its score from X's stored draws and returns it. 1.2 showed that a task can be run against a model without prompting it. The RandomBench Benchmark groups all the tasks.
 - **Temperature:** the provider's default. This was not our choice: kaggle-benchmarks 0.6.2 never sends temperature through Model Proxy (`kaggle_benchmarks/kaggle/model_proxy.py`, line 101).
-- **Seed:** `seed=None`, so providers sample freshly, as in normal API use. The library's default seed is 0, and it is sent to every non-Google model. A backend that honors seeds could then return the same number every time, which would look like a bias. It's unverified whether every backend accepts a null seed. If one rejects it, the fallback is a distinct seed on every call.
+- **Seed:** `seed=None`, so providers sample freshly, as in normal API use. The library's default seed is 0, and it is sent to every non-Google model. A backend that honors seeds could then return the same number every time, which would look like a bias. GPT-5.4 nano accepted a null seed (2.3). The library never sends a seed to a `google/` model, so the two Gemini models and Gemma sample freshly regardless. Claude Haiku 4.5 and gpt-oss-120b get checked in the pilot (4.1). If a backend rejects a null seed, the fallback is a distinct seed on every call.
 - **Models:** six, with their exact ids. Kaggle slugs come from `kaggle b t models`, and local ids from `LLMS_AVAILABLE` in `.env` (both checked 2026-11-14). Local development uses the first two. gpt-oss-120b is also available locally.
 
 | Model | Kaggle slug (`-m`) | Local id |
@@ -139,9 +139,18 @@ Some checks overlap. For example, 7, 17, 37, 47, 67 and 97 are all primes ending
 
 - [x] **2.1 Prompts.** Add the six or more prompts, each with a stable id and an author. Rule: editing a prompt's text gives it a new id, so every stored draw points at the exact text it answered.
 - [x] **2.2 Parser and tests.** Write a function that turns a raw reply into an integer or "invalid", with unit tests on sample replies: `47`, `**47**`, `Sure! 47`, `47 or 52`, `100`, `3.5` and a refusal. No quota. Settles D4.
-- [ ] **2.3 One real draw.** **Quota: 2 calls**, one per local model, with `seed=None`.
+- [x] **2.3 One real draw.** **Quota: 2 calls**, one per local model, with `seed=None`. [probes/one_draw.py](probes/one_draw.py) sends the `plain` prompt once to each local model, with reasoning left at the provider default (D1).
 
   *Learn:* whether a null seed is accepted, and where the raw reply, the reasoning trace and the token usage appear in the run file.
+
+  *Found:*
+  - Both calls completed, 2 in all. Nano answered 37 and Gemini 3.1 Flash-Lite answered 42, two of the best-known "random" numbers, though one draw each shows nothing yet.
+  - Nano accepted `seed=None`, which the library passes on to the OpenAI client as `seed`. Gemini got no seed, because the library drops it for every `google/` model (`_should_remove_seed` in `kaggle_benchmarks/actors/proxy_openai.py`). The run file doesn't record request parameters such as seed, temperature or reasoning. Only the code shows what was sent.
+  - The raw reply is in `conversations[0].requests[0].contents[1].parts[0].text`. `contents[0]` holds the prompt text exactly as sent, so each draw's record carries the text it answered.
+  - With the default reasoning, no trace came back. `last_reasoning_traces()` returned `None`, and the contents hold only the prompt and the reply. The library asks for traces only when `reasoning=` is passed: it sets `include_thoughts` for Google models and parses `<think>` tags only then (D1).
+  - Token usage is in each request's `metrics`: `inputTokens`, `outputTokens`, the input and output costs in nanodollars, and `totalBackendLatencyMs`. The costs and latency are JSON strings (`"5000"`), because protobuf writes 64-bit integers as strings, so extraction must convert them. There's no separate count of reasoning tokens. Nano used 4 output tokens for `37` and Gemini 2 for `42`.
+  - A draw cost about $0.00001 on these two models, so 600 draws cost under a cent per model. Reasoning models may cost much more (4.1).
+  - From the library source: the HTTP client can cache responses, keyed by the request body (`build_httpx_client` in `kaggle_benchmarks/utils.py`). It's off unless `ENABLE_LOCAL_CACHING` is set, and our `.env` doesn't set it. If it were on, every draw with the same prompt would get the first draw's answer back. The collection task must keep it off, and a Kaggle run should confirm that the server doesn't turn it on. It's separate from `kbench.client.enable_cache()`, which only skips a run whose run file already completed.
 - [ ] **2.4 Small collection run.** **Quota: 24 calls**, 12 on each local model. This is the real collection task at a small size. Settles D9.
 
   *Learn:* how parallel calls and retries behave, and whether each draw's record is complete.
@@ -182,7 +191,7 @@ These steps use only stored draws and simulated random numbers. No quota.
 
 | ID | Question | Leaning | Settled in |
 |---|---|---|---|
-| D1 | Reasoning: use each model's default, or force it on or off? | The provider default. Not every model can turn reasoning off: gpt-oss-120b offers only low, medium and high. Forcing a setting would treat models unevenly either way. The default also matches how people use each model, and how we already handle temperature. Reasoning traces and token counts are stored for later analysis. Watch the cost in the pilot. | Before 2.3 |
+| D1 | Reasoning: use each model's default, or force it on or off? | **Settled:** the provider default. Not every model can turn reasoning off: gpt-oss-120b offers only low, medium and high. Forcing a setting would treat models unevenly either way. The default also matches how people use each model, and how we already handle temperature. The default returns no reasoning traces (2.3), so only token counts show how much a model reasoned. Getting traces without changing the reasoning level would take provider-specific request options, and OpenAI's chat API never returns them. Watch the cost in the pilot. | 2.3 |
 | D2 | Leaderboard: one task that returns a dict of sub-scores plus the headline, or one task per sub-score? | **Settled:** one scoring task per score, all reading the same stored draws. See "Leaderboard" under Decided. | 1.2 |
 | D3 | Runs that stop early: score each run on what it collected and merge all draws offline? Or have later runs top up to 600 from stored draws, through an attached Kaggle dataset? | Start with self-contained runs, and revisit after seeing real failures. Extraction reads the per-draw files, not only the parent file, and skips empty ones, so a run that dies keeps the draws it finished (1.2). | 4.1 |
 | D4 | How strict is parsing? | **Settled:** lenient on formatting, strict on content. Only digits count, and they must be one integer in 0–99. A restated range, number words and `47.0` make a reply invalid. See "Parsing" under Decided. | 2.2 |
