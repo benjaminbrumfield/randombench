@@ -16,6 +16,7 @@ Measure how well LLMs generate random integers in [0, 99]. Each model answers hu
 - **Volume:** 600 draws per model per run. That gives a 95% margin of error of at most ±4 percentage points on any share a check measures, and 6 expected answers per value, above the usual minimum of 5 for a chi-squared test. Halving the margin would take 4× the draws. 600 also splits evenly across six prompts (D9). If the pilot shows spare quota, 1,200 is the next step up: ±2.8 points for twice the calls. Failed calls are recorded, not dropped, and a run that stops early keeps what it collected.
 - **Raw data:** every raw response is stored. Parsed values and scores are always recomputed from the raw text, so a new bias check or a new parsing rule never requires calling the models again.
 - **Invalid answers:** the rate of invalid answers is its own sub-score.
+- **Leaderboard:** every sub-score and the headline appear on Kaggle, and no model is ever called twice for the same draw (D2, settled in 1.2). A notebook puts only one task on the leaderboard, and a dict result shows a blank Result. So the collection task makes each model's draws, and each score gets a scoring task of its own. A scoring task never prompts a model: run with `-m X`, it recomputes its score from X's stored draws and returns it. 1.2 showed that a task can be run against a model without prompting it. The RandomBench Benchmark groups all the tasks.
 - **Temperature:** the provider's default. This was not our choice: kaggle-benchmarks 0.6.2 never sends temperature through Model Proxy (`kaggle_benchmarks/kaggle/model_proxy.py`, line 101).
 - **Seed:** `seed=None`, so providers sample freshly, as in normal API use. The library's default seed is 0, and it is sent to every non-Google model. A backend that honors seeds could then return the same number every time, which would look like a bias. It's unverified whether every backend accepts a null seed. If one rejects it, the fallback is a distinct seed on every call.
 - **Models:** six, with their exact ids. Kaggle slugs come from `kaggle b t models`, and local ids from `LLMS_AVAILABLE` in `.env` (both checked 2026-11-14). Local development uses the first two. gpt-oss-120b is also available locally.
@@ -78,7 +79,7 @@ Some checks overlap. For example, 7, 17, 37, 47, 67 and 97 are all primes ending
   - All 601 records (the parent and 600 sub-runs) and all their file names now say `python-random`.
   - The probe runs without `.env`: with no Model Proxy credentials loaded, it can't spend quota.
   - In the real task the label will be right, because the model passed in is the model prompted.
-- [ ] **1.2 Fake-draw task, on Kaggle.** Push and run the same task, plus a variant that crashes halfway through. `kaggle b t run` needs a model, but the task never calls it. Because this is a server run, it waits for a go-ahead anyway. The server doesn't support `kaggle b t delete` yet, so the probe stays on the account as a private task.
+- [x] **1.2 Fake-draw task, on Kaggle.** Push and run the same task, plus a variant that crashes halfway through. `kaggle b t run` needs a model, but the task never calls it. Because this is a server run, it waits for a go-ahead anyway. The server doesn't support `kaggle b t delete` yet, so the probe stays on the account as a private task.
 
   *Learn:*
   - which model the leaderboard shows for a run labelled `python-random`: the stand-in, the `-m` model, or neither because the run is rejected. If it's rejected, run again with `kbench.llm` so D2 can still be settled.
@@ -93,6 +94,14 @@ Some checks overlap. For example, 7, 17, 37, 47, 67 and 97 are all primes ending
   - Without `%choose`, the task page showed `fake-draw`: one draw's run, with the sub-task's code, no description and a blank Result. At the end of the notebook, `%choose <task>` deletes every `.run.json` and `.task.json` except the task's own and its latest run (`kaggle_benchmarks/ui/ipython_magics.py`). The `.py` file can carry it as the comment `# %choose randombench-fake-draws`, because jupytext turns it into the magic when the CLI converts the file. Other comments therefore must not start with `# %`. Version 3 adds it, and its download holds only the parent `.run.json` and the `.task.json` (0.6 MB). The real task needs it too. A run that dies never reaches `%choose`, so it keeps its per-draw files.
   - With `%choose`, the task page shows the parent's title, description and code. Its Result cell for the dict result is blank. A task can also return a bool, a number, or a `(value, confidence interval)` pair (`_prepare_results_data` in `kaggle_benchmarks/kaggle/serialization.py`). We haven't seen how those display.
   - The crash variant killed the kernel at draw 300 during creation (`DeadKernelError`). The task version is `Errored`, so it can't be run. Its download still holds 300 per-draw files: 294 completed draws, the 3 injected failures, and 3 empty files from draws that were mid-write. The other draws in flight left nothing, and there's no parent file, so the run has no result. The same crash run locally leaves 295 per-draw files and no parent. This informs D3: a run that dies keeps its finished draws, but only in the per-draw files.
+- [ ] **1.3 Scoring-task probe, on Kaggle.** A throwaway scoring task holds fake draws for two model labels. It picks the draws for the model it's run with and returns a `(value, CI)` pair. Push it, run it with `-m gpt-5.4-nano-2026-03-17`, and add it with `randombench-fake-draws` to a private probe Benchmark, which you create on the Kaggle website. It never prompts a model, but its server runs wait for a go-ahead.
+
+  *Learn:*
+  - how a `(value, CI)` result displays on the leaderboard
+  - whether a Benchmark shows each task as a column
+  - how a task finds its model's draws, through `llm.name` or something else
+  - what a creation run with no stored draws for its model should return (D12)
+  - whether draws embedded in the task file are workable (D13)
 
 ### Phase 2: from one call to a dataset
 
@@ -121,7 +130,7 @@ These steps use only stored draws and simulated random numbers. No quota.
 - [ ] **3.3 Score mapping.** Decide together how a measured bias becomes a sub-score in [0, 1]. Base it on how big the bias is (effect size), not on p-values. A p-value gets more extreme as N grows, so more draws would make every model look worse. Settles D7.
 - [ ] **3.4 Bias checks,** one commit each, in the order of the table above.
 - [ ] **3.5 Headline score.** Decide together. Harmonic mean is the starting candidate. Watch for two problems: it drops to 0 if any single sub-score is 0, and overlapping checks penalize the same bias twice. Settles D8.
-- [ ] **3.6 Wire the scores into the task's result.**
+- [ ] **3.6 Scoring tasks.** One task per sub-score and one for the headline, built from the shared scoring code (D6, D13). Each recomputes its score from the stored draws of the model it's run with, and never prompts that model.
 
 ### Phase 4: real runs on Kaggle
 
@@ -130,6 +139,7 @@ These steps use only stored draws and simulated random numbers. No quota.
   *Learn:* whether all six accept a null seed, how many tokens a draw costs (reasoning models may think at length), and the invalid-answer rates. This is the go/no-go for full runs.
 - [ ] **4.2 Full runs.** **Quota: 3,600 calls**, 600 on each of the six models. Download, extract and commit the data.
 - [ ] **4.3 Top-ups** for any model short of 600, if D3 chooses to accumulate draws across runs.
+- [ ] **4.4 Scores on Kaggle.** Push the scoring tasks with the stored draws, and run each one against the six models. They never prompt a model, so they spend no quota. Still, it's about 9 tasks × 6 models = 54 runs every time the data changes. Add every task to the RandomBench Benchmark on the website.
 
 ### Phase 5: release
 
@@ -141,7 +151,7 @@ These steps use only stored draws and simulated random numbers. No quota.
 | ID | Question | Leaning | Settled in |
 |---|---|---|---|
 | D1 | Reasoning: use each model's default, or force it on or off? | The provider default. Not every model can turn reasoning off: gpt-oss-120b offers only low, medium and high. Forcing a setting would treat models unevenly either way. The default also matches how people use each model, and how we already handle temperature. Reasoning traces and token counts are stored for later analysis. Watch the cost in the pilot. | Before 2.3 |
-| D2 | Leaderboard: one task that returns a dict of sub-scores plus the headline, or one task per sub-score? | One dict task, if Kaggle displays it well | 1.2 |
+| D2 | Leaderboard: one task that returns a dict of sub-scores plus the headline, or one task per sub-score? | **Settled:** one scoring task per score, all reading the same stored draws. See "Leaderboard" under Decided. | 1.2 |
 | D3 | Runs that stop early: score each run on what it collected and merge all draws offline? Or have later runs top up to 600 from stored draws, through an attached Kaggle dataset? | Start with self-contained runs, and revisit after seeing real failures. Extraction reads the per-draw files, not only the parent file, and skips empty ones, so a run that dies keeps the draws it finished (1.2). | 4.1 |
 | D4 | How strict is parsing? | Lenient on formatting (bold, punctuation), strict on content (exactly one integer) | 2.2 |
 | D5 | Data layout: one committed file per run under `data/`? How large do reasoning traces make it? | — | 2.5 |
@@ -151,4 +161,6 @@ These steps use only stored draws and simulated random numbers. No quota.
 | D9 | Prompt assignment: pick a prompt independently at random for each draw, or shuffle a balanced schedule with each prompt used exactly 100 times? | A balanced shuffle. The order is still random, and equal counts make prompts easier to compare. | 2.4 |
 | D10 | What is the collection task's name? Its slug must stay stable once pushed, because a new slug makes a new task instead of a new version. | — | Before the real task's first push |
 | D11 | Should the draw sub-task catch its own errors and return them in its result, rather than letting the library mark the draw `ERRORED`? An errored sub-run keeps no result, so its prompt id would be lost, and the library won't retry inside a parent task anyway (1.1). | Catch and return. Each draw's result then always holds its draw index and prompt id, plus either the reply or the error. | 2.4 |
-| D12 | Every push runs the whole task once against the server's default model, `gemini-3.8-flash` (1.2). For the real task, that's 600 calls per push on a model outside our six, and they count against quota. Should the creation run make only a few draws? If so, how does the task recognize it? | Make it cheap. The simplest signal may be the model: the creation run gets the server's default, so the task could make a few draws for any model outside our six. First check at no quota whether the environment offers a cleaner signal. Until this is settled, count 600 creation calls in the quota of every push. | Before the real task's first push |
+| D12 | Every push runs the whole task once against the server's default model, `gemini-3.8-flash` (1.2). For the real task, that's 600 calls per push on a model outside our six, and they count against quota. Should the creation run make only a few draws? If so, how does the task recognize it? A scoring task's creation run has a related problem: there are no stored draws for that model, but the run must still complete, or the task can't be run. | Make it cheap. The simplest signal may be the model: the creation run gets the server's default, so the task could make a few draws for any model outside our six. First check at no quota whether the environment offers a cleaner signal. Until this is settled, count 600 creation calls in the quota of every push. | Before the real task's first push |
+| D13 | How does a scoring task get the stored draws? A push uploads one file, so the options are an attached Kaggle dataset (`push -d`), or draws embedded in the task file by the script that builds it (D6). | Embedded. It needs no new infrastructure, and each task version holds exactly the draws it scored. Check the size in 2.5. | 1.3 |
+| D14 | What does the collection task itself return? Its Result is a leaderboard cell too. If it returned the headline from its own run's draws, that could disagree with the scoring tasks once they score draws merged from several runs (D3). | The number of draws it collected, so every score comes from a scoring task | 3.6 |
