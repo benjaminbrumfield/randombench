@@ -3,6 +3,7 @@
 # from Python's random module and no model is ever prompted, so running this
 # spends no Model Proxy quota. It shows how kaggle_benchmarks records a
 # 600-row sub-task evaluation, including rows that fail.
+import os
 import random
 
 import pandas as pd
@@ -62,4 +63,17 @@ def fake_draws(llm) -> dict:
     }
 
 
-fake_draws.run(PythonRandom())
+# Kaggle rejects a run labelled with a model it doesn't serve: the python-random
+# run completed, then the task failed with "Not found" (PLAN.md 1.2). On Kaggle
+# the run carries the -m model's label instead, though that model is never
+# prompted. KAGGLE_KERNEL_RUN_TYPE is the signal the library itself uses to
+# detect a Kaggle batch run (_config.py).
+ON_KAGGLE = os.environ.get("KAGGLE_KERNEL_RUN_TYPE", "").lower() == "batch"
+fake_draws.run(kbench.llm if ON_KAGGLE else PythonRandom())
+
+# %%
+# Deletes every .task.json and .run.json except this task's own and its latest
+# run. Without it, Kaggle took one of the 600 draws as the task (PLAN.md 1.2).
+# When the CLI converts this file to a notebook, jupytext uncomments the magic
+# below, so it runs on Kaggle and stays a comment when run as a script.
+# %choose randombench-fake-draws
