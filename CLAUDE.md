@@ -14,7 +14,8 @@ RandomBench measures how well LLMs generate random integers from 0 to 99 and sco
 The `kaggle-benchmarks` skill covers the general rules. On top of those:
 
 - Keep the slug in `@kbench.task(name=...)` stable, so a push makes a new version rather than a new task.
-- A push uploads only the task file, so everything the task needs on Kaggle (prompts, parsing) must be in it.
+- A push uploads only the task file, so everything the task needs on Kaggle (prompts, parsing) must be in it. A task never imports `randombench`. It holds a copy of each module it uses: put an empty `# --- begin randombench/<module>.py ---` / `# --- end randombench/<module>.py ---` pair where the module goes, then run `python -m randombench.sync` (PLAN.md D6).
+- Never write a comment that starts with `# %` or `# !`, or a bare `#%%`. When the CLI converts the file to a notebook, jupytext turns these into magics, shell commands or cell breaks. `# %choose <slug>` is the one deliberate exception, and a test checks every task file.
 - Pass `seed=None` to `llm.prompt()`. The default seed, 0, could make a model give the same answer every time.
 - Don't pass `schema=`. Every model replies in plain text, and our own parser reads it (PLAN.md, "Replies").
 
@@ -31,6 +32,9 @@ python -m pytest
 # Run locally. Ask first if the task calls a model.
 set -a && source .env && set +a && PYTHONUTF8=1 python <task>.py
 
+# Refresh the copies of shared modules in task files (tests fail if stale)
+python -m randombench.sync
+
 # Push, then run on Kaggle. Ask first: the run calls models.
 kaggle b t push <slug> -f <task>.py --wait
 kaggle b t run <slug> -m <model> --wait
@@ -38,6 +42,9 @@ kaggle b t run <slug> -m <model> --wait
 # Check a run and download its results into results/ (gitignored)
 kaggle b t status <slug>
 kaggle b t download <slug> -o results
+
+# Turn a task's downloaded runs into data/<model>/<run_id>.jsonl (committed)
+python -m randombench.extract results/<slug>
 
 # Make the task public. This can't be undone from the CLI, so ask first.
 kaggle b t publish <slug>
