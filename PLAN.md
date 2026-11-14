@@ -59,7 +59,7 @@ Some checks overlap. For example, 7, 17, 37, 47, 67 and 97 are all primes ending
 
 - [x] **0.1** Commit the environment fixes: the `hishel` pin (`91ef7a4`) and `PYTHONUTF8=1` in `CLAUDE.md` (`38cfc5f`).
 - [x] **0.2** Commit this plan (`7c8488d`).
-- [x] **0.3** Set the working method: quiz blanks for offline code (in `CLAUDE.md`), pytest in `requirements-dev.txt`, exact model ids, and plain-text replies for every model.
+- [x] **0.3** Set the working method: quiz blanks for offline code (in `CLAUDE.md`), pytest in `requirements-dev.txt`, exact model ids, and plain-text replies for every model. Quiz blanks were dropped after 2.4b, and Claude now writes all the code. No committed code ever held a blank.
 
 ### Phase 1: learn the platform without spending quota
 
