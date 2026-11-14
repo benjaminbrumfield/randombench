@@ -35,22 +35,22 @@ Measure how well LLMs generate random integers in [0, 99]. Each model answers hu
 | Gemma 4 26B A4B | `gemma-4-26b-a4b-it` | — |
 | gpt-oss-120b | `gpt-oss-120b` | `openai/gpt-oss-120b` |
 
-## Bias checks (planned, not implemented)
+## Bias checks (measured, not yet scored)
 
-A perfect generator gives each value probability 1/100, so the expected rates are:
+A perfect generator gives each value probability 1/100, so the expected rates are as below. Every check but the first measures only the valid answers, in [randombench/checks.py](randombench/checks.py) (3.2). A distance is the total variation distance: half the sum of the gaps between the observed and the ideal shares, which is the share of answers that would have to change.
 
-| Check | What it measures | Expected from a perfect generator |
-|---|---|---|
-| Invalid answers | Share of replies that aren't a single integer in [0, 99] | 0% |
-| Uniformity | How far the whole distribution is from uniform | Calibrated (see below) |
-| Primes | Share of answers that are prime (2, 3, 5, …, 97: 25 values) | 25% |
-| Round numbers | Share of multiples of 10, and separately of 5 | 10% (20%) |
-| Favorite number | Share of answers taken by the single most common value | Calibrated |
-| Edges | Share of answers in 0–9 or 90–99 | 20% |
-| Repeated digits | Share of 11, 22, …, 99 | 9% |
-| Last digit | How far the last-digit frequencies are from 10% each (7 is the usual suspect) | 10% each |
+| Check | What it measures | Expected from a perfect generator | At N = 600 (mean, 95% range) |
+|---|---|---|---|
+| Invalid answers | Share of replies that aren't a single integer in [0, 99] | 0% | 0% |
+| Uniformity | Distance of the whole distribution from uniform | Calibrated: 0 only as N grows | 0.160 (0.137–0.185) |
+| Primes | Share of answers that are prime (2, 3, 5, …, 97: 25 values) | 25% | 25.0% (21.5–28.5%) |
+| Round numbers | Share of multiples of 10, and separately of 5 | 10% (20%) | 10.0% (7.7–12.3%), 20.0% (16.8–23.2%) |
+| Favorite number | Share of answers taken by the single most common value | Calibrated: 1% only as N grows | 2.2% (1.8–2.7%) |
+| Edges | Share of answers in 0–9 or 90–99 | 20% | 20.0% (16.8–23.2%) |
+| Repeated digits | Share of 11, 22, …, 99 | 9% | 9.0% (6.8–11.3%) |
+| Last digit | Distance of the last digits' shares from 10% each (7 is the usual suspect) | Calibrated: 0 only as N grows | 0.049 (0.027–0.075) |
 
-"Calibrated" means even a true random generator won't hit the ideal value exactly in 600 draws. We'll measure what Python's generator scores at the same sample size and compare models against that.
+"Calibrated" means even a perfect generator misses the ideal value in a finite run, by an amount that depends on N. [randombench/calibration.py](randombench/calibration.py) simulates one at any N (3.2), and models are compared against that.
 
 Some checks overlap. For example, 7, 17, 37, 47, 67 and 97 are all primes ending in 7. This matters when combining sub-scores into the headline.
 
@@ -198,9 +198,29 @@ These steps use only stored draws and simulated random numbers. No quota.
   - The CLI converts a task file with `jupytext.reads(source, fmt="py:percent")` (`_convert_py_to_notebook` in `kaggle/api/kaggle_api_extended.py`). Besides turning `# %…` comments into magics (1.2), jupytext turns `# !cmd` into a shell command and `#%%` into a cell break. Inside a string, such lines are left alone. A test runs the conversion on every task file and checks that it changes no line except a `# %choose` comment. That covers the copies and the task's own code alike.
   - Run in isolated mode from outside the repo, where `randombench` can't be imported, `collect.py`'s cells up to the last one define both tasks and give the six pinned prompt ids. Before a push, the last cell must run `kbench.llm` instead of two named local models, `%choose` must be added, and D10 and D12 must be settled.
   - The sync refuses a copied module that imports `randombench`, since that import would fail on Kaggle. The scoring tasks will need the parser and the scoring code together, so this comes back once scoring code uses the parser (3.4). Copied modules also share one namespace with the task's own code, so two of them mustn't define the same top-level name.
-- [ ] **3.2 Calibration harness.** Score Python's random generator many times at N = 600, and at smaller N for runs that stop early, to see what a perfect generator scores.
+- [x] **3.2 Calibration harness.** Measure a perfect generator many times at N = 600, and at smaller N for runs that stop early, to see what it scores. No check existed yet to measure with, so this step also wrote each check's raw measurement, in [randombench/checks.py](randombench/checks.py). Each takes the 100 counts of a model's valid answers, or a batch of them. The distance checks use the total variation distance. [randombench/calibration.py](randombench/calibration.py) simulates 10,000 runs at any N (seeded, so it's reproducible), and `python -m randombench.calibration` prints the table below. A run's counts are drawn from a multinomial distribution, which is exactly how the counts of N independent uniform draws are distributed.
+
+  *Found:*
+  - Mean and 95% range over 10,000 runs of a perfect generator:
+
+    | Measurement | N = 100 | N = 300 | N = 500 | N = 600 | N = 1200 |
+    |---|---|---|---|---|---|
+    | Uniformity | 0.366 (0.300–0.430) | 0.223 (0.190–0.257) | 0.175 (0.148–0.202) | 0.160 (0.137–0.185) | 0.114 (0.098–0.132) |
+    | Primes | 0.250 (0.170–0.340) | 0.250 (0.200–0.300) | 0.250 (0.212–0.288) | 0.250 (0.215–0.285) | 0.250 (0.225–0.274) |
+    | Multiples of 10 | 0.100 (0.050–0.160) | 0.100 (0.067–0.137) | 0.100 (0.074–0.128) | 0.100 (0.077–0.123) | 0.100 (0.083–0.117) |
+    | Multiples of 5 | 0.199 (0.120–0.280) | 0.200 (0.157–0.247) | 0.200 (0.166–0.236) | 0.200 (0.168–0.232) | 0.200 (0.177–0.223) |
+    | Favorite | 0.042 (0.030–0.060) | 0.027 (0.023–0.037) | 0.023 (0.018–0.028) | 0.022 (0.018–0.027) | 0.018 (0.016–0.022) |
+    | Edges | 0.200 (0.130–0.280) | 0.200 (0.157–0.247) | 0.200 (0.166–0.236) | 0.200 (0.168–0.232) | 0.200 (0.178–0.223) |
+    | Repeated digits | 0.090 (0.040–0.150) | 0.090 (0.060–0.123) | 0.090 (0.066–0.116) | 0.090 (0.068–0.113) | 0.090 (0.074–0.107) |
+    | Last digit | 0.119 (0.060–0.180) | 0.069 (0.037–0.107) | 0.053 (0.030–0.082) | 0.049 (0.027–0.075) | 0.035 (0.019–0.053) |
+
+  - The measurements come in two kinds. A share is unbiased: its mean is the ideal at every N, and only its spread shrinks. At N = 600 the prime share's range is ±3.5 points, in line with the ±4-point margin under "Volume". The two distances and the favorite's share have a floor instead: their means sit above the ideal and fall roughly as 1/√N, from 0.366 at N = 100 to 0.114 at N = 1200 for uniformity. So a raw distance can't be compared across models with different numbers of answers (D7).
+  - N is the number of valid answers, not the number of draws. A model with 100 invalid replies is measured at N = 500, where a perfect generator's uniformity is already 0.175 rather than 0.160. Calibration therefore has to happen at each model's own N (D7).
+  - Turning a share into a gap from its ideal brings back a floor too, since |share − ideal| is never negative. Every sub-score therefore needs calibration, not only the three marked "Calibrated" (D7).
+  - Calibrating at five sizes took 0.8 s, so a scoring task could calibrate at its model's N on Kaggle instead of embedding a table (D13). `calibration.py` imports `checks.py`, though, so the sync would refuse to copy it, the same limit 3.1 found for scoring code that uses the parser.
+  - The tests check the harness against exact values that need no simulation. A share's expected value is its set's size over 100. A distance's expected value is the sum of each value's expected gap, by linearity, because one value's count is Binomial(N, 1/100) even though the counts depend on each other. The simulated means match both to within 0.001.
 - [ ] **3.3 Score mapping.** Decide together how a measured bias becomes a sub-score in [0, 1]. Base it on how big the bias is (effect size), not on p-values. A p-value gets more extreme as N grows, so more draws would make every model look worse. Settles D7.
-- [ ] **3.4 Bias checks,** one commit each, in the order of the table above.
+- [ ] **3.4 Sub-scores,** one commit each, in the order of the bias table. Each turns its check's measurement (3.2) into a sub-score by 3.3's mapping. The invalid-answer rate comes from the parsed replies.
 - [ ] **3.5 Headline score.** Decide together. Harmonic mean is the starting candidate. Watch for two problems: it drops to 0 if any single sub-score is 0, and overlapping checks penalize the same bias twice. Settles D8.
 - [ ] **3.6 Scoring tasks.** One task per sub-score and one for the headline, built from the shared scoring code (D6, D13). Each recomputes its score from the stored draws of the model it's run with, and never prompts that model.
 
@@ -228,7 +248,7 @@ These steps use only stored draws and simulated random numbers. No quota.
 | D4 | How strict is parsing? | **Settled:** lenient on formatting, strict on content. Only digits count, and they must be one integer in 0–99. A restated range, number words and `47.0` make a reply invalid. See "Parsing" under Decided. | 2.2 |
 | D5 | Data layout: one committed file per run under `data/`? How large do reasoning traces make it? | **Settled:** one JSON Lines file per run, `data/<model>/<run_id>.jsonl`, one draw per line, committed. Only runs downloaded from Kaggle, because only their download path holds a run id and a task version (2.5). A 600-draw run is about 230 KB. The default reasoning returns no traces (2.3), so traces add nothing unless D1 changes. | 2.5 |
 | D6 | A push uploads a single `.py` file, but the offline analysis needs the same parsing and scoring code. Options: a source module plus a script that copies it into the pushed task file; the task file as the only copy; or code in an attached Kaggle dataset. | **Settled:** a copy in the task file. Each task file holds the `randombench` modules it uses between `# --- begin <path> ---` and `# --- end <path> ---` markers, and `python -m randombench.sync` refreshes the copies, so the file run locally is exactly the file pushed. Tests fail when a copy is out of date, when a task imports `randombench`, or when converting a task to a notebook would change a line (3.1). A copied module can't import `randombench` itself. | 3.1 |
-| D7 | How does a measured bias become a sub-score in [0, 1]? | Based on effect size | 3.3 |
+| D7 | How does a measured bias become a sub-score in [0, 1]? | Based on effect size, judged against a perfect generator at the model's own number of valid answers. Every gap from the ideal has a floor at finite N, and for the distances and the favorite's share it falls roughly as 1/√N (3.2). | 3.3 |
 | D8 | How is the headline score computed? | Harmonic mean, still to be decided | 3.5 |
 | D9 | Prompt assignment: pick a prompt independently at random for each draw, or shuffle a balanced schedule with each prompt used exactly 100 times? | **Settled:** a balanced shuffle. The order is still random, and equal counts make prompts easier to compare. `balanced_schedule` in [tasks/collect.py](tasks/collect.py) does it (2.4). | 2.4 |
 | D10 | What is the collection task's name? Its slug must stay stable once pushed, because a new slug makes a new task instead of a new version. | — | Before the real task's first push |
