@@ -23,8 +23,10 @@ valid answers neither gains nor loses by chance (3.3):
   one value taking every answer scores 0. The share is estimated by leaving
   one out: how often an answer equals the favorite of all the other answers.
 
-Invalid replies aren't counted here. Their rate is scored from the parsed
-replies (3.4), and a perfect generator never gives one.
+score_answers() gives all the sub-scores for a model's parsed replies,
+including the invalid-answer score, which a perfect generator never loses.
+It takes parsed answers rather than raw replies, so this module needs no
+parser and can be copied into a task file on its own (D6).
 """
 
 import numpy as np
@@ -175,7 +177,7 @@ def repeated_digits(counts) -> np.ndarray:
     return 1 - share_gap(counts, REPEATED_DIGITS)
 
 
-# In the order of PLAN.md's bias table, after the invalid-answer rate.
+# The distribution checks, in the order of PLAN.md's bias table.
 CHECKS = {
     "uniformity": uniformity,
     "primes": primes,
@@ -186,3 +188,29 @@ CHECKS = {
     "repeated_digits": repeated_digits,
     "last_digit": last_digit,
 }
+
+# The distribution checks need this many valid answers. Below it they give None (3.4).
+MIN_VALID = 2
+
+
+def invalid_answers(answers) -> float:
+    """1 minus the share of replies the parser rejected, which are None in answers."""
+    if not answers:
+        raise ValueError("no replies to score")
+    return 1 - sum(a is None for a in answers) / len(answers)
+
+
+def score_answers(answers) -> dict[str, float | None]:
+    """Return every sub-score for a model's parsed replies, in the bias table's order.
+
+    answers holds an int in 0..99 for each valid reply and None for each
+    invalid one. Failed calls have no reply, so the caller leaves them out,
+    and they don't count as invalid (3.4). The distribution checks score only
+    the valid answers, and give None when there are fewer than MIN_VALID.
+    """
+    valid = [a for a in answers if a is not None]
+    scores = {"invalid_answers": invalid_answers(answers)}
+    counts = counts_of(valid)
+    for name, check in CHECKS.items():
+        scores[name] = float(check(counts)) if len(valid) >= MIN_VALID else None
+    return scores

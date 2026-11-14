@@ -14,6 +14,7 @@ from randombench.checks import (
     last_digit_counts,
     primes,
     repeat_rate,
+    score_answers,
     share_gap,
     uniformity,
 )
@@ -177,3 +178,33 @@ def test_rejects_fewer_than_2_answers(check, values):
 def test_rejects_the_wrong_number_of_counts():
     with pytest.raises(ValueError):
         uniformity(np.ones(99))
+
+
+# All the sub-scores for parsed replies
+
+
+def test_score_answers_gives_every_sub_score_in_the_bias_tables_order():
+    assert list(score_answers([1, 2])) == ["invalid_answers", *CHECKS]
+
+
+def test_score_answers_scores_only_the_valid_answers():
+    scores = score_answers([42] * 10 + [None] * 2)
+    assert scores["invalid_answers"] == pytest.approx(10 / 12)
+    assert scores["uniformity"] == pytest.approx(0.01)  # the Nones don't count as answers
+    assert scores["favorite"] == 0
+
+
+def test_score_answers_with_no_invalid_replies():
+    assert score_answers(list(range(100)) * 6) == {"invalid_answers": 1, **{name: 1 for name in CHECKS}}
+
+
+@pytest.mark.parametrize("answers", [[42, None, None], [None], [None, None]])
+def test_score_answers_gives_no_distribution_scores_below_2_valid(answers):
+    scores = score_answers(answers)
+    assert scores["invalid_answers"] == pytest.approx(1 - answers.count(None) / len(answers))
+    assert all(scores[name] is None for name in CHECKS)
+
+
+def test_score_answers_needs_a_reply():
+    with pytest.raises(ValueError):
+        score_answers([])

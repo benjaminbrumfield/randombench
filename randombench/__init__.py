@@ -1,2 +1,2 @@
 """RandomBench's shared code and tools: prompts, parsing, extraction, task syncing,
-the bias checks' sub-scores and a simulator to test them (PLAN.md)."""
+the bias checks' sub-scores, a simulator to test them and an offline score report (PLAN.md)."""

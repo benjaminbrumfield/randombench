@@ -46,6 +46,9 @@ kaggle b t download <slug> -o results
 # Turn a task's downloaded runs into data/<model>/<run_id>.jsonl (committed)
 python -m randombench.extract results/<slug>
 
+# Score every model's stored draws, offline
+python -m randombench.score
+
 # Make the task public. This can't be undone from the CLI, so ask first.
 kaggle b t publish <slug>
 ```

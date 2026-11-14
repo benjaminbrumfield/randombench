@@ -170,3 +170,13 @@ def test_spots_an_import_of_randombench(code):
 )
 def test_ignores_what_isnt_an_import_of_randombench(code):
     assert not imports_randombench(code)
+
+
+# The modules that task files copy
+
+
+@pytest.mark.parametrize("module", ["prompts", "parsing", "checks"])
+def test_the_shared_modules_can_be_copied(module):
+    # A scoring task copies the parser and the checks (3.4, 3.6), so neither
+    # may import randombench. module_text raises if one does.
+    assert sync.module_text(f"randombench/{module}.py")
