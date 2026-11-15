@@ -129,8 +129,8 @@ def test_every_number_on_the_page_is_the_scorers():
     tables = Tables(PAGE.read_text(encoding="utf-8"))
     by_model = {r.model: r for r in EXPECTED}
     order = [r.model for r in ranked(EXPECTED)]
-    # Every model with a reply, as on the Benchmarks. Grok 4.5 has none (D24).
-    assert len(order) == 23 and GROK_45 not in order
+    # Every model with a reply. Grok 4.5 has none (D24).
+    assert len(order) == 36 and GROK_45 not in order
 
     ranking = tables.rows("rank")
     assert [attrs["data-model"] for attrs, _ in ranking] == order

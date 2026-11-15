@@ -26,13 +26,18 @@ import kaggle_benchmarks as kbench
 
 # A run's draws split evenly across the six prompts (D9). The full runs (4.3,
 # 4.8, 4.11) made 600, and the pilots (4.2, 4.7, 4.10) 24. In 4.11, the four
-# costliest models made 96, to stay well inside the daily quota. 96 is what
-# version 7, the published version, holds, so set it before the next run.
-N_DRAWS = 96
-N_JOBS = 4
+# costliest models made 96, to stay well inside the daily quota. Version 8
+# pilots the 13 flagship models with 24 draws each.
+N_DRAWS = 24
+# Draws made at once. Model Proxy holds each call's maximum possible cost
+# against the daily quota until it finishes (4.11), and a flagship model's
+# hold can be several dollars, so the flagship pilots make one at a time.
+# The earlier runs used 4.
+N_JOBS = 1
 
-# The llm.name of each model in PLAN.md's model table, from the server's
-# LLMS_AVAILABLE. Kaggle runs and local runs use the same names. Any other
+# The llm.name of each model, from the server's LLMS_AVAILABLE. All but the
+# flagship models are in PLAN.md's model table. Kaggle runs and local runs use
+# the same names. Any other
 # model makes no draws, so an id that's wrong here costs a wasted run, not
 # unwanted calls. Gemini 3.8 Flash, the server's default model, is in the
 # table but not here, so a push prompts nothing (D23).
@@ -61,6 +66,21 @@ MODELS = (
     "anthropic/claude-sonnet-4-6@default",
     "anthropic/claude-sonnet-5@default",
     "anthropic/claude-sonnet-5-5@default",
+    # The flagship models, added after 4.11: every model the server lists
+    # but Grok 4.5 (D24) and Gemini 3.8 Flash (D23).
+    "google/gemma-4-31b",
+    "anthropic/claude-opus-4-5@20251101",
+    "anthropic/claude-opus-4-6@default",
+    "anthropic/claude-opus-4-7@default",
+    "anthropic/claude-opus-4-8@default",
+    "anthropic/claude-opus-5@default",
+    "anthropic/claude-opus-5-5@default",
+    "openai/gpt-5.4-2026-03-05",
+    "openai/gpt-5.5-2026-04-23",
+    "openai/gpt-5.6-sol",
+    "openai/gpt-6-sol",
+    "openai/gpt-6.1-sol",
+    "openai/gpt-6-astra",
 )
 
 
