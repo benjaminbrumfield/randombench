@@ -20,6 +20,7 @@ That makes the problem hard for researchers too:
 - **Prompting can backfire.** A model told that people overuse 7 may avoid 7 and land on a new bias. Knowing about a bias isn't the same as being free of it.
 - **Reasoning doesn't obviously help.** Any procedure a model works through in its reasoning needs a random starting point, and choosing one is the original problem again. In principle, though, combining several biased choices can wash the bias out, and whether models find that trick is worth watching.
 - **Training aims at the wrong level.** Most training scores each reply on its own, and no single reply can show a bias that exists only across many.
+- **Progress elsewhere can count against it here.** The habits that lift a model on other benchmarks, settling on its best answer and giving the same answer however a question is worded, are the ones that make it predictable here. A model could improve on every other benchmark and get worse on this one.
 - **The shortcuts are closed.** RandomBench allows no tools and no memory of earlier answers, so the only way to score well is for the model's own distribution to be flat.
 
 A model that mastered this would have more than a party trick. It would have control over its own output distribution: the ability to give a spread of answers on request, not only its most likely one. That ability could turn out to be foundational.
@@ -81,7 +82,7 @@ What stands out so far:
 
 - **No model comes close.** Even the best behaves like a fair pick among a small fraction of the 100 values, where a perfect generator scores close to 1.
 - **Three numbers dominate.** Nearly every model's favorite is 42, 47 or 73, and between them they make up most of all the answers. Gemini 3.1 Flash-Lite has answered nothing but 42, and Claude Sonnet 5 and 5.5 answer 47 almost every time. gpt-oss-120b is the exception, with 57.
-- **Newer isn't more random.** Gemini 2.5 Flash, one of the oldest models here, is the most random so far, well ahead of every newer Gemini.
+- **Newer isn't more random.** Gemini 2.5 Flash, one of the oldest models here, is the most random so far, well ahead of every newer Gemini. Grok 4.7 is less random than Grok 4.6, GPT-6 Luna than GPT-5.6 Luna, and Claude Sonnet 5 and 5.5 than Sonnet 4.6. Claude Haiku 5.5 goes the other way, more random than Haiku 4.5.
 - **Whole regions go unused.** Nearly every answer lies well inside the range, and nearly every answer ends in 2, 3 or 7. No model has answered a multiple of 10 or a number in 0–9. Only Gemini 2.5 Flash has answered in 90–99 or with a repeated digit like 77, and only it and Grok 4.6 with a multiple of 5. Avoiding a set entirely gives the other models the same score on those four checks. Here the identical scores are the finding.
 - **A share check can pass by accident.** gpt-oss-120b scores close to perfect on primes. Its share of primes is near the ideal, but it comes from three favorites, 57, 42 and 73, of which only 73 is prime. Models whose favorite is 47 or 73, both prime, answer with a prime far more often than chance. Claude Sonnet 5 and 5.5 almost always do.
 - **Nearly every reply is valid.** Almost every reply is a bare number in 0–99. The exception so far is Grok 4.6, which now and then adds a confidence score after its answer, as in `47\n\confidence{80}`. The second number makes the reply invalid.
