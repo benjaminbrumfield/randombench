@@ -16,7 +16,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
-from randombench.checks import score_answers, score_intervals
+from randombench.checks import counts_of, score_answers, score_intervals
 from randombench.extract import load_draws
 from randombench.parsing import parse_reply
 
@@ -30,6 +30,7 @@ class ModelScores:
     valid: int  # the N the distribution checks score
     scores: dict[str, float | None]
     intervals: dict[str, float | None]  # each score's ± 95% half-width
+    counts: tuple[int, ...]  # how many valid answers were each value 0..99 (5.5)
 
 
 def score_draws(draws: list[dict]) -> list[ModelScores]:
@@ -52,6 +53,7 @@ def score_draws(draws: list[dict]) -> list[ModelScores]:
                 valid=len(answers) - invalid,
                 scores=score_answers(answers) if answers else {},
                 intervals=score_intervals(answers) if answers else {},
+                counts=tuple(int(c) for c in counts_of([a for a in answers if a is not None])),
             )
         )
     return results

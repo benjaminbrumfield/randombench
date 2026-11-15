@@ -11,7 +11,7 @@
 /* Written by `python -m randombench.build` from randombench/page.html (PLAN.md 5.3).
 
    Layout: one column. Prose holds to about 65 characters, and the two tables take the full width,
-   up to 1080px. Rows are separated by hairline rules, never boxed. One typeface, one accent. */
+   up to 1200px, which the Biases table needs to fit without scrolling. Rows are separated by hairline rules, never boxed. One typeface, one accent. */
 :root {
   --bg: #fbfcfc;
   --fg: #152226;
@@ -42,7 +42,7 @@ body {
   padding-block: 56px 72px;
   -webkit-text-size-adjust: 100%;
 }
-.page { max-width: 1080px; margin: 0 auto; display: grid; gap: 56px; }
+.page { max-width: 1200px; margin: 0 auto; display: grid; gap: 56px; }
 .prose { max-width: 65ch; }
 a { color: var(--accent); text-underline-offset: 0.18em; text-decoration-thickness: 1px; }
 a:hover { text-decoration-thickness: 2px; }
@@ -102,7 +102,7 @@ tbody tr { border-bottom: 1px solid var(--rule); }
 }
 
 /* Biases */
-.biases { min-width: 940px; }
+.biases { min-width: 1020px; }
 .biases th.model { font-weight: 400; position: sticky; left: 0; background: var(--bg); z-index: 1; min-width: 11.5em; }
 .biases thead th.model { z-index: 2; }
 .biases thead th.num { padding-left: 6px; padding-right: 6px; }
@@ -111,7 +111,7 @@ tbody tr { border-bottom: 1px solid var(--rule); }
 .biases thead .low { font-weight: 400; font-size: 0.92em; margin-top: 2px; }
 .biases td.cell {
   background: color-mix(in oklab, var(--accent) calc(var(--f, 0) * var(--shade-max)), var(--bg));
-  padding-left: 8px; padding-right: 8px;
+  padding-left: 7px; padding-right: 7px;
 }
 .biases thead button {
   font: inherit; color: inherit; letter-spacing: inherit; background: none; border: 0; padding: 0;
@@ -120,6 +120,11 @@ tbody tr { border-bottom: 1px solid var(--rule); }
 .biases thead button:hover .h { color: var(--fg); }
 .biases thead th[aria-sort] { color: var(--fg); }
 .biases thead th[aria-sort] .h::after { content: " ↓"; color: var(--accent); }
+
+/* What stands out */
+.findings { display: grid; gap: 14px; }
+.findings p { margin: 0; }
+.findings strong { font-weight: 650; }
 
 footer { font-size: var(--step--1); color: var(--muted); border-top: 1px solid var(--rule); padding-top: 18px; }
 footer p { margin: 0 0 6px; max-width: 75ch; }
@@ -177,7 +182,7 @@ __RANKING__
 
   <section aria-labelledby="biases-h">
     <h2 id="biases-h">Biases</h2>
-    <p class="caption prose">The nine checks behind the score, for the same models in the same order. They explain the ranking and don't add to it. Select a heading to sort by that check, and select it again to return to the ranking.</p>
+    <p class="caption prose">Each model's favorite answer, then the nine checks behind the score, for the same models in the same order. The checks explain the ranking and don't add to it. Select a heading to sort by that column, and select it again to return to the ranking.</p>
     <div class="scroll">
       <table class="biases" id="biases">
         <thead><tr><th scope="col" class="model">Model</th>__HEADINGS__</tr></thead>
@@ -188,6 +193,20 @@ __BIASES__
     </div>
     <p class="note">Each cell is shaded from its check's lowest possible score, unshaded, up to 1. Uniformity and Last Digit count values, so they're shaded on a log scale: a model that always gives one answer is unshaded, a fair pick among 10 of the 100 values is halfway, and all 100 is full.</p>
     <p class="note">The share checks are lenient toward avoidance. A model that never answers a multiple of 10 is only 10% away from the ideal share, so it scores 0.900, and one that answers nothing else scores 0.100. Every score has a 95% interval from 10,000 bootstrap resamples of the model's replies.</p>
+  </section>
+
+  <!-- Each finding is checked against data/ by the test named for its data-finding in tests/test_findings.py (PLAN.md D29). -->
+  <section aria-labelledby="findings-h" id="findings">
+    <h2 id="findings-h">What stands out</h2>
+    <div class="findings prose">
+      <p data-finding="no-model-comes-close"><strong>No model comes close.</strong> Even the most random model is as repetitive as a fair pick among fewer than a fifth of the 100 values. A perfect random source would use all 100.</p>
+      <p data-finding="three-numbers-dominate"><strong>Three numbers dominate.</strong> Every model's favorite is 42, 47, or 73, except gpt-oss-120b's, which is 57. Those three numbers make up most of all the answers. Gemini 3.1 Flash-Lite has answered nothing but 42, and Claude Sonnet 5 and 5.5 answer 47 about 9 times in 10.</p>
+      <p data-finding="newer-isnt-more-random"><strong>Newer isn't more random.</strong> Gemini 2.5 Flash, one of the oldest models here, ranks first, well ahead of every newer Gemini. Grok 4.7 is less random than Grok 4.6, GPT-6 Luna than GPT-5.6 Luna, and Claude Sonnet 5 and 5.5 than Sonnet 4.6. Claude Haiku 5.5 goes the other way, more random than Haiku 4.5. None of these comparisons has overlapping intervals.</p>
+      <p data-finding="whole-regions-go-unused"><strong>Whole regions go unused.</strong> More than 95% of all answers lie between 20 and 79, and more than 95% end in 2, 3, or 7. No model has answered a multiple of 10 or a number below 10. Only Gemini 2.5 Flash has answered above 89 or with a repeated digit like 77, and only it and Grok 4.6 with a multiple of 5. Avoiding a set entirely gives every other model the same score on those four checks. Here the identical scores are the finding.</p>
+      <p data-finding="a-share-check-can-pass-by-accident"><strong>A share check can pass by accident.</strong> gpt-oss-120b scores close to perfect on primes. Its share of primes is near the ideal 25%, but it comes from its three favorites, 57, 42, and 73, of which only 73 is prime. Every model whose favorite is 47 or 73, both prime, answers with a prime more than half the time, twice what chance would give. Claude Sonnet 5 and 5.5 do more than 95% of the time.</p>
+      <p data-finding="nearly-every-reply-is-valid"><strong>Nearly every reply is valid.</strong> The only invalid replies so far are Grok 4.6's. Now and then it adds a confidence score after its answer, as in <code>47\n\confidence{80}</code>, and the second number makes the reply invalid.</p>
+      <p data-finding="reasoning-helps-a-little"><strong>Reasoning helps a little, but doesn't fix it.</strong> Many of the models reason by default. Gemini 2.5 Pro, Gemini 3.1 Pro, and Grok 4.6 each spend a median of more than 200 output tokens on a two-digit answer. The models that spend more tokens tend to score higher, and the five least random answer in five tokens or fewer. It isn't a clean comparison, since reasoning goes with provider: every Claude model answers in five tokens or fewer. And the models that reason are still far from uniform.</p>
+    </div>
   </section>
 
   <footer>

@@ -6,10 +6,12 @@ Benchmarks can't show, and with each score's 95% interval, which they don't
 show (4.13, D25). The Benchmarks stay the official leaderboard.
 
 The page has two tables (D27). Ranking orders the models by the headline and
-draws each one's interval on a shared scale. Biases holds the nine sub-scores
-for the same models in the same order, each cell shaded by its score (D28).
-The template, page.html beside this file, holds the page's text and style,
-and this fills in the numbers.
+draws each one's interval on a shared scale. Biases holds each model's
+favorite answer (D30), then the nine sub-scores for the same models in the
+same order, each cell shaded by its score (D28). The template, page.html
+beside this file, holds the page's text and style, and this fills in the
+numbers. Below the tables, the findings are written by hand in the template,
+and tests/test_findings.py checks each one against data/ (D29).
 
 `python -m randombench.build` writes the page with the scoring tasks, and a
 test fails when it's stale (D26). It's dated by the newest stored draw, not
@@ -105,6 +107,16 @@ def shade(name: str, score: float | None) -> float:
     return min(1.0, max(0.0, fraction))
 
 
+def favorites(counts) -> tuple[list[int], float] | None:
+    """The model's most common valid answer, or every one tied for most
+    common, and the share of the valid answers each takes. None without any
+    valid answers."""
+    total, top = sum(counts), max(counts)
+    if not total:
+        return None
+    return [value for value, count in enumerate(counts) if count == top], top / total
+
+
 def axis(top: float) -> tuple[float, int]:
     """The Ranking scale: a round step, and how many steps reach top.
 
@@ -146,6 +158,22 @@ def _plus_minus(half: float | None) -> str:
     return "" if half is None else f' <span class="pm">±{half:.3f}</span>'
 
 
+def _favorite_cell(counts) -> str:
+    """The Biases table's Favorite cell, such as 73 · 18%. It isn't a score, so it isn't shaded.
+
+    The table sorts each column from the highest data-v down. Here that has to
+    put the favorites in ascending order, the 42s before the 47s, and within
+    each, the largest share first. A share is at most 1, so 100 minus the
+    favorite, plus the share, does both.
+    """
+    found = favorites(counts)
+    if found is None:
+        return '<td class="num fav" data-v="-1">—</td>'
+    values, share = found
+    return (f'<td class="num fav" data-v="{N_VALUES - values[0] + share:.6f}">'
+            f'{", ".join(str(v) for v in values)} <span class="pm">· {share:.0%}</span></td>')
+
+
 def _model_cell(tag: str, model: str) -> str:
     name, provider = DISPLAY_NAMES[model]
     scope = ' scope="row"' if tag == "th" else ""
@@ -185,7 +213,8 @@ def render_page(results: list[ModelScores], as_of: datetime) -> str:
             f'<td class="plot" aria-hidden="true">{bar}</td></tr>'
         )
 
-    headings = "".join(
+    headings = '<th scope="col" class="num"><span class="h">Favorite</span><span class="low">and its share</span></th>'
+    headings += "".join(
         f'<th scope="col" class="num"><span class="h">{name}</span>'
         f'<span class="low">lowest {_short(LOWEST[key], 2)}</span></th>'
         for key, name in CHECK_NAMES.items()
@@ -193,7 +222,7 @@ def render_page(results: list[ModelScores], as_of: datetime) -> str:
 
     biases = []
     for rank, r in enumerate(models, 1):
-        cells = []
+        cells = [_favorite_cell(r.counts)]
         for key in CHECK_NAMES:
             score, half = r.scores[key], r.intervals[key]
             if score is None:

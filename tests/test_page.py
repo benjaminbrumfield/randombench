@@ -1,6 +1,7 @@
 """The leaderboard page, docs/index.html (PLAN.md 5.3), checked offline."""
 
 import math
+import re
 from datetime import datetime, timezone
 from html.parser import HTMLParser
 
@@ -13,7 +14,9 @@ from randombench.page import (
     DISPLAY_NAMES,
     LOWEST,
     PAGE,
+    _favorite_cell,
     axis,
+    favorites,
     newest,
     ranked,
     render_page,
@@ -142,9 +145,12 @@ def test_every_number_on_the_page_is_the_scorers():
     assert [attrs["data-model"] for attrs, _ in biases] == order
     for attrs, cells in biases:
         r = by_model[attrs["data-model"]]
-        assert [text for _, text in cells[1:]] == [shown(r.scores[k], r.intervals[k]) for k in CHECK_NAMES]
+        values, top = favorites(r.counts)
+        assert cells[1][1] == f"{', '.join(map(str, values))} · {top:.0%}"
+        assert values == [v for v, c in enumerate(r.counts) if c == max(r.counts)]
+        assert [text for _, text in cells[2:]] == [shown(r.scores[k], r.intervals[k]) for k in CHECK_NAMES]
         # What the sort reads.
-        assert [float(a["data-v"]) for a, _ in cells[1:]] == pytest.approx([r.scores[k] for k in CHECK_NAMES], abs=1e-6)
+        assert [float(a["data-v"]) for a, _ in cells[2:]] == pytest.approx([r.scores[k] for k in CHECK_NAMES], abs=1e-6)
 
 
 def test_the_headline_is_the_ranking():
@@ -177,7 +183,24 @@ def test_a_model_with_no_replies_is_left_out_and_one_with_no_headline_goes_last(
     assert [attrs["data-model"] for attrs, _ in ranking] == [NANO, GEMINI]
     assert [text for _, text in ranking[1][1]][3] == "—"
     gemini = [text for _, text in tables.rows("biases")[1][1][1:]]
-    assert gemini == ["0.000 ±0.000"] + ["—"] * 8
+    assert gemini == ["—", "0.000 ±0.000"] + ["—"] * 8  # no favorite without a valid answer
+
+
+def test_a_tie_for_favorite_shows_every_tied_value():
+    counts = [0] * 100
+    counts[42], counts[73], counts[7] = 3, 3, 1
+    assert favorites(counts) == ([42, 73], 3 / 7)
+    assert favorites([0] * 100) is None
+    assert ">42, 73 <" in _favorite_cell(counts)
+
+
+def test_sorting_the_favorites_groups_them_in_ascending_order_largest_share_first():
+    def key(favorite, count):
+        counts = [0] * 100
+        counts[favorite], counts[99] = count, 10 - count
+        return float(re.search(r'data-v="([-0-9.]+)"', _favorite_cell(counts))[1])
+    # The table sorts from the highest data-v down.
+    assert sorted([(47, 9), (42, 6), (73, 8), (42, 9)], key=lambda f: -key(*f)) == [(42, 9), (42, 6), (47, 9), (73, 8)]
 
 
 def test_the_page_is_dated_by_the_newest_draw():

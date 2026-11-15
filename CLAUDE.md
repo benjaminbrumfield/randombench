@@ -51,7 +51,9 @@ python -m randombench.sync
 # the leaderboard page, docs/index.html, which GitHub Pages serves from main
 # (PLAN.md 5.3, D26). Never edit the page: edit randombench/page.html, or
 # randombench/page.py for its numbers and model names. A push to main with a
-# new page publishes it.
+# new page publishes it. The page's findings are written by hand, and
+# tests/test_findings.py checks each against data/ (PLAN.md D29). If new
+# draws break one, rewrite the finding in randombench/page.html, then its test.
 python -m randombench.build
 
 # Push, then run on Kaggle. Ask first: the run calls models. A push's creation

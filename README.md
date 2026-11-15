@@ -71,24 +71,9 @@ Even a perfect random source isn't perfectly even over a finite sample, so it sc
 
 ## Results
 
-The models so far:
+The [leaderboard page](https://benjaminbrumfield.github.io/randombench/) ranks every model, shows each score with its 95% interval, and says [what stands out](https://benjaminbrumfield.github.io/randombench/#findings): which numbers the models favor, which ones they avoid, and whether newer models are more random. A test checks each of those findings against the stored replies, so the page can't keep a claim the data no longer supports.
 
-- **Anthropic:** Claude Haiku 4.5, Claude Haiku 5.5, Claude Sonnet 4.6, Claude Sonnet 5, Claude Sonnet 5.5
-- **Google:** Gemini 2.5 Flash, Gemini 2.5 Pro, Gemini 3 Flash (preview), Gemini 3.1 Flash-Lite (preview), Gemini 3.1 Pro (preview), Gemini 3.5 Flash-Lite, Gemini 3.6 Flash, Gemini 3.8 Flash, Gemini 4 Argon, Gemma 4 26B A4B
-- **OpenAI:** GPT-5.4 mini, GPT-5.4 nano, GPT-5.6 Luna, GPT-5.6 Terra, GPT-6 Luna, gpt-oss-120b
-- **xAI:** Grok 4.6, Grok 4.7
-
-`python -m randombench.score` prints each model's current scores and their intervals from the stored replies. Two Kaggle Benchmarks show the same scores, without the intervals: [RandomBench](https://www.kaggle.com/benchmarks/benjaminbrumfield/randombench-overall) ranks the models by RandomBench Score, and [RandomBench Biases](https://www.kaggle.com/benchmarks/benjaminbrumfield/randombench) shows the other nine. The [leaderboard page](https://benjaminbrumfield.github.io/randombench/) shows all ten with their intervals, one model per row.
-
-What stands out so far:
-
-- **No model comes close.** Even the best behaves like a fair pick among a small fraction of the 100 values, where a perfect generator scores close to 1.
-- **Three numbers dominate.** Nearly every model's favorite is 42, 47, or 73, and between them they make up most of all the answers. Gemini 3.1 Flash-Lite has answered nothing but 42, and Claude Sonnet 5 and 5.5 answer 47 almost every time. gpt-oss-120b is the exception, with 57.
-- **Newer isn't more random.** Gemini 2.5 Flash, one of the oldest models here, is the most random so far, well ahead of every newer Gemini. Grok 4.7 is less random than Grok 4.6, GPT-6 Luna than GPT-5.6 Luna, and Claude Sonnet 5 and 5.5 than Sonnet 4.6. Claude Haiku 5.5 goes the other way, more random than Haiku 4.5.
-- **Whole regions go unused.** Nearly every answer lies well inside the range, and nearly every answer ends in 2, 3, or 7. No model has answered a multiple of 10 or a number in 0–9. Only Gemini 2.5 Flash has answered in 90–99 or with a repeated digit like 77, and only it and Grok 4.6 with a multiple of 5. Avoiding a set entirely gives the other models the same score on those four checks. Here the identical scores are the finding.
-- **A share check can pass by accident.** gpt-oss-120b scores close to perfect on primes. Its share of primes is near the ideal, but it comes from three favorites, 57, 42, and 73, of which only 73 is prime. Models whose favorite is 47 or 73, both prime, answer with a prime far more often than chance. Claude Sonnet 5 and 5.5 almost always do.
-- **Nearly every reply is valid.** Almost every reply is a bare number in 0–99. The exception so far is Grok 4.6, which now and then adds a confidence score after its answer, as in `47\n\confidence{80}`. The second number makes the reply invalid.
-- **Reasoning helps a little, but doesn't fix it.** Many of the models reason by default. Gemini 2.5 Pro, Gemini 3.1 Pro, and Grok 4.6 spend hundreds of tokens on a two-digit answer that others give directly. The models that reason tend to score higher, and the least random models all answer in a few tokens. It isn't a clean comparison, since reasoning goes with provider: every Claude model here answers in a few tokens. And the models that reason are still far from uniform.
+Two Kaggle Benchmarks show the same scores, without the intervals: [RandomBench](https://www.kaggle.com/benchmarks/benjaminbrumfield/randombench-overall) ranks the models by RandomBench Score, and [RandomBench Biases](https://www.kaggle.com/benchmarks/benjaminbrumfield/randombench) shows the other nine. `python -m randombench.score` prints every score and interval from the stored replies.
 
 ## Limitations
 
@@ -119,7 +104,7 @@ On Windows, set `PYTHONUTF8=1` first. Making new draws needs a Kaggle account an
 - [randombench/](randombench/): the prompts, the parser, the checks, and the scripts that extract, score, and build.
 - [tasks/collect.py](tasks/collect.py): RandomBench Draws, the Kaggle task that makes the draws.
 - [tasks/scores/](tasks/scores/): the scoring tasks, one per score. `python -m randombench.build` generates them from [tasks/templates/score.py](tasks/templates/score.py), with the stored replies embedded.
-- [docs/index.html](docs/index.html): the leaderboard page. `python -m randombench.build` generates it from [randombench/page.html](randombench/page.html) and the stored replies, and GitHub Pages serves it.
+- [docs/index.html](docs/index.html): the leaderboard page. `python -m randombench.build` generates it from [randombench/page.html](randombench/page.html) and the stored replies, and GitHub Pages serves it. [tests/test_findings.py](tests/test_findings.py) checks each of its findings against the stored replies.
 - [data/](data/): every raw reply, one JSON Lines file per Kaggle run. `data/grok-4.5-0708/` is a pilot whose calls all failed, because Kaggle's Model Proxy doesn't serve Grok 4.5. It's kept as the record and isn't scored.
 - [probes/](probes/): small experiments that tested the platform along the way.
 - [PLAN.md](PLAN.md): the design, every decision and the reasons for it, and what each step found.
@@ -132,7 +117,7 @@ RandomBench is public on Kaggle:
 - [RandomBench Biases](https://www.kaggle.com/benchmarks/benjaminbrumfield/randombench), the other nine scores.
 - [RandomBench Draws](https://www.kaggle.com/benchmarks/tasks/benjaminbrumfield/randombench-draws), the task that makes the draws. Each scoring task is linked from the table under [Scores](#scores).
 
-The [leaderboard page](https://benjaminbrumfield.github.io/randombench/) shows the same scores with their 95% intervals, one model per row, which the Benchmarks can't show. It's rebuilt from [data/](data/) whenever new draws are stored.
+The [leaderboard page](https://benjaminbrumfield.github.io/randombench/) shows the same scores with their 95% intervals, one model per row, which the Benchmarks can't show, and what stands out in them. It's rebuilt from [data/](data/) whenever new draws are stored.
 
 RandomBench is a work in progress. Models, draws, and checks get added over time, and [PLAN.md](PLAN.md) records each step.
 
