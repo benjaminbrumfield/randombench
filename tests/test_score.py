@@ -31,17 +31,21 @@ def test_merges_a_models_runs_and_leaves_out_failed_calls():
     # 42, 37, 42: one equal pair of three, a fair pick among 3 values.
     assert nano.scores["uniformity"] == pytest.approx(0.03)
     assert (gemini.valid, gemini.scores["uniformity"]) == (2, pytest.approx(0.01))
+    # Each score has an interval. Gemini's resamples are all 42, so its are ±0.
+    assert list(nano.intervals) == list(nano.scores)
+    assert gemini.intervals["uniformity"] == 0
 
 
 def test_a_model_with_only_failed_calls_has_no_scores():
     (result,) = score_draws([draw(NANO, "1", 0, error="RateLimitError"), draw(NANO, "1", 1, error="RateLimitError")])
-    assert (result.draws, result.failed, result.valid, result.scores) == (2, 2, 0, {})
+    assert (result.draws, result.failed, result.valid, result.scores, result.intervals) == (2, 2, 0, {}, {})
 
 
 def test_a_model_with_one_valid_answer_has_no_distribution_scores():
     (result,) = score_draws([draw(NANO, "1", 0, "42"), draw(NANO, "1", 1, "forty-two")])
     assert result.scores["invalid_answers"] == 0.5
     assert all(result.scores[name] is None for name in CHECKS)
+    assert all(result.intervals[name] is None for name in CHECKS)
     assert "—" in format_table([result])
 
 
@@ -52,6 +56,8 @@ def test_main_prints_a_row_per_model(tmp_path, capsys):
     main(["--data", str(tmp_path)])
     out = capsys.readouterr().out
     assert NANO in out and "uniform" in out
+    assert out.count(NANO) == 2  # a row of scores, then a row of intervals
+    assert "± 95% interval" in out
 
 
 def test_main_says_so_when_there_are_no_draws(tmp_path, capsys):

@@ -26,7 +26,8 @@ valid answers neither gains nor loses by chance (3.3):
 score_answers() gives all the sub-scores for a model's parsed replies,
 including the invalid-answer score, which a perfect generator never loses,
 and the headline: the share of valid replies times uniformity (D8).
-It takes parsed answers rather than raw replies, so this module needs no
+score_intervals() gives each one's 95% interval, by bootstrap (4.5).
+They take parsed answers rather than raw replies, so this module needs no
 parser and can be copied into a task file on its own (D6).
 """
 
@@ -229,3 +230,53 @@ def score_answers(answers) -> dict[str, float | None]:
     for name, check in CHECKS.items():
         scores[name] = float(check(counts)) if len(valid) >= MIN_VALID else None
     return {"headline": headline(scores), **scores}
+
+
+# 95% intervals (4.5)
+
+Z_95 = 1.96  # a normal distribution's 95% lies within 1.96 standard deviations
+N_RESAMPLES = 10_000
+
+
+def score_intervals(answers, n_resamples: int = N_RESAMPLES, seed: int = 0) -> dict[str, float | None]:
+    """Return the ± half-width of a 95% interval for each score in score_answers.
+
+    A bootstrap: draw n_resamples new sets of replies from the model's own,
+    with replacement and as many as it gave, score each set, and take 1.96
+    times the scores' standard deviation. That estimates how far a score
+    would move by chance if the model were asked as many times again. The
+    replies are resampled with their invalid ones, so the share of valid
+    replies varies too.
+
+    The interval is centered on the score, the form Kaggle stores, so it can
+    run past 0 or 1. A resample holds only answers the model gave, so a model
+    that always gave the same answer gets ±0 on every distribution check.
+    Resamples with fewer than MIN_VALID valid answers can't be scored, and
+    are left out. A score that's None has no interval. The seed makes a
+    rerun give the same intervals.
+    """
+    if not answers:
+        raise ValueError("no replies to score")
+    n = len(answers)
+    valid = [a for a in answers if a is not None]
+    # The 100 counts of valid answers, then the count of invalid replies.
+    observed = np.append(counts_of(valid), n - len(valid))
+    resampled = np.random.default_rng(seed).multinomial(n, observed / n, size=n_resamples)
+    counts = resampled[:, :N_VALUES]
+    n_valid = counts.sum(axis=1)
+
+    samples = {"invalid_answers": n_valid / n}
+    if len(valid) >= MIN_VALID:
+        scorable = n_valid >= MIN_VALID
+        for name, check in CHECKS.items():
+            samples[name] = check(counts[scorable])
+        samples["headline"] = samples["invalid_answers"][scorable] * samples["uniformity"]
+    return {
+        name: _half_width(samples[name]) if name in samples else None
+        for name in ["headline", "invalid_answers", *CHECKS]
+    }
+
+
+def _half_width(scores: np.ndarray) -> float:
+    # Identical scores have no spread, though their computed std can be 1e-16.
+    return float(Z_95 * scores.std()) if np.ptp(scores) else 0.0

@@ -1,10 +1,11 @@
 """Score every model's stored draws (PLAN.md 3.4).
 
 Loads the records in data/ (2.5), merges each model's draws across its runs
-(D3), parses each reply (2.2) and scores the answers (3.3). A failed call
-has no reply, so it's left out and doesn't count as an invalid answer, but
-the table shows how many there were. This runs offline only. A scoring task
-does the same parse-then-score_answers step itself (4.5).
+(D3), parses each reply (2.2) and scores the answers (3.3), each score with
+its 95% interval (4.5). A failed call has no reply, so it's left out and
+doesn't count as an invalid answer, but the table shows how many there were.
+This runs offline only. A scoring task does the same parse-then-score step
+itself (4.5).
 
 Usage: python -m randombench.score [--data data]
 """
@@ -14,7 +15,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
-from randombench.checks import score_answers
+from randombench.checks import score_answers, score_intervals
 from randombench.extract import load_draws
 from randombench.parsing import parse_reply
 
@@ -27,6 +28,7 @@ class ModelScores:
     invalid: int  # replies the parser rejected
     valid: int  # the N the distribution checks score
     scores: dict[str, float | None]
+    intervals: dict[str, float | None]  # each score's ± 95% half-width
 
 
 def score_draws(draws: list[dict]) -> list[ModelScores]:
@@ -48,6 +50,7 @@ def score_draws(draws: list[dict]) -> list[ModelScores]:
                 invalid=invalid,
                 valid=len(answers) - invalid,
                 scores=score_answers(answers) if answers else {},
+                intervals=score_intervals(answers) if answers else {},
             )
         )
     return results
@@ -69,6 +72,7 @@ _HEADINGS = {
 
 
 def format_table(results: list[ModelScores]) -> str:
+    """The scores, then their 95% intervals in the same columns."""
     width = max([len("model"), *(len(r.model) for r in results)])
     counts = ["draws", "failed", "invalid", "N"]
     lines = [f"{'model':{width}}" + "".join(f"{c:>8}" for c in counts) + "  │"
@@ -80,6 +84,11 @@ def format_table(results: list[ModelScores]) -> str:
             f"{r.model:{width}}" + "".join(f"{c:>8}" for c in cells) + "  │"
             + "".join(f"{'—' if s is None else f'{s:.3f}':>9}" for s in scores)
         )
+    left = width + 8 * len(counts)  # the columns before the scores
+    lines += [f"{'':{left}}  │", f"{'± 95% interval':{left}}  │"]
+    for r in results:
+        halves = [r.intervals.get(name) for name in _HEADINGS]
+        lines.append(f"{r.model:{left}}  │" + "".join(f"{'—' if h is None else f'±{h:.3f}':>9}" for h in halves))
     return "\n".join(lines)
 
 
@@ -94,7 +103,8 @@ def main(argv: list[str] | None = None) -> None:
     print(format_table(results))
     print("\nScores are in [0, 1], about 1 for a perfect generator. The headline is the valid"
           " share times uniformity. N counts valid answers; the checks after 'invalid' score"
-          " only those, and they and the headline show — below 2.")
+          " only those, and they and the headline show — below 2. Each interval is 1.96 times"
+          " the score's spread over 10,000 bootstrap resamples of the model's replies.")
 
 
 if __name__ == "__main__":

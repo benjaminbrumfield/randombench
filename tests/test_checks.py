@@ -15,6 +15,7 @@ from randombench.checks import (
     primes,
     repeat_rate,
     score_answers,
+    score_intervals,
     share_gap,
     uniformity,
 )
@@ -219,3 +220,55 @@ def test_score_answers_gives_no_distribution_scores_or_headline_below_2_valid(an
 def test_score_answers_needs_a_reply():
     with pytest.raises(ValueError):
         score_answers([])
+
+
+# 95% intervals (4.5). Their coverage is checked in test_calibration.py.
+
+# nano's 12 draws from 2.4, 50 times over, plus 100 invalid replies.
+SOME_INVALID = ([42] * 5 + [37, 47, 73] * 2 + [57]) * 50 + [None] * 100
+
+
+def test_score_intervals_cover_the_scores_score_answers_gives():
+    assert list(score_intervals(SOME_INVALID)) == list(score_answers(SOME_INVALID))
+
+
+def test_the_same_seed_gives_the_same_intervals():
+    assert score_intervals(SOME_INVALID, seed=3) == score_intervals(SOME_INVALID, seed=3)
+    assert score_intervals(SOME_INVALID, seed=3) != score_intervals(SOME_INVALID, seed=4)
+
+
+def test_the_valid_share_interval_is_the_binomial_one():
+    # 600 of 700 replies valid: 1.96 × √(p(1 − p)/n) for a share p of n.
+    p = 600 / 700
+    expected = 1.96 * np.sqrt(p * (1 - p) / 700)
+    assert score_intervals(SOME_INVALID)["invalid_answers"] == pytest.approx(expected, rel=0.03)
+
+
+def test_the_same_answer_every_time_has_no_spread():
+    # Gemini 3.1 Flash-Lite in 4.3: every resample is 42 every time.
+    assert set(score_intervals([42] * 624).values()) == {0}
+
+
+def test_four_times_the_answers_halve_the_interval():
+    small, large = score_intervals(SOME_INVALID), score_intervals(SOME_INVALID * 4)
+    # The scores with any spread: nano never gave an edge, a multiple of 5 or a repeated digit.
+    for name in ["headline", "invalid_answers", "uniformity", "primes", "favorite", "last_digit"]:
+        assert large[name] == pytest.approx(small[name] / 2, rel=0.1), name
+
+
+@pytest.mark.parametrize("answers", [[42, None, None], [None], [None, None]])
+def test_no_score_means_no_interval(answers):
+    intervals = score_intervals(answers)
+    assert all(intervals[name] is None for name in [*CHECKS, "headline"])
+    assert intervals["invalid_answers"] >= 0
+
+
+def test_resamples_too_small_to_score_are_left_out():
+    # 2 valid answers of 22: most resamples hold fewer than 2.
+    intervals = score_intervals([42, 37] + [None] * 20)
+    assert all(np.isfinite(h) for h in intervals.values())
+
+
+def test_score_intervals_needs_a_reply():
+    with pytest.raises(ValueError):
+        score_intervals([])

@@ -1,61 +1,27 @@
 import numpy as np
 import pytest
 
-from randombench.calibration import PERFECT, calibrate, main, sample_counts
-from randombench.checks import (
-    CHECKS,
-    EDGE,
-    MULTIPLE_OF_5,
-    MULTIPLE_OF_10,
-    PRIME,
-    REPEATED_DIGITS,
-    favorite_share,
-    repeat_rate,
+from randombench.calibration import (
+    MODELS,
+    PERFECT,
+    calibrate,
+    coverage,
+    main,
+    sample_counts,
+    sample_replies,
+    true_scores,
 )
-
-
-def made_up(weights, rest):
-    """A distribution: the given probabilities, and `rest` spread evenly over the other values."""
-    p = np.zeros(100)
-    p[list(weights)] = list(weights.values())
-    others = [v for v in range(100) if v not in weights]
-    p[others] += rest / len(others)
-    return p
-
-
-MODELS = {
-    "perfect": PERFECT,
-    "near-perfect": made_up({42: 0.03, 37: 0.03, 7: 0.02}, 0.92),
-    "prime-leaning": 0.7 * PERFECT + 0.3 * PRIME / PRIME.sum(),
-    "llm-like": made_up({42: 0.20, 37: 0.15, 47: 0.10, 73: 0.10, 27: 0.05, 57: 0.05, 17: 0.05, 67: 0.05}, 0.25),
-    "two-tied": made_up({42: 0.3, 37: 0.3}, 0.4),
-    "edge-avoiding": made_up({v: 0.0 for v in np.flatnonzero(EDGE)}, 1.0),
-    "one-value": made_up({42: 1.0}, 0.0),
-}
-
-
-def true_scores(p):
-    """Each check's score for the true distribution p, which the estimates aim at."""
-    last_digits = p.reshape(10, 10).sum(axis=0)
-
-    def gap(mask):
-        return abs(p[mask].sum() - mask.mean())
-
-    return {
-        "uniformity": min(1, 1 / (p**2).sum() / 100),
-        "primes": 1 - gap(PRIME),
-        "multiples_of_10": 1 - gap(MULTIPLE_OF_10),
-        "multiples_of_5": 1 - gap(MULTIPLE_OF_5),
-        "favorite": 1 - (p.max() - 0.01) / 0.99,
-        "edges": 1 - gap(EDGE),
-        "repeated_digits": 1 - gap(REPEATED_DIGITS),
-        "last_digit": min(1, 1 / (last_digits**2).sum() / 10),
-    }
+from randombench.checks import CHECKS, favorite_share, repeat_rate, score_answers
 
 
 def test_made_up_models_are_distributions():
     for p in MODELS.values():
         assert p.sum() == pytest.approx(1) and (p >= 0).all()
+
+
+def test_true_scores_follow_score_answers():
+    assert list(true_scores(PERFECT)) == list(score_answers([1, 2]))
+    assert true_scores(PERFECT, invalid=0.25)["headline"] == pytest.approx(0.75)
 
 
 # Simulation
@@ -112,8 +78,41 @@ def test_each_summary_is_ordered():
         assert s.low <= s.median <= s.high
 
 
+# The 95% intervals (4.5)
+
+
+def test_simulated_replies_have_the_share_of_invalid_ones():
+    replies = sample_replies(PERFECT, 10_000, 0.2, np.random.default_rng(4))
+    assert len(replies) == 10_000
+    assert replies.count(None) / len(replies) == pytest.approx(0.2, abs=0.02)
+    assert all(r is None or 0 <= r <= 99 for r in replies)
+
+
+@pytest.mark.parametrize("name", ["llm-like", "two-tied"])
+def test_intervals_hold_the_true_score_about_95_percent_of_the_time(name):
+    # Models whose biases stand clear of the noise, as all six real models'
+    # do. Near a perfect score the cap at 1 skews the coverage either way,
+    # which PLAN.md 4.5a records. 300 runs measure coverage to about ±1.3 points.
+    held = coverage(MODELS[name], 624, trials=300, invalid=0.1, n_resamples=500, seed=5)
+    for score, share in held.items():
+        assert 0.88 <= share <= 0.99, score
+
+
+def test_one_value_is_always_held_exactly():
+    # Every resample is the same, so the interval is ±0, and the score is the truth.
+    assert set(coverage(MODELS["one-value"], 100, trials=20, n_resamples=100).values()) == {1.0}
+
+
 def test_main_prints_every_check(capsys):
     main(["600", "--trials", "200"])
     out = capsys.readouterr().out
     for name in CHECKS:
+        assert name in out
+
+
+def test_main_prints_coverage_for_every_model(capsys):
+    main(["--coverage", "100", "--trials", "5"])
+    out = capsys.readouterr().out
+    assert "headline" in out
+    for name in MODELS:
         assert name in out
