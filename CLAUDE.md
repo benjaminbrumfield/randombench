@@ -7,7 +7,7 @@ RandomBench measures how well LLMs generate random integers from 0 to 99 and sco
 ## How we work
 
 - **One step at a time.** Each PLAN.md step is one small commit. This is a learning project, so explain what each step shows, and raise open decisions instead of settling them quietly.
-- **Ask before any LLM call.** Local task runs, probe scripts and `kaggle b t run` all spend Model Proxy quota. Say which models and how many calls, then wait for a yes. Read-only commands such as `kaggle b t models` are fine.
+- **Ask before any LLM call.** Local task runs, probe scripts, `kaggle b t run` and pushing `randombench-draws` all spend Model Proxy quota. The push spends it because its creation run draws from Gemini 3.8 Flash (PLAN.md D21). Say which models and how many calls, then wait for a yes. Read-only commands such as `kaggle b t models` are fine.
 
 ## Writing tasks
 
@@ -33,11 +33,11 @@ python -m pytest
 # Run locally. Ask first if the task calls a model.
 set -a && source .env && set +a && PYTHONUTF8=1 python <task>.py
 
-# tasks/collect.py prompts only the six models in its MODELS list, and .env's
+# tasks/collect.py prompts only the seven models in its MODELS list, and .env's
 # LLM_DEFAULT isn't one of them, so a plain local run makes no calls.
 # kaggle_benchmarks loads .env by itself on import, over the shell's own
 # variables, so LLM_DEFAULT can't be overridden on the command line (PLAN.md
-# 4.5b). To draw from one of the six locally, change LLM_DEFAULT in .env
+# 4.5b). To draw from one of the seven locally, change LLM_DEFAULT in .env
 # (ask first: it spends quota).
 
 # Refresh the copies of shared modules in task files (tests fail if stale)
@@ -47,7 +47,9 @@ python -m randombench.sync
 # and data/ (tests fail if stale). They never prompt a model.
 python -m randombench.build
 
-# Push, then run on Kaggle. Ask first: the run calls models.
+# Push, then run on Kaggle. Ask first: the run calls models. So does pushing
+# randombench-draws: its creation run draws N_DRAWS from Gemini 3.8 Flash, the
+# server's default model (PLAN.md D21). The scoring tasks never prompt a model.
 kaggle b t push <slug> -f <task>.py --wait
 kaggle b t run <slug> -m <model> --wait
 

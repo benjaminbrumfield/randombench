@@ -6,10 +6,11 @@
 # A push uploads only this file, so it holds its own copy of
 # randombench/prompts.py, kept current by `python -m randombench.sync` (D6).
 #
-# It makes draws only for the six models in MODELS (D12). Every push first
-# runs the task once on the server's default model, which isn't one of them,
-# so that run prompts nothing and returns 0. So does a local run, whose
-# kbench.llm is LLM_DEFAULT from .env, unless LLM_DEFAULT names one of the six.
+# It makes draws only for the seven models in MODELS (D12). Every push first
+# runs the task once on the server's default model, Gemini 3.8 Flash, which
+# is one of them (D21). So a push makes Gemini 3.8 Flash's draws itself, and
+# spends quota. Any other model's run prompts nothing and returns 0, as does
+# a local run, whose kbench.llm is LLM_DEFAULT from .env.
 #
 # Each run prints what the pilot has to learn about the server (4.1), and a
 # listed model's run also prints how many HTTP requests its draws made. The
@@ -23,8 +24,9 @@ import pandas as pd
 
 import kaggle_benchmarks as kbench
 
-# The full runs' size (4.3): 100 draws per prompt. The pilot (4.2) used 24.
-N_DRAWS = 600
+# Gemini 3.8 Flash's pilot (4.7): 4 draws per prompt, as in 4.2. The full
+# runs (4.3) used 600, 100 per prompt.
+N_DRAWS = 24
 N_JOBS = 4
 
 # The llm.name of each model in PLAN.md's model table. Kaggle runs and local
@@ -37,6 +39,8 @@ MODELS = (
     "anthropic/claude-haiku-4-5@20251001",
     "google/gemma-4-26b-a4b",
     "openai/gpt-oss-120b",
+    # The server's default model, so a push's creation run draws on it (D21).
+    "google/gemini-3.8-flash",
 )
 
 

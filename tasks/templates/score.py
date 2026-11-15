@@ -7,10 +7,11 @@
 #
 # It never prompts a model. Run with -m X, it parses X's stored replies,
 # scores them, and returns the score with the half-width of its 95% interval
-# (D19). It returns False for a model with no stored replies, such as the
-# server's default model in a push's creation run (D12), and for a score of
-# None, below 2 valid answers (3.4). False shows as FAIL, which an average of
-# task scores leaves out (1.3).
+# (D19). A push's creation run scores the server's default model, Gemini 3.8
+# Flash, which is one of RandomBench's models (D21). It returns False for a
+# model with no stored replies (D12), and for a score of None, below 2 valid
+# answers (3.4). False shows as FAIL, which an average of task scores leaves
+# out (1.3).
 import kaggle_benchmarks as kbench
 
 # This task's score: its key in score_answers().
@@ -43,7 +44,7 @@ def stored_answers(model: str) -> list[int | None]:
 def score(llm) -> tuple[float, float]:
     answers = stored_answers(llm.name)
     if not answers:
-        # A push's creation run lands here (D12).
+        # A model RandomBench doesn't cover, such as .env's in a local run (D12).
         print(f"{llm.name} has no stored replies: no score")
         return False
     stored = STORED[llm.name]

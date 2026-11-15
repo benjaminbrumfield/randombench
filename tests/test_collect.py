@@ -49,19 +49,24 @@ def task(tmp_path, monkeypatch):
     return runpy.run_path(str(code))
 
 
-def test_the_allowlist_holds_six_distinct_models(task):
-    assert len(set(task["MODELS"])) == 6
+def test_the_allowlist_holds_seven_distinct_models(task):
+    assert len(set(task["MODELS"])) == 7
 
 
-def test_a_model_outside_the_six_is_never_prompted(task):
-    # A push's creation run uses the server's default model (D12).
-    default = StandIn("google/gemini-3.8-flash")
-    run = task["collect"].run(default)
+def test_the_servers_default_model_is_listed(task):
+    # So a push's creation run makes Gemini 3.8 Flash's draws (D21).
+    assert "google/gemini-3.8-flash" in task["MODELS"]
+
+
+def test_a_model_outside_the_seven_is_never_prompted(task):
+    # Such as .env's LLM_DEFAULT in a local run (D12).
+    other = StandIn("google/gemini-3-flash-preview")
+    run = task["collect"].run(other)
     assert run.result == 0
-    assert default.prompts == []
+    assert other.prompts == []
 
 
-def test_one_of_the_six_gets_every_draw(task):
+def test_one_of_the_seven_gets_every_draw(task):
     nano = StandIn("openai/gpt-5.4-nano-2026-03-17")
     run = task["collect"].run(nano)
     assert run.result == task["N_DRAWS"]  # draws with a reply (D14)
@@ -90,8 +95,8 @@ def test_the_run_files_extract(task, tmp_path):
 
 
 def test_every_run_prints_the_servers_facts(task, capsys):
-    # Even the creation run, which prompts nothing, so a push alone shows them.
-    task["collect"].run(StandIn("google/gemini-3.8-flash"))
+    # Even a run that prompts nothing.
+    task["collect"].run(StandIn("google/gemini-3-flash-preview"))
     out = capsys.readouterr().out
     assert "kaggle_benchmarks 0.6.2" in out
     assert "KAGGLE_AGENT_LLM_REASONING_EFFORT=" in out

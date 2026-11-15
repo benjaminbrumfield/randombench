@@ -96,7 +96,7 @@ def test_render_rejects_a_title_that_would_break_its_string():
 def test_the_tally_accounts_for_every_draw():
     for model, s in STORED.items():
         draws = [d for d in DRAWS if d["model"] == model]
-        assert sum(s["replies"].values()) + s["failed"] == len(draws) == 624
+        assert sum(s["replies"].values()) + s["failed"] == len(draws)
         assert s["runs"] == sorted({d["run_id"] for d in draws})
 
 
@@ -158,9 +158,10 @@ def test_each_stored_model_gets_the_score_and_interval_the_analysis_gives(task, 
 
 @pytest.mark.parametrize("task", SCORING_TASKS, ids=IDS)
 def test_a_model_without_stored_replies_gets_false(task, tmp_path, monkeypatch, capsys):
-    # A push's creation run, on the server's default model (D12).
+    # Such as .env's LLM_DEFAULT in a local run (D12). The creation run's
+    # model, Gemini 3.8 Flash, has stored replies since 4.7 (D21).
     ns = task_namespace(task, tmp_path, monkeypatch)
-    assert ns["score"].run(StandIn("google/gemini-3.8-flash")).result is False
+    assert ns["score"].run(StandIn("google/gemini-3-flash-preview")).result is False
     assert "no stored replies" in capsys.readouterr().out
 
 
