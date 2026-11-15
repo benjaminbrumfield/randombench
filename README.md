@@ -40,7 +40,7 @@ Out in the world, the right distribution is rarely known, so the gap is hard to 
 2. **Parse.** Each reply is read leniently on formatting and strictly on content ([randombench/parsing.py](randombench/parsing.py)). `Sure! **47**.` counts as 47. `47 or 52`, `47.0`, `100` and `forty-seven` are invalid, and so is a reply that restates the range, since the prompt asked for the number only.
 3. **Score.** A model's valid answers, pooled across the wordings, are checked for the biases below ([randombench/checks.py](randombench/checks.py)). Every score is in [0, 1], about 1 for a perfect random source, and comes with a 95% interval from a bootstrap of the model's replies.
 
-The draws are made on [Kaggle Benchmarks](https://www.kaggle.com/benchmarks) by one task, RandomBench Draws ([tasks/collect.py](tasks/collect.py)). Every raw reply is stored in [data/](data/), and each score is a Kaggle task of its own that recomputes the score from those stored replies. So a new check or a new parsing rule never means asking the models again.
+The draws are made on [Kaggle Benchmarks](https://www.kaggle.com/benchmarks) by one task, [RandomBench Draws](https://www.kaggle.com/benchmarks/tasks/benjaminbrumfield/randombench-draws) ([tasks/collect.py](tasks/collect.py)). Every raw reply is stored in [data/](data/), and each score is a Kaggle task of its own that recomputes the score from those stored replies. So a new check or a new parsing rule never means asking the models again.
 
 ## Scores
 
@@ -52,16 +52,18 @@ The other checks show which biases lie behind the headline. They don't count tow
 
 | Score | What it measures | Ideal | Lowest |
 |---|---|---|---|
-| RandomBench Score | Valid Answers × Uniformity | 1 | 0 |
-| Valid Answers | The share of replies that are a single integer in 0–99 | 100% | 0 |
-| Uniformity | The effective number of values, as K/100 | K = 100 | 0.01, one value |
-| Primes | 1 − the gap from 25% primes (2, 3, 5, …, 97) | 25% | 0.25, all prime |
-| Multiples of 10 | 1 − the gap from 10% multiples of 10 | 10% | 0.10 |
-| Multiples of 5 | 1 − the gap from 20% multiples of 5 | 20% | 0.20 |
-| Favorite Number | 1 − the favorite's share above 1%, scaled so that 100% scores 0 | 1% | 0, one value |
-| Edges | 1 − the gap from 20% in 0–9 or 90–99 | 20% | 0.20 |
-| Repeated Digits | 1 − the gap from 9% in 11, 22, …, 99 | 9% | 0.09 |
-| Last Digit | The effective number of last digits, as K/10 | K = 10 | 0.10, one digit |
+| [RandomBench Score](https://www.kaggle.com/benchmarks/tasks/benjaminbrumfield/randombench-score) | Valid Answers × Uniformity | 1 | 0 |
+| [Valid Answers](https://www.kaggle.com/benchmarks/tasks/benjaminbrumfield/randombench-valid-answers) | The share of replies that are a single integer in 0–99 | 100% | 0 |
+| [Uniformity](https://www.kaggle.com/benchmarks/tasks/benjaminbrumfield/randombench-uniformity) | The effective number of values, as K/100 | K = 100 | 0.01, one value |
+| [Primes](https://www.kaggle.com/benchmarks/tasks/benjaminbrumfield/randombench-primes) | 1 − the gap from 25% primes (2, 3, 5, …, 97) | 25% | 0.25, all prime |
+| [Multiples of 10](https://www.kaggle.com/benchmarks/tasks/benjaminbrumfield/randombench-multiples-of-10) | 1 − the gap from 10% multiples of 10 | 10% | 0.10 |
+| [Multiples of 5](https://www.kaggle.com/benchmarks/tasks/benjaminbrumfield/randombench-multiples-of-5) | 1 − the gap from 20% multiples of 5 | 20% | 0.20 |
+| [Favorite Number](https://www.kaggle.com/benchmarks/tasks/benjaminbrumfield/randombench-favorite-number) | 1 − the favorite's share above 1%, scaled so that 100% scores 0 | 1% | 0, one value |
+| [Edges](https://www.kaggle.com/benchmarks/tasks/benjaminbrumfield/randombench-edges) | 1 − the gap from 20% in 0–9 or 90–99 | 20% | 0.20 |
+| [Repeated Digits](https://www.kaggle.com/benchmarks/tasks/benjaminbrumfield/randombench-repeated-digits) | 1 − the gap from 9% in 11, 22, …, 99 | 9% | 0.09 |
+| [Last Digit](https://www.kaggle.com/benchmarks/tasks/benjaminbrumfield/randombench-last-digit) | The effective number of last digits, as K/10 | K = 10 | 0.10, one digit |
+
+Each score's name links to its scoring task on Kaggle.
 
 A gap is the share of answers that would have to change to reach the ideal share. That makes the share checks lenient toward avoidance. A model that never picks a multiple of 10 is only 10% away from the ideal, so it scores 0.90. One that picks nothing else scores 0.10.
 
@@ -76,7 +78,7 @@ The models so far:
 - **OpenAI:** GPT-5.4 mini, GPT-5.4 nano, GPT-5.6 Luna, GPT-5.6 Terra, GPT-6 Luna, gpt-oss-120b
 - **xAI:** Grok 4.6, Grok 4.7
 
-`python -m randombench.score` prints each model's current scores and their intervals from the stored replies. The Kaggle Benchmarks will show them too, once they're public.
+`python -m randombench.score` prints each model's current scores and their intervals from the stored replies. Two Kaggle Benchmarks show the same scores, without the intervals: [RandomBench](https://www.kaggle.com/benchmarks/benjaminbrumfield/randombench-overall) ranks the models by RandomBench Score, and [RandomBench Biases](https://www.kaggle.com/benchmarks/benjaminbrumfield/randombench) shows the other nine.
 
 What stands out so far:
 
@@ -123,7 +125,13 @@ On Windows, set `PYTHONUTF8=1` first. Making new draws needs a Kaggle account an
 
 ## Status
 
-The first results are in. Publishing the tasks and the Kaggle Benchmarks comes next, and they'll be linked here then. This is going to be iterative and adaptive.
+RandomBench is public on Kaggle:
+
+- [RandomBench](https://www.kaggle.com/benchmarks/benjaminbrumfield/randombench-overall), the models ranked by RandomBench Score.
+- [RandomBench Biases](https://www.kaggle.com/benchmarks/benjaminbrumfield/randombench), the other nine scores.
+- [RandomBench Draws](https://www.kaggle.com/benchmarks/tasks/benjaminbrumfield/randombench-draws), the task that makes the draws. Each scoring task is linked from the table under [Scores](#scores).
+
+This is going to be iterative and adaptive.
 
 ## Built with
 
