@@ -32,6 +32,7 @@ GEMINI_25_PRO = "google/gemini-2.5-pro"
 GEMINI_31_PRO = "google/gemini-3.1-pro-preview"
 GEMINI_31_FLASH_LITE = "google/gemini-3.1-flash-lite-preview"
 GPT_OSS = "openai/gpt-oss-120b"
+GPT_54 = "openai/gpt-5.4-2026-03-05"
 GPT_56_LUNA = "openai/gpt-5.6-luna"
 GPT_6_LUNA = "openai/gpt-6-luna"
 GROK_46 = "xai/grok-4.6"
@@ -88,6 +89,7 @@ def test_finding_no_model_comes_close():
 def test_finding_three_numbers_dominate():
     favorite = {model: set(favorites(counts)[0]) for model, counts in COUNTS.items()}
     assert favorite.pop(GPT_OSS) == {57}
+    assert favorite.pop(GPT_54) == {37}
     assert all(f <= {42, 47, 73} for f in favorite.values()), favorite
     assert ALL[[42, 47, 73]].sum() > ALL.sum() / 2  # most of all the answers
     assert COUNTS[GEMINI_31_FLASH_LITE][42] == COUNTS[GEMINI_31_FLASH_LITE].sum()
