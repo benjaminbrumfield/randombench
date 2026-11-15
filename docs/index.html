@@ -10,8 +10,8 @@
 <style>
 /* Written by `python -m randombench.build` from randombench/page.html (PLAN.md 5.3).
 
-   Layout: one column. Prose holds to about 65 characters, and the two tables take the full width,
-   up to 1200px, which the Biases table needs to fit without scrolling. Rows are separated by hairline rules, never boxed. One typeface, one accent. */
+   Layout: one column, up to 1200px wide, which the Biases table needs to fit without scrolling.
+   The text spans the same width as the tables and narrows with the window. Rows are separated by hairline rules, never boxed. One typeface, one accent. */
 :root {
   --bg: #fbfcfc;
   --fg: #152226;
@@ -43,7 +43,6 @@ body {
   -webkit-text-size-adjust: 100%;
 }
 .page { max-width: 1200px; margin: 0 auto; display: grid; gap: 56px; }
-.prose { max-width: 65ch; }
 a { color: var(--accent); text-underline-offset: 0.18em; text-decoration-thickness: 1px; }
 a:hover { text-decoration-thickness: 2px; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
@@ -58,7 +57,7 @@ header p { margin: 0; }
 section { display: grid; gap: 16px; min-width: 0; }
 h2 { font-size: var(--step-1); font-weight: 650; margin: 0; letter-spacing: 0.005em; }
 .caption { color: var(--muted); margin: 0; }
-.note { font-size: var(--step--1); color: var(--muted); margin: 0; max-width: 65ch; }
+.note { font-size: var(--step--1); color: var(--muted); margin: 0; }
 
 table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
 th, td { padding: 10px; text-align: left; vertical-align: baseline; }
@@ -127,7 +126,7 @@ tbody tr { border-bottom: 1px solid var(--rule); }
 .findings strong { font-weight: 650; }
 
 footer { font-size: var(--step--1); color: var(--muted); border-top: 1px solid var(--rule); padding-top: 18px; }
-footer p { margin: 0 0 6px; max-width: 75ch; }
+footer p { margin: 0 0 6px; }
 
 @media (max-width: 600px) {
   body { padding-block: 32px 48px; }
@@ -151,7 +150,7 @@ footer p { margin: 0 0 6px; max-width: 75ch; }
   <header>
     <h1>RandomBench</h1>
     <p class="lede">How well can language models pick numbers at random?</p>
-    <p class="prose">Each model was asked many times for a random integer from 0 to 99, in a fresh conversation every time. A model that gives the same answer every time scores 0.01, and a perfect random number generator scores about 1.</p>
+    <p>Each model was asked many times for a random integer from 0 to 99, in a fresh conversation every time. A model that gives the same answer every time scores 0.01, and a perfect random number generator scores about 1.</p>
     <p class="meta">
       <span>Data as of <time datetime="2026-11-15">November 15, 2026</time></span>
       <span>36 models</span>
@@ -216,7 +215,7 @@ footer p { margin: 0 0 6px; max-width: 75ch; }
 
   <section aria-labelledby="biases-h">
     <h2 id="biases-h">Biases</h2>
-    <p class="caption prose">These checks show the biases that make each model's picks less random. Select a heading to sort by it, and select it again to return to the ranking.</p>
+    <p class="caption">These checks show the biases that make each model's picks less random. Select a heading to sort by it, and select it again to return to the ranking.</p>
     <div class="scroll">
       <table class="biases" id="biases">
         <thead><tr><th scope="col" class="model">Model</th><th scope="col" class="num"><span class="h">Favorite</span><span class="low">and its share</span></th><th scope="col" class="num"><span class="h">Valid Answers</span><span class="low">lowest 0</span></th><th scope="col" class="num"><span class="h">Uniformity</span><span class="low">lowest 0.01</span></th><th scope="col" class="num"><span class="h">Primes</span><span class="low">lowest 0.25</span></th><th scope="col" class="num"><span class="h">Multiples of 10</span><span class="low">lowest 0.10</span></th><th scope="col" class="num"><span class="h">Multiples of 5</span><span class="low">lowest 0.20</span></th><th scope="col" class="num"><span class="h">Favorite Number</span><span class="low">lowest 0</span></th><th scope="col" class="num"><span class="h">Edges</span><span class="low">lowest 0.20</span></th><th scope="col" class="num"><span class="h">Repeated Digits</span><span class="low">lowest 0.09</span></th><th scope="col" class="num"><span class="h">Last Digit</span><span class="low">lowest 0.10</span></th></tr></thead>
@@ -267,7 +266,7 @@ footer p { margin: 0 0 6px; max-width: 75ch; }
   <!-- Each finding is checked against data/ by the test named for its data-finding in tests/test_findings.py (PLAN.md D29). -->
   <section aria-labelledby="findings-h" id="findings">
     <h2 id="findings-h">What stands out</h2>
-    <div class="findings prose">
+    <div class="findings">
       <p data-finding="no-model-comes-close"><strong>No model comes close.</strong> Even the most random model is as repetitive as a fair pick among fewer than a fifth of the 100 values. A perfect random source would use all 100.</p>
       <p data-finding="three-numbers-dominate"><strong>Three numbers dominate.</strong> Every model's favorite is 42, 47, or 73, except gpt-oss-120b's, which is 57. Those three numbers make up most of all the answers. Gemini 3.1 Flash-Lite has answered nothing but 42, and Claude Sonnet 5 and 5.5 answer 47 about 9 times in 10.</p>
       <p data-finding="newer-isnt-more-random"><strong>Newer isn't more random.</strong> Gemini 2.5 Flash, one of the oldest models here, ranks first, well ahead of every newer Gemini. Grok 4.7 is less random than Grok 4.6, GPT-6 Luna than GPT-5.6 Luna, and Claude Sonnet 5 and 5.5 than Sonnet 4.6. Claude Haiku 5.5 goes the other way, more random than Haiku 4.5. None of these comparisons has overlapping intervals.</p>
