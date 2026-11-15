@@ -6,11 +6,11 @@
 # A push uploads only this file, so it holds its own copy of
 # randombench/prompts.py, kept current by `python -m randombench.sync` (D6).
 #
-# It makes draws only for the seven models in MODELS (D12). Every push first
-# runs the task once on the server's default model, Gemini 3.8 Flash, which
-# is one of them (D21). So a push makes Gemini 3.8 Flash's draws itself, and
-# spends quota. Any other model's run prompts nothing and returns 0, as does
-# a local run, whose kbench.llm is LLM_DEFAULT from .env.
+# It makes draws only for the models in MODELS (D12). Any other model's run
+# prompts nothing and returns 0. That includes a push's creation run, which
+# uses the server's default model, Gemini 3.8 Flash: its draws are done, so
+# it's no longer listed (D23). It also includes a local run, whose kbench.llm
+# is LLM_DEFAULT from .env, a model the server doesn't offer.
 #
 # Each run prints what the pilot has to learn about the server (4.1), and a
 # listed model's run also prints how many HTTP requests its draws made. The
@@ -24,14 +24,16 @@ import pandas as pd
 
 import kaggle_benchmarks as kbench
 
-# The full runs' size (4.3, 4.8): 100 draws per prompt. The pilots (4.2, 4.7)
-# used 24.
-N_DRAWS = 600
+# The pilots' size (4.2, 4.7, 4.10): 4 draws per prompt. The full runs (4.3,
+# 4.8) used 600.
+N_DRAWS = 24
 N_JOBS = 4
 
-# The llm.name of each model in PLAN.md's model table. Kaggle runs and local
-# runs use the same names. Any other model makes no draws, so an id that's
-# wrong here costs a wasted run, not unwanted calls.
+# The llm.name of each model in PLAN.md's model table, from the server's
+# LLMS_AVAILABLE. Kaggle runs and local runs use the same names. Any other
+# model makes no draws, so an id that's wrong here costs a wasted run, not
+# unwanted calls. Gemini 3.8 Flash, the server's default model, is in the
+# table but not here, so a push prompts nothing (D23).
 MODELS = (
     "openai/gpt-5.4-nano-2026-03-17",
     "google/gemini-3.1-flash-lite-preview",
@@ -39,8 +41,24 @@ MODELS = (
     "anthropic/claude-haiku-4-5@20251001",
     "google/gemma-4-26b-a4b",
     "openai/gpt-oss-120b",
-    # The server's default model, so a push's creation run draws on it (D21).
-    "google/gemini-3.8-flash",
+    # Added in 4.10 (D23).
+    "google/gemini-2.5-flash",
+    "google/gemini-2.5-pro",
+    "google/gemini-3-flash-preview",
+    "google/gemini-3.1-pro-preview",
+    "google/gemini-3.6-flash",
+    "google/gemini-4-argon",
+    "xai/grok-4.5-0708",
+    "xai/grok-4.6",
+    "xai/grok-4.7",
+    "openai/gpt-5.4-mini-2026-03-17",
+    "openai/gpt-5.6-luna",
+    "openai/gpt-5.6-terra",
+    "openai/gpt-6-luna",
+    "anthropic/claude-haiku-5-5",
+    "anthropic/claude-sonnet-4-6@default",
+    "anthropic/claude-sonnet-5@default",
+    "anthropic/claude-sonnet-5-5@default",
 )
 
 

@@ -31,11 +31,102 @@ STORED = {
             '47': 71,
         },
     },
+    'anthropic/claude-haiku-5-5': {
+        'runs': ['6842651'],
+        'failed': 0,
+        'replies': {
+            '73': 13,
+            '37': 5,
+            '42': 2,
+            '47': 2,
+            '57': 1,
+            '64': 1,
+        },
+    },
+    'anthropic/claude-sonnet-4-6@default': {
+        'runs': ['6842653'],
+        'failed': 0,
+        'replies': {
+            '47': 19,
+            '42': 5,
+        },
+    },
+    'anthropic/claude-sonnet-5-5@default': {
+        'runs': ['6842700'],
+        'failed': 0,
+        'replies': {
+            '47': 20,
+            '**47**': 4,
+        },
+    },
+    'anthropic/claude-sonnet-5@default': {
+        'runs': ['6842654'],
+        'failed': 0,
+        'replies': {
+            '47': 18,
+            '73': 3,
+            '42': 2,
+            '**47**': 1,
+        },
+    },
+    'google/gemini-2.5-flash': {
+        'runs': ['6842510'],
+        'failed': 0,
+        'replies': {
+            '73': 7,
+            '42': 6,
+            '57': 5,
+            '17': 1,
+            '21': 1,
+            '24': 1,
+            '27': 1,
+            '67': 1,
+            '83': 1,
+        },
+    },
+    'google/gemini-2.5-pro': {
+        'runs': ['6842511'],
+        'failed': 0,
+        'replies': {
+            '73': 11,
+            '42': 5,
+            '81': 2,
+            '83': 2,
+            '17': 1,
+            '62': 1,
+            '68': 1,
+            '78': 1,
+        },
+    },
+    'google/gemini-3-flash-preview': {
+        'runs': ['6842512'],
+        'failed': 0,
+        'replies': {
+            '42': 12,
+            '73': 6,
+            '47': 4,
+            '17': 1,
+            '67': 1,
+        },
+    },
     'google/gemini-3.1-flash-lite-preview': {
         'runs': ['6818656', '6818876'],
         'failed': 0,
         'replies': {
             '42': 624,
+        },
+    },
+    'google/gemini-3.1-pro-preview': {
+        'runs': ['6842513'],
+        'failed': 0,
+        'replies': {
+            '73': 13,
+            '42': 5,
+            '87': 2,
+            '37': 1,
+            '47': 1,
+            '57': 1,
+            '84': 1,
         },
     },
     'google/gemini-3.5-flash-lite': {
@@ -44,6 +135,15 @@ STORED = {
         'replies': {
             '42': 606,
             '47': 18,
+        },
+    },
+    'google/gemini-3.6-flash': {
+        'runs': ['6842547'],
+        'failed': 0,
+        'replies': {
+            '73': 11,
+            '42': 7,
+            '47': 6,
         },
     },
     'google/gemini-3.8-flash': {
@@ -58,6 +158,16 @@ STORED = {
             '64': 3,
             '57': 2,
             '58': 2,
+            '63': 1,
+        },
+    },
+    'google/gemini-4-argon': {
+        'runs': ['6842548'],
+        'failed': 0,
+        'replies': {
+            '42': 18,
+            '73': 3,
+            '47': 2,
             '63': 1,
         },
     },
@@ -78,6 +188,16 @@ STORED = {
             '74': 1,
         },
     },
+    'openai/gpt-5.4-mini-2026-03-17': {
+        'runs': ['6842607'],
+        'failed': 0,
+        'replies': {
+            '47': 12,
+            '73': 6,
+            '42': 4,
+            '37': 2,
+        },
+    },
     'openai/gpt-5.4-nano-2026-03-17': {
         'runs': ['6818630', '6818874'],
         'failed': 0,
@@ -92,6 +212,38 @@ STORED = {
             '72': 3,
             '43': 2,
             '74': 1,
+        },
+    },
+    'openai/gpt-5.6-luna': {
+        'runs': ['6842608'],
+        'failed': 0,
+        'replies': {
+            '47': 13,
+            '37': 5,
+            '73': 4,
+            '57': 2,
+        },
+    },
+    'openai/gpt-5.6-terra': {
+        'runs': ['6842609'],
+        'failed': 0,
+        'replies': {
+            '42': 7,
+            '73': 6,
+            '47': 4,
+            '57': 4,
+            '37': 3,
+        },
+    },
+    'openai/gpt-6-luna': {
+        'runs': ['6842650'],
+        'failed': 0,
+        'replies': {
+            '47': 14,
+            '37': 4,
+            '42': 3,
+            '63': 2,
+            '73': 1,
         },
     },
     'openai/gpt-oss-120b': {
@@ -112,6 +264,42 @@ STORED = {
             '71': 1,
             '83': 1,
             '87': 1,
+        },
+    },
+    'xai/grok-4.5-0708': {
+        'runs': ['6842549'],
+        'failed': 24,
+        'replies': {
+        },
+    },
+    'xai/grok-4.6': {
+        'runs': ['6842550'],
+        'failed': 0,
+        'replies': {
+            '47': 8,
+            '81': 3,
+            '37': 2,
+            '84': 2,
+            '42': 1,
+            '47\n\\confidence{80}': 1,
+            '56': 1,
+            '57': 1,
+            '64': 1,
+            '67': 1,
+            '73': 1,
+            '74': 1,
+            '83': 1,
+        },
+    },
+    'xai/grok-4.7': {
+        'runs': ['6842606'],
+        'failed': 0,
+        'replies': {
+            '73': 10,
+            '42': 8,
+            '17': 4,
+            '47': 1,
+            '57': 1,
         },
     },
 }
@@ -454,7 +642,8 @@ def stored_answers(model: str) -> list[int | None]:
 def score(llm) -> tuple[float, float]:
     answers = stored_answers(llm.name)
     if not answers:
-        # A model RandomBench doesn't cover, such as .env's in a local run (D12).
+        # A model RandomBench doesn't cover, such as .env's in a local run
+        # (D12), or one whose every call failed, such as Grok 4.5 (4.10).
         print(f"{llm.name} has no stored replies: no score")
         return False
     stored = STORED[llm.name]

@@ -5,6 +5,7 @@ task file's own code, minus its last two cells, which run the task on
 kbench.llm and hold the %choose magic.
 """
 
+import os
 import runpy
 import shutil
 import threading
@@ -49,24 +50,29 @@ def task(tmp_path, monkeypatch):
     return runpy.run_path(str(code))
 
 
-def test_the_allowlist_holds_seven_distinct_models(task):
-    assert len(set(task["MODELS"])) == 7
+def test_the_allowlist_holds_23_distinct_models(task):
+    assert len(task["MODELS"]) == len(set(task["MODELS"])) == 23
 
 
-def test_the_servers_default_model_is_listed(task):
-    # So a push's creation run makes Gemini 3.8 Flash's draws (D21).
-    assert "google/gemini-3.8-flash" in task["MODELS"]
-
-
-def test_a_model_outside_the_seven_is_never_prompted(task):
-    # Such as .env's LLM_DEFAULT in a local run (D12).
-    other = StandIn("google/gemini-3-flash-preview")
-    run = task["collect"].run(other)
+def test_the_servers_default_model_is_never_prompted(task):
+    # Gemini 3.8 Flash's draws are done, so a push's creation run prompts
+    # nothing (D23).
+    default = StandIn("google/gemini-3.8-flash")
+    run = task["collect"].run(default)
     assert run.result == 0
-    assert other.prompts == []
+    assert default.prompts == []
 
 
-def test_one_of_the_seven_gets_every_draw(task):
+def test_the_local_default_model_isnt_listed(task):
+    # A plain local run uses .env's LLM_DEFAULT, which kaggle_benchmarks loads
+    # on import. It must stay off the list, or the run spends quota (D12, D23).
+    default = os.environ.get("LLM_DEFAULT")
+    if not default:
+        pytest.skip("no LLM_DEFAULT, so there's no .env to check")
+    assert default not in task["MODELS"]
+
+
+def test_a_listed_model_gets_every_draw(task):
     nano = StandIn("openai/gpt-5.4-nano-2026-03-17")
     run = task["collect"].run(nano)
     assert run.result == task["N_DRAWS"]  # draws with a reply (D14)
@@ -96,7 +102,7 @@ def test_the_run_files_extract(task, tmp_path):
 
 def test_every_run_prints_the_servers_facts(task, capsys):
     # Even a run that prompts nothing.
-    task["collect"].run(StandIn("google/gemini-3-flash-preview"))
+    task["collect"].run(StandIn("google/gemini-3.8-flash"))
     out = capsys.readouterr().out
     assert "kaggle_benchmarks 0.6.2" in out
     assert "KAGGLE_AGENT_LLM_REASONING_EFFORT=" in out

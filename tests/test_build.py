@@ -152,16 +152,20 @@ def test_each_stored_model_gets_the_score_and_interval_the_analysis_gives(task, 
     ns = task_namespace(task, tmp_path, monkeypatch)
     for expected in EXPECTED:
         run = ns["score"].run(StandIn(expected.model))
+        if not expected.scores:
+            # Every call failed, as Grok 4.5's did (4.10), so there's no reply to score.
+            assert run.result is False, expected.model
+            continue
         # The same counts and the same seed give the same resamples, so it's exact.
         assert run.result == (expected.scores[task.score], expected.intervals[task.score]), expected.model
 
 
 @pytest.mark.parametrize("task", SCORING_TASKS, ids=IDS)
 def test_a_model_without_stored_replies_gets_false(task, tmp_path, monkeypatch, capsys):
-    # Such as .env's LLM_DEFAULT in a local run (D12). The creation run's
+    # Such as .env's LLM_DEFAULT in a local run (D12, D23). The creation run's
     # model, Gemini 3.8 Flash, has stored replies since 4.7 (D21).
     ns = task_namespace(task, tmp_path, monkeypatch)
-    assert ns["score"].run(StandIn("google/gemini-3-flash-preview")).result is False
+    assert ns["score"].run(StandIn("ibm/granite-4.0-h-small")).result is False
     assert "no stored replies" in capsys.readouterr().out
 
 

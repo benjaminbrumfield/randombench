@@ -44,7 +44,8 @@ def stored_answers(model: str) -> list[int | None]:
 def score(llm) -> tuple[float, float]:
     answers = stored_answers(llm.name)
     if not answers:
-        # A model RandomBench doesn't cover, such as .env's in a local run (D12).
+        # A model RandomBench doesn't cover, such as .env's in a local run
+        # (D12), or one whose every call failed, such as Grok 4.5 (4.10).
         print(f"{llm.name} has no stored replies: no score")
         return False
     stored = STORED[llm.name]
