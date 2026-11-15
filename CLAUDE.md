@@ -63,6 +63,14 @@ python -m randombench.extract results/<slug>
 # Score every model's stored draws, offline
 python -m randombench.score
 
+# Read a Benchmark's results at full precision, and the AI quota used. Both are
+# read-only. Benchmarks are created and edited only on the website (PLAN.md 4.9).
+# randombench-overall holds the headline, and randombench holds the nine
+# sub-scores as RandomBench Biases (PLAN.md D15).
+kaggle b leaderboard benjaminbrumfield/randombench-overall -s --format json
+kaggle b leaderboard benjaminbrumfield/randombench -s --format json
+kaggle b quota
+
 # Make the task public. This can't be undone from the CLI, so ask first.
 kaggle b t publish <slug>
 ```
