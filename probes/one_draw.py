@@ -2,7 +2,7 @@
 # Phase 2 probe (PLAN.md step 2.3). Spends 2 Model Proxy calls: one draw on
 # each local model, with seed=None and each provider's default reasoning (D1).
 # It shows whether a null seed is accepted, and where the raw reply, the
-# reasoning trace and the token usage land in the run file.
+# reasoning trace, and the token usage land in the run file.
 #
 # Local only: it imports randombench, which a push wouldn't upload. Run it
 # with the repo root on PYTHONPATH.

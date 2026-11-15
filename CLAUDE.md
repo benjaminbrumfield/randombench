@@ -2,12 +2,12 @@
 
 RandomBench measures how well LLMs generate random integers from 0 to 99 and scores their answers for biases, such as favoring primes or round numbers. It's built with [`kaggle_benchmarks`](https://github.com/Kaggle/kaggle-benchmarks) and runs on Kaggle Benchmarks.
 
-[PLAN.md](PLAN.md) holds the design, the decisions and the build steps. Read it before starting work, and record decisions there.
+[PLAN.md](PLAN.md) holds the design, the decisions, and the build steps. Read it before starting work, and record decisions there.
 
 ## How we work
 
 - **One step at a time.** Each PLAN.md step is one small commit. This is a learning project, so explain what each step shows, and raise open decisions instead of settling them quietly.
-- **Ask before any LLM call.** Local task runs, probe scripts and `kaggle b t run` all spend Model Proxy quota. Pushing `randombench-draws` doesn't: its creation run uses Gemini 3.8 Flash, which `MODELS` leaves out (PLAN.md D23). Adding Gemini 3.8 Flash back would make every push spend `N_DRAWS` calls. Say which models and how many calls, then wait for a yes. Read-only commands such as `kaggle b t models` are fine.
+- **Ask before any LLM call.** Local task runs, probe scripts, and `kaggle b t run` all spend Model Proxy quota. Pushing `randombench-draws` doesn't: its creation run uses Gemini 3.8 Flash, which `MODELS` leaves out (PLAN.md D23). Adding Gemini 3.8 Flash back would make every push spend `N_DRAWS` calls. Say which models and how many calls, then wait for a yes. Read-only commands such as `kaggle b t models` are fine.
 
 ## Writing tasks
 
@@ -16,7 +16,7 @@ The `kaggle-benchmarks` skill covers the general rules. On top of those:
 - Keep the slug in `@kbench.task(name=...)` stable, so a push makes a new version rather than a new task.
 - A push uploads only the task file, so everything the task needs on Kaggle (prompts, parsing) must be in it. A task never imports `randombench`. It holds a copy of each module it uses: put an empty `# --- begin randombench/<module>.py ---` / `# --- end randombench/<module>.py ---` pair where the module goes, then run `python -m randombench.sync` (PLAN.md D6).
 - The ten scoring tasks in `tasks/scores/` are generated (PLAN.md D20). Never edit them. Edit `tasks/templates/score.py`, or `SCORING_TASKS` in `randombench/build.py`, and run `python -m randombench.build`. The files embed the stored replies in `data/`, so rebuild after extracting new runs too.
-- Never write a comment that starts with `# %` or `# !`, or a bare `#%%`. When the CLI converts the file to a notebook, jupytext turns these into magics, shell commands or cell breaks. `# %choose <task variable>`, such as `# %choose collect`, is the one deliberate exception, and a test checks every task file.
+- Never write a comment that starts with `# %` or `# !`, or a bare `#%%`. When the CLI converts the file to a notebook, jupytext turns these into magics, shell commands, or cell breaks. `# %choose <task variable>`, such as `# %choose collect`, is the one deliberate exception, and a test checks every task file.
 - Pass `seed=None` to `llm.prompt()`. The default seed, 0, could make a model give the same answer every time.
 - Don't pass `schema=`. Every model replies in plain text, and our own parser reads it (PLAN.md, "Replies").
 

@@ -143,7 +143,7 @@ def test_the_same_answer_every_time():
 
 
 def test_gpt_5_4_nano_in_2_4():
-    # 42 five times, 37, 47 and 73 twice each, 57 once.
+    # 42 five times; 37, 47, and 73 twice each; 57 once.
     counts = counts_of([42] * 5 + [37, 47, 73] * 2 + [57])
     # 26 of the 132 pairs are equal, so it behaves like a fair pick among 5.1 values.
     assert float(uniformity(counts)) == pytest.approx(132 / 26 / 100)
@@ -251,7 +251,7 @@ def test_the_same_answer_every_time_has_no_spread():
 
 def test_four_times_the_answers_halve_the_interval():
     small, large = score_intervals(SOME_INVALID), score_intervals(SOME_INVALID * 4)
-    # The scores with any spread: nano never gave an edge, a multiple of 5 or a repeated digit.
+    # The scores with any spread: nano never gave an edge, a multiple of 5, or a repeated digit.
     for name in ["headline", "invalid_answers", "uniformity", "primes", "favorite", "last_digit"]:
         assert large[name] == pytest.approx(small[name] / 2, rel=0.1), name
 

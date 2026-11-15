@@ -1,10 +1,10 @@
 """Turn a model's raw reply into its number, or None if the reply is invalid
 (PLAN.md 2.2, D4).
 
-Lenient on formatting, strict on content. Markdown, LaTeX, punctuation and
+Lenient on formatting, strict on content. Markdown, LaTeX, punctuation, and
 words around the number are ignored. What counts are the numbers written in
 digits: they must all be the same integer, and it must be in 0..99. So
-"Sure! **47**." is 47, while "47 or 52", "3.5", "100" and "forty-seven" are
+"Sure! **47**." is 47, while "47 or 52", "3.5", "100", and "forty-seven" are
 invalid. A reply that restates the range ("from 0 to 99: 47") is invalid too,
 because it holds three integers. The prompt asked for the number only.
 

@@ -2,9 +2,9 @@
 
 Each score gets a task of its own (D2): the headline and the nine
 sub-scores. A push uploads one file, so each task needs a file, and the ten
-differ only in their score, title and description. For each one, this
+differ only in their score, title, and description. For each one, this
 writes tasks/scores/<slug>.py from tasks/templates/score.py. It fills in the
-template's placeholders, __SCORE__, __TITLE__, __DESCRIPTION__ and
+template's placeholders, __SCORE__, __TITLE__, __DESCRIPTION__, and
 __STORED__, which embeds every model's stored replies from data/ (D13). Then
 it copies in parsing.py and checks.py, as `python -m randombench.sync` does
 (D6).
@@ -14,7 +14,7 @@ by reading the file's syntax, and a title that's looked up or computed isn't
 found.
 
 A test fails when a file is out of date, so build again after changing the
-template, a shared module or data/.
+template, a shared module, or data/.
 
 Usage: python -m randombench.build [--data data]
 """
@@ -110,7 +110,7 @@ SCORING_TASKS = (
         "repeated_digits",
         "RandomBench Repeated Digits",
         "1 minus the gap between the share of the model's random integers from 0 to 99 that"
-        " repeat a digit (11, 22 and so on up to 99) and the 9% a perfect random generator gives.",
+        " repeat a digit (11, 22, and so on up to 99) and the 9% a perfect random generator gives.",
     ),
     ScoringTask(
         "last_digit",
@@ -170,7 +170,7 @@ def render(task: ScoringTask, stored: dict[str, dict]) -> str:
     for value in [task.score, task.title, task.description]:
         # Each goes inside a double-quoted string literal.
         if any(c in value for c in '"\\\n'):
-            raise BuildError(f"{value!r} can't hold a double quote, a backslash or a line break")
+            raise BuildError(f"{value!r} can't hold a double quote, a backslash, or a line break")
     text = (
         text.replace("__SCORE__", task.score)
         .replace("__TITLE__", task.title)

@@ -1,7 +1,7 @@
 """Score every model's stored draws (PLAN.md 3.4).
 
 Loads the records in data/ (2.5), merges each model's draws across its runs
-(D3), parses each reply (2.2) and scores the answers (3.3), each score with
+(D3), parses each reply (2.2), and scores the answers (3.3), each score with
 its 95% interval (4.5). A failed call has no reply, so it's left out and
 doesn't count as an invalid answer, but the table shows how many there were.
 This runs offline only. A scoring task does the same parse-then-score step
@@ -97,7 +97,7 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Score every model's stored draws.")
     parser.add_argument("--data", type=Path, default=Path("data"), help="where the records are")
     args = parser.parse_args(argv)
-    # The table's │, ± and × aren't in Windows' default encoding for a pipe.
+    # The table's │, ±, and × aren't in Windows' default encoding for a pipe.
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     results = score_draws(load_draws(args.data))

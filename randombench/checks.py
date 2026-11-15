@@ -10,7 +10,7 @@ estimate is built so that sampling noise nearly cancels on average. A
 model's expected score is then very close to its true score at any N, so a
 model with fewer valid answers barely gains or loses by chance (3.3). The
 repeat rate and the squared gap below are exactly unbiased. Turning them
-into scores, by a reciprocal, a square root and the cap at 1, adds a little
+into scores, by a reciprocal, a square root, and the cap at 1, adds a little
 bias, which shows mostly near a perfect score: a perfect generator's
 uniformity averages 0.959 at N = 120 and 0.991 at N = 624 (5.4c).
 
@@ -19,7 +19,7 @@ uniformity averages 0.959 at N = 120 and 0.991 at N = 624 (5.4c).
   often as the model does. The repeat rate, the chance that two answers are
   equal, has an exactly unbiased estimate: the share of pairs of answers
   that are equal.
-- Primes, round numbers, edges and repeated digits: 1 minus the gap
+- Primes, round numbers, edges, and repeated digits: 1 minus the gap
   between the model's share and the ideal share, which is the share of
   answers that would have to change. The gap is the square root of an
   unbiased estimate of its square.

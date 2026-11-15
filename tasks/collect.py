@@ -81,7 +81,7 @@ Style guide:
 - Ask for the number only, so the parser (2.2) sees plain replies.
 - Give no example number and mention no bias (7, primes, round numbers).
   Either could steer the answer.
-- Vary everything else: wording, tone, length and framing, so no score
+- Vary everything else: wording, tone, length, and framing, so no score
   depends on one phrasing.
 
 prompt_problems() checks the rules that code can check.
@@ -122,12 +122,12 @@ def prompt_problems(prompt: Prompt) -> list[str]:
     """Return one message for each rule below that the prompt breaks. An
     empty list means the prompt passes.
 
-    1. Name: lowercase letters, digits and hyphens, starting with a letter.
-       "plain" and "raffle-v2" pass; "Plain", "raffle_v2", "2nd" and "" fail.
+    1. Name: lowercase letters, digits, and hyphens, starting with a letter.
+       "plain" and "raffle-v2" pass; "Plain", "raffle_v2", "2nd", and "" fail.
     2. Numbers: every run of digits in the text is "0" or "99", and both
        appear. That's how the text states the range without giving an
        example number. "0 to 99" and "0–99, so 0 and 99 count" pass;
-       "1 to 100", "0 to 99, like 42", "0 to 99.5" and "a random number" fail.
+       "1 to 100", "0 to 99, like 42", "0 to 99.5", and "a random number" fail.
 
     A prompt that breaks both rules gets two messages, and one that breaks
     the numbers rule in several places still gets only one.
@@ -135,7 +135,7 @@ def prompt_problems(prompt: Prompt) -> list[str]:
     problems = []
     if not re.fullmatch(r"[a-z][a-z0-9-]*", prompt.name):
         problems.append(
-            f"name {prompt.name!r} must be lowercase letters, digits and hyphens,"
+            f"name {prompt.name!r} must be lowercase letters, digits, and hyphens,"
             " starting with a letter"
         )
     # Compared as strings, so "00" or "099" doesn't pass for 0 or 99.

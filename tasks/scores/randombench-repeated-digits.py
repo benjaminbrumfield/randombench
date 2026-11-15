@@ -435,10 +435,10 @@ STORED = {
 """Turn a model's raw reply into its number, or None if the reply is invalid
 (PLAN.md 2.2, D4).
 
-Lenient on formatting, strict on content. Markdown, LaTeX, punctuation and
+Lenient on formatting, strict on content. Markdown, LaTeX, punctuation, and
 words around the number are ignored. What counts are the numbers written in
 digits: they must all be the same integer, and it must be in 0..99. So
-"Sure! **47**." is 47, while "47 or 52", "3.5", "100" and "forty-seven" are
+"Sure! **47**." is 47, while "47 or 52", "3.5", "100", and "forty-seven" are
 invalid. A reply that restates the range ("from 0 to 99: 47") is invalid too,
 because it holds three integers. The prompt asked for the number only.
 
@@ -483,7 +483,7 @@ estimate is built so that sampling noise nearly cancels on average. A
 model's expected score is then very close to its true score at any N, so a
 model with fewer valid answers barely gains or loses by chance (3.3). The
 repeat rate and the squared gap below are exactly unbiased. Turning them
-into scores, by a reciprocal, a square root and the cap at 1, adds a little
+into scores, by a reciprocal, a square root, and the cap at 1, adds a little
 bias, which shows mostly near a perfect score: a perfect generator's
 uniformity averages 0.959 at N = 120 and 0.991 at N = 624 (5.4c).
 
@@ -492,7 +492,7 @@ uniformity averages 0.959 at N = 120 and 0.991 at N = 624 (5.4c).
   often as the model does. The repeat rate, the chance that two answers are
   equal, has an exactly unbiased estimate: the share of pairs of answers
   that are equal.
-- Primes, round numbers, edges and repeated digits: 1 minus the gap
+- Primes, round numbers, edges, and repeated digits: 1 minus the gap
   between the model's share and the ideal share, which is the share of
   answers that would have to change. The gap is the square root of an
   unbiased estimate of its square.
@@ -769,7 +769,7 @@ def stored_answers(model: str) -> list[int | None]:
     return [answer for reply, count in replies.items() for answer in [parse_reply(reply)] * count]
 
 
-@kbench.task(name="RandomBench Repeated Digits", description="1 minus the gap between the share of the model's random integers from 0 to 99 that repeat a digit (11, 22 and so on up to 99) and the 9% a perfect random generator gives.")
+@kbench.task(name="RandomBench Repeated Digits", description="1 minus the gap between the share of the model's random integers from 0 to 99 that repeat a digit (11, 22, and so on up to 99) and the 9% a perfect random generator gives.")
 def score(llm) -> tuple[float, float]:
     answers = stored_answers(llm.name)
     if not answers:

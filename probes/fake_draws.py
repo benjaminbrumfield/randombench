@@ -1,5 +1,5 @@
 # %%
-# Phase 1 probe (PLAN.md steps 1.1, 1.1b and 1.2). Throwaway: the "draws" come
+# Phase 1 probe (PLAN.md steps 1.1, 1.1b, and 1.2). Throwaway: the "draws" come
 # from Python's random module and no model is ever prompted, so running this
 # spends no Model Proxy quota. It shows how kaggle_benchmarks records a
 # 600-row sub-task evaluation, including rows that fail.

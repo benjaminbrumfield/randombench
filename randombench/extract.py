@@ -175,7 +175,7 @@ def _draw_record(sub: dict, path: RunPath, file_index: int | None) -> dict:
 
 
 def _read_conversation(sub: dict) -> tuple[str | None, str | None, dict | None]:
-    """Return a draw's prompt text, reply text and request.
+    """Return a draw's prompt text, reply text, and request.
 
     A draw is one conversation with at most one request, whose contents are
     the prompt and then the reply. A draw that failed may have no request,
