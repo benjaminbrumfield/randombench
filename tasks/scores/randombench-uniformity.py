@@ -61,10 +61,10 @@ STORED = {
         },
     },
     'anthropic/claude-opus-4-6@default': {
-        'runs': ['6851651'],
+        'runs': ['6851651', '6854370'],
         'failed': 0,
         'replies': {
-            '42': 24,
+            '42': 324,
         },
     },
     'anthropic/claude-opus-4-7@default': {
