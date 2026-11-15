@@ -6,9 +6,13 @@ shaped (..., 100), and then gives one score for each. A score is in [0, 1]:
 about 1 for a perfect generator, lower the more biased the model.
 
 Each score estimates a property of the model's true distribution, and the
-estimate is built so that sampling noise cancels on average. A model's
-expected score is then its true score at any N, so a model with fewer
-valid answers neither gains nor loses by chance (3.3):
+estimate is built so that sampling noise nearly cancels on average. A
+model's expected score is then very close to its true score at any N, so a
+model with fewer valid answers barely gains or loses by chance (3.3). The
+repeat rate and the squared gap below are exactly unbiased. Turning them
+into scores, by a reciprocal, a square root and the cap at 1, adds a little
+bias, which shows mostly near a perfect score: a perfect generator's
+uniformity averages 0.959 at N = 120 and 0.991 at N = 624 (5.4c).
 
 - Uniformity and last digit: the effective number of values K, as K/100
   (K/10 for the last digits). A fair pick among K values repeats itself as
@@ -118,10 +122,12 @@ def share_gap(counts, mask) -> np.ndarray:
 def favorite_share(counts) -> np.ndarray:
     """How often an answer equals the favorite of all the other answers.
 
-    This leave-one-out share estimates, without bias, the chance that a new
-    answer equals the model's current favorite: exactly 1/100 for a perfect
-    generator, where the plain top share is about 2.2% at N = 600. Ties among
-    the other answers' favorites count fractionally.
+    This leave-one-out share is an unbiased estimate of the chance that a new
+    answer equals the favorite of N − 1 others. For a model with a clear
+    favorite, that's very nearly the favorite's true share. For a perfect
+    generator it's exactly 1/100, where the plain top share is about 2.2% at
+    N = 600. When two favorites nearly tie, it depends a little on N. Ties
+    among the other answers' favorites count fractionally.
 
     Only a value that leads alone can match: take one of its answers away and
     it must still be among the most common. If its lead is exactly one, it

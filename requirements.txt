@@ -3,3 +3,6 @@ kaggle-benchmarks==0.6.2
 kaggle==2.2.5
 # kaggle-benchmarks 0.6.2 declares hishel>1.1.8 unbounded, but hishel 2.0 removed BaseFilter, which it imports.
 hishel[httpx]==1.4.0
+# Imported by randombench/checks.py and tasks/collect.py. kaggle-benchmarks installs them too.
+numpy==2.5.4
+pandas==3.1.1

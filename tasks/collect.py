@@ -26,7 +26,8 @@ import kaggle_benchmarks as kbench
 
 # A run's draws split evenly across the six prompts (D9). The full runs (4.3,
 # 4.8, 4.11) made 600, and the pilots (4.2, 4.7, 4.10) 24. In 4.11, the four
-# costliest models made 96, to stay well inside the daily quota.
+# costliest models made 96, to stay well inside the daily quota. 96 is what
+# version 7, the published version, holds, so set it before the next run.
 N_DRAWS = 96
 N_JOBS = 4
 

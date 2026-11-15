@@ -43,6 +43,8 @@ def test_valid_replies(reply, expected):
         "47 or 52",
         "Between 23 and 71, I pick 47.",
         "47/100",
+        # Grok 4.6's reply with a confidence score after it, twice (4.10, 4.11)
+        "47\n\\confidence{80}",
         # A restated range counts as more integers (D4)
         "Here's a random number from 0 to 99: 47",
         "0-99: 47",

@@ -11,6 +11,7 @@ Usage: python -m randombench.score [--data data]
 """
 
 import argparse
+import sys
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -59,7 +60,7 @@ def score_draws(draws: list[dict]) -> list[ModelScores]:
 # Column headings for the table, in score_answers' order.
 _HEADINGS = {
     "headline": "HEADLINE",
-    "invalid_answers": "invalid",
+    "invalid_answers": "valid",  # Valid Answers: the share of replies that are valid
     "uniformity": "uniform",
     "primes": "primes",
     "multiples_of_10": "×10",
@@ -96,15 +97,24 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Score every model's stored draws.")
     parser.add_argument("--data", type=Path, default=Path("data"), help="where the records are")
     args = parser.parse_args(argv)
+    # The table's │, ± and × aren't in Windows' default encoding for a pipe.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     results = score_draws(load_draws(args.data))
     if not results:
         print(f"no draws in {args.data}")
         return
-    print(format_table(results))
-    print("\nScores are in [0, 1], about 1 for a perfect generator. The headline is the valid"
-          " share times uniformity. N counts valid answers; the checks after 'invalid' score"
-          " only those, and they and the headline show — below 2. Each interval is 1.96 times"
-          " the score's spread over 10,000 bootstrap resamples of the model's replies.")
+    # A model whose calls all failed has nothing to score, like Grok 4.5 (D24).
+    answered = [r for r in results if r.failed < r.draws]
+    if answered:
+        print(format_table(answered))
+        print("\nScores are in [0, 1], about 1 for a perfect generator. The headline is the valid"
+              " share times uniformity. N counts valid answers; the checks after 'valid' score"
+              " only those, and they and the headline show — below 2. Each interval is 1.96 times"
+              " the score's spread over 10,000 bootstrap resamples of the model's replies.")
+    for r in results:
+        if r.failed == r.draws:
+            print(f"\nLeft out: {r.model}, whose {r.draws} calls all failed.")
 
 
 if __name__ == "__main__":

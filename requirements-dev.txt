@@ -1,3 +1,7 @@
 # Local-only tools, on top of requirements.txt. A push uploads only the task file, so Kaggle never installs these.
 -r requirements.txt
 pytest==9.2.0
+# Imported by the tests. kaggle and kaggle-benchmarks install them too.
+httpx==0.28.1
+jupytext==1.19.6
+python-slugify==9.1.3

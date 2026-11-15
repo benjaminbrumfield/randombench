@@ -18,7 +18,7 @@ COMPLETED = "BENCHMARK_TASK_RUN_STATE_COMPLETED"
 ERRORED = "BENCHMARK_TASK_RUN_STATE_ERRORED"
 
 
-# Run files shaped like the real ones from 2.4 (results/2.4-local).
+# Run files shaped like the real ones from 2.4, which weren't committed.
 
 
 def sub_run(draw_index, prompt=PLAIN, reply="47", error=None):

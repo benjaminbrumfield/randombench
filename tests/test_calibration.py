@@ -56,7 +56,7 @@ def test_favorite_share_averages_1_percent_for_a_perfect_generator(n):
     assert favorite_share(counts).mean() == pytest.approx(0.01, rel=0.05)
 
 
-# D7: a model's average score is its true score at any N
+# D7: from N = 300 up, a model's average score is within 0.02 of its true score
 
 
 @pytest.mark.parametrize("n", [300, 600, 1200])
@@ -90,9 +90,10 @@ def test_simulated_replies_have_the_share_of_invalid_ones():
 
 @pytest.mark.parametrize("name", ["llm-like", "two-tied"])
 def test_intervals_hold_the_true_score_about_95_percent_of_the_time(name):
-    # Models whose biases stand clear of the noise, as all six real models'
-    # do. Near a perfect score the cap at 1 skews the coverage either way,
-    # which PLAN.md 4.5a records. 300 runs measure coverage to about ±1.3 points.
+    # Models whose biases stand clear of the noise, as the real models' main
+    # biases do. Near a perfect score the cap at 1 skews the coverage either
+    # way, which PLAN.md 4.5a records, and a set a model rarely answers gets
+    # too narrow an interval (5.4b). 300 runs measure coverage to about ±1.3 points.
     held = coverage(MODELS[name], 624, trials=300, invalid=0.1, n_resamples=500, seed=5)
     for score, share in held.items():
         assert 0.88 <= share <= 0.99, score

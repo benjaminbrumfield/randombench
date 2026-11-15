@@ -60,6 +60,21 @@ def test_main_prints_a_row_per_model(tmp_path, capsys):
     assert "± 95% interval" in out
 
 
+def test_main_leaves_out_a_model_whose_calls_all_failed(tmp_path, capsys):
+    grok = "xai/grok-4.5-0708"
+    for model, records in [
+        (NANO, [draw(NANO, "1", i, str(i)) for i in range(10)]),
+        (grok, [draw(grok, "2", i, error="NotFoundError") for i in range(3)]),
+    ]:
+        run = tmp_path / model.split("/")[1] / "1.jsonl"
+        run.parent.mkdir()
+        run.write_text("".join(json.dumps(r) + "\n" for r in records), encoding="utf-8")
+    main(["--data", str(tmp_path)])
+    out = capsys.readouterr().out
+    assert out.count(NANO) == 2
+    assert out.count(grok) == 1 and "Left out: xai/grok-4.5-0708, whose 3 calls all failed." in out
+
+
 def test_main_says_so_when_there_are_no_draws(tmp_path, capsys):
     main(["--data", str(tmp_path)])
     assert "no draws" in capsys.readouterr().out
