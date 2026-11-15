@@ -24,9 +24,9 @@ import pandas as pd
 
 import kaggle_benchmarks as kbench
 
-# Gemini 3.8 Flash's pilot (4.7): 4 draws per prompt, as in 4.2. The full
-# runs (4.3) used 600, 100 per prompt.
-N_DRAWS = 24
+# The full runs' size (4.3, 4.8): 100 draws per prompt. The pilots (4.2, 4.7)
+# used 24.
+N_DRAWS = 600
 N_JOBS = 4
 
 # The llm.name of each model in PLAN.md's model table. Kaggle runs and local
