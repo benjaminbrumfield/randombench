@@ -124,7 +124,6 @@ def test_finding_whole_regions_go_unused():
         assert len({r.scores[check] for r in others}) == 1, check
 
 
-@BROKEN_BY_PILOTS
 def test_finding_a_share_check_can_pass_by_accident():
     assert MODELS[GPT_OSS].scores["primes"] > 0.95  # close to perfect
     top_three = [int(v) for v in np.argsort(COUNTS[GPT_OSS])[::-1][:3]]
