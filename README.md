@@ -35,7 +35,7 @@ Out in the world, the right distribution is rarely known, so the gap is hard to 
 
 ## How it works
 
-1. **Draw.** Each model is asked for a random integer from 0 to 99, hundreds of times. Every request is a fresh single-turn conversation with no tools, so the model never sees its earlier answers. The requests rotate through several wordings, each used equally often, from the terse `Random integer, 0–99 inclusive. Number only.` to a raffle draw ([randombench/prompts.py](randombench/prompts.py)). Every wording asks for a random integer, says both ends of the range count, and asks for the number only. None gives an example number or names a bias, since either could steer the answer. Temperature and reasoning are left at each provider's default.
+1. **Draw.** Each model is asked for a random integer from 0 to 99, many times over. Every request is a fresh single-turn conversation with no tools, so the model never sees its earlier answers. The requests rotate through several wordings, each used equally often, from the terse `Random integer, 0–99 inclusive. Number only.` to a raffle draw ([randombench/prompts.py](randombench/prompts.py)). Every wording asks for a random integer, says both ends of the range count, and asks for the number only. None gives an example number or names a bias, since either could steer the answer. Temperature and reasoning are left at each provider's default.
 2. **Parse.** Each reply is read leniently on formatting and strictly on content ([randombench/parsing.py](randombench/parsing.py)). `Sure! **47**.` counts as 47. `47 or 52`, `47.0`, `100` and `forty-seven` are invalid, and so is a reply that restates the range, since the prompt asked for the number only.
 3. **Score.** A model's valid answers, pooled across the wordings, are checked for the biases below ([randombench/checks.py](randombench/checks.py)). Every score is in [0, 1], about 1 for a perfect random source, and comes with a 95% interval from a bootstrap of the model's replies.
 
@@ -70,33 +70,32 @@ Even a perfect random source isn't perfectly even over a finite sample, so it sc
 
 The models so far:
 
-- GPT-5.4 nano
-- Gemini 3.1 Flash-Lite (preview)
-- Gemini 3.5 Flash-Lite
-- Gemini 3.8 Flash
-- Claude Haiku 4.5
-- Gemma 4 26B A4B
-- gpt-oss-120b
+- **Anthropic:** Claude Haiku 4.5, Claude Haiku 5.5, Claude Sonnet 4.6, Claude Sonnet 5, Claude Sonnet 5.5
+- **Google:** Gemini 2.5 Flash, Gemini 2.5 Pro, Gemini 3 Flash (preview), Gemini 3.1 Flash-Lite (preview), Gemini 3.1 Pro (preview), Gemini 3.5 Flash-Lite, Gemini 3.6 Flash, Gemini 3.8 Flash, Gemini 4 Argon, Gemma 4 26B A4B
+- **OpenAI:** GPT-5.4 mini, GPT-5.4 nano, GPT-5.6 Luna, GPT-5.6 Terra, GPT-6 Luna, gpt-oss-120b
+- **xAI:** Grok 4.6, Grok 4.7
 
 `python -m randombench.score` prints each model's current scores and their intervals from the stored replies. The Kaggle Benchmarks will show them too, once they're public.
 
 What stands out so far:
 
-- **No model comes close.** Even the best behaves like a fair pick among only a few numbers, where a perfect generator scores close to 1.
-- **42 dominates.** It's the favorite of almost every model, and Gemini 3.1 Flash-Lite has answered nothing else. Gemini 3.8 Flash is the exception, with 73.
-- **Whole regions go unused.** Every answer so far lies well inside the range. No model has answered a multiple of 5, a number in 0–9 or 90–99, or a repeated digit like 33, and nearly every answer ends in 2, 3 or 7. Avoiding a set entirely gives every model the same score on those four checks. Here the identical scores are the finding.
-- **A share check can pass by accident.** gpt-oss-120b scores close to perfect on primes. Its share of primes is near the ideal, but it comes from three favorites, 57, 42 and 73, of which only 73 is prime. Gemini 3.8 Flash answers with a prime far more often than any other model.
-- **Every reply is valid.** Every call so far has returned a reply, and every reply has been a bare number in 0–99, so every model scores perfectly on Valid Answers.
-- **Reasoning doesn't fix it.** Gemini 3.8 Flash, gpt-oss-120b and Gemma 4 reason by default, and spend many tokens on a two-digit answer that the other models give directly. They're still far from uniform.
+- **No model comes close.** Even the best behaves like a fair pick among a small fraction of the 100 values, where a perfect generator scores close to 1.
+- **Three numbers dominate.** Nearly every model's favorite is 42, 47 or 73, and between them they make up most of all the answers. Gemini 3.1 Flash-Lite has answered nothing but 42, and Claude Sonnet 5 and 5.5 answer 47 almost every time. gpt-oss-120b is the exception, with 57.
+- **Newer isn't more random.** Gemini 2.5 Flash, one of the oldest models here, is the most random so far, well ahead of every newer Gemini.
+- **Whole regions go unused.** Nearly every answer lies well inside the range, and nearly every answer ends in 2, 3 or 7. No model has answered a multiple of 10 or a number in 0–9. Only Gemini 2.5 Flash has answered in 90–99 or with a repeated digit like 77, and only it and Grok 4.6 with a multiple of 5. Avoiding a set entirely gives the other models the same score on those four checks. Here the identical scores are the finding.
+- **A share check can pass by accident.** gpt-oss-120b scores close to perfect on primes. Its share of primes is near the ideal, but it comes from three favorites, 57, 42 and 73, of which only 73 is prime. Models whose favorite is 47 or 73, both prime, answer with a prime far more often than chance. Claude Sonnet 5 and 5.5 almost always do.
+- **Nearly every reply is valid.** Almost every reply is a bare number in 0–99. The exception so far is Grok 4.6, which now and then adds a confidence score after its answer, as in `47\n\confidence{80}`. The second number makes the reply invalid.
+- **Reasoning doesn't fix it.** Many of the models reason by default. Gemini 2.5 Pro, Gemini 3.1 Pro and Grok 4.6 spend hundreds of tokens on a two-digit answer that others give directly. They're still far from uniform.
 
 ## Limitations
 
 - **Provider defaults.** Temperature and reasoning are whatever each provider uses by default, because kaggle-benchmarks doesn't send a temperature through Kaggle's Model Proxy. RandomBench measures each model as it's served, not at the temperature that would suit it best. In a small probe, Gemini 3.1 Flash-Lite still answered 42 every time when a temperature was sent explicitly. So its 42s don't come from a low default temperature, unless the proxy ignores the parameter.
-- **Pooled wordings.** A model's answers are scored together across the wordings. A model whose favorite changes with the wording therefore looks more random pooled than under any one wording. Most models so far have the same favorite under every wording, and pooling barely changes their scores. Gemini 3.8 Flash and gpt-oss-120b are the exceptions: their favorite changes with the wording, and pooling lifts their scores noticeably.
+- **Pooled wordings.** A model's answers are scored together across the wordings. A model whose favorite changes with the wording therefore looks more random pooled than under any one wording. Most models so far switch favorites with the wording, usually among 42, 47 and 73. For some, such as Claude Sonnet 4.6, GPT-5.4 mini and Gemini 3.8 Flash, pooling lifts the score noticeably.
 - **Lenient share checks.** A share check measures one share's distance from its ideal. Avoiding a set entirely costs only that set's ideal share, and a lopsided distribution can still hit the ideal by chance, as gpt-oss-120b's primes do. That's why the headline uses only validity and uniformity.
 - **Intervals.** A bootstrap resample holds only answers the model gave, so a model that has only ever given one answer gets an interval of zero width, which understates its uncertainty slightly. Near a perfect score the intervals are approximate, because scores are capped at 1. The Favorite Number score swings widely when two favorites nearly tie, as gpt-oss-120b's 57s and 42s do. Kaggle shows only each score's value, not its interval.
+- **Unequal samples.** Some models have far fewer answers so far than others. The costliest got smaller runs, and some runs lost calls that the quota refused. A failed call isn't counted as an invalid answer, but it leaves the model with fewer answers, so its interval is wider. On Kaggle, which shows no intervals, its ranking can look firmer than it is.
 - **One question, one number.** Each call asks for a single number in English, with no tools. Asking for many numbers at once, or letting a model run code, would measure something else.
-- **A snapshot of a few models.** They're mostly small, fast models, run through Kaggle's Model Proxy. Providers can update a model behind the same name, and larger models may behave differently.
+- **A snapshot.** The models are ones Kaggle's Model Proxy serves, from small, fast models to larger ones. Providers can update a model behind the same name, so a later run may not reproduce a score.
 
 ## Reproduce the scores
 
