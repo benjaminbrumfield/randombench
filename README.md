@@ -35,31 +35,95 @@ Out in the world, the right distribution is rarely known, so the gap is hard to 
 
 ## How it works
 
-1. Ask a model for a random integer from 0 to 99, about 600 times. Each request is a fresh conversation, so the model never sees its earlier answers.
-2. Check the answers for patterns a truly random source wouldn't show:
-   - too many primes, or too many round numbers like 10, 20 and 50
-   - a lean toward numbers ending in 7
-   - one favorite number that keeps coming up
-   - avoiding, or crowding, the ends of the range
-   - replies that aren't a valid number at all
-3. Turn each check into a score from 0 to 1, then combine them into one headline score.
+1. **Draw.** Each model is asked for a random integer from 0 to 99, hundreds of times. Every request is a fresh single-turn conversation with no tools, so the model never sees its earlier answers. The requests rotate through several wordings, each used equally often, from the terse `Random integer, 0–99 inclusive. Number only.` to a raffle draw ([randombench/prompts.py](randombench/prompts.py)). Every wording asks for a random integer, says both ends of the range count, and asks for the number only. None gives an example number or names a bias, since either could steer the answer. Temperature and reasoning are left at each provider's default.
+2. **Parse.** Each reply is read leniently on formatting and strictly on content ([randombench/parsing.py](randombench/parsing.py)). `Sure! **47**.` counts as 47. `47 or 52`, `47.0`, `100` and `forty-seven` are invalid, and so is a reply that restates the range, since the prompt asked for the number only.
+3. **Score.** A model's valid answers, pooled across the wordings, are checked for the biases below ([randombench/checks.py](randombench/checks.py)). Every score is in [0, 1], about 1 for a perfect random source, and comes with a 95% interval from a bootstrap of the model's replies.
 
-Even real randomness isn't perfectly even over 600 draws, so Python's random number generator is scored the same way. That shows what a perfect score looks like in practice.
+The draws are made on [Kaggle Benchmarks](https://www.kaggle.com/benchmarks) by one task, RandomBench Draws ([tasks/collect.py](tasks/collect.py)). Every raw reply is stored in [data/](data/), and each score is a Kaggle task of its own that recomputes the score from those stored replies. So a new check or a new parsing rule never means asking the models again.
 
-## Models
+## Scores
 
-The first runs will cover six models:
+The headline, **RandomBench Score**, is the share of replies that are valid times the uniformity score.
+
+Uniformity asks how many values the model is really choosing among. A model that repeats itself as often as a fair pick among K values would gets a uniformity of K/100. A perfect generator has K = 100, and a model that always gives the same answer has K = 1. So a uniformity of 0.05 means the model is as repetitive as a fair pick among 5 numbers.
+
+The other checks show which biases lie behind the headline. They don't count toward it. Uniformity already reflects every bias, and adding the checks in would count some biases twice: 7, 17, 37, 47, 67 and 97 are all primes that end in 7.
+
+| Score | What it measures | Ideal | Lowest |
+|---|---|---|---|
+| RandomBench Score | Valid Answers × Uniformity | 1 | 0 |
+| Valid Answers | The share of replies that are a single integer in 0–99 | 100% | 0 |
+| Uniformity | The effective number of values, as K/100 | K = 100 | 0.01, one value |
+| Primes | 1 − the gap from 25% primes (2, 3, 5, …, 97) | 25% | 0.25, all prime |
+| Multiples of 10 | 1 − the gap from 10% multiples of 10 | 10% | 0.10 |
+| Multiples of 5 | 1 − the gap from 20% multiples of 5 | 20% | 0.20 |
+| Favorite Number | 1 − the favorite's share above 1%, scaled so that 100% scores 0 | 1% | 0, one value |
+| Edges | 1 − the gap from 20% in 0–9 or 90–99 | 20% | 0.20 |
+| Repeated Digits | 1 − the gap from 9% in 11, 22, …, 99 | 9% | 0.09 |
+| Last Digit | The effective number of last digits, as K/10 | K = 10 | 0.10, one digit |
+
+A gap is the share of answers that would have to change to reach the ideal share. That makes the share checks lenient toward avoidance. A model that never picks a multiple of 10 is only 10% away from the ideal, so it scores 0.90. One that picks nothing else scores 0.10.
+
+Even a perfect random source isn't perfectly even over a finite sample, so it scores a little under 1. `python -m randombench.calibration <N>` simulates one and shows what it scores at N answers. Each score is estimated so that its sampling noise cancels on average. A model's expected score is then its true score at any number of answers, so models with different numbers of draws can be compared.
+
+## Results
+
+The models so far:
 
 - GPT-5.4 nano
 - Gemini 3.1 Flash-Lite (preview)
 - Gemini 3.5 Flash-Lite
+- Gemini 3.8 Flash
 - Claude Haiku 4.5
 - Gemma 4 26B A4B
 - gpt-oss-120b
 
+`python -m randombench.score` prints each model's current scores and their intervals from the stored replies. The Kaggle Benchmarks will show them too, once they're public.
+
+What stands out so far:
+
+- **No model comes close.** Even the best behaves like a fair pick among only a few numbers, where a perfect generator scores close to 1.
+- **42 dominates.** It's the favorite of almost every model, and Gemini 3.1 Flash-Lite has answered nothing else. Gemini 3.8 Flash is the exception, with 73.
+- **Whole regions go unused.** Every answer so far lies well inside the range. No model has answered a multiple of 5, a number in 0–9 or 90–99, or a repeated digit like 33, and nearly every answer ends in 2, 3 or 7. Avoiding a set entirely gives every model the same score on those four checks. Here the identical scores are the finding.
+- **A share check can pass by accident.** gpt-oss-120b scores close to perfect on primes. Its share of primes is near the ideal, but it comes from three favorites, 57, 42 and 73, of which only 73 is prime. Gemini 3.8 Flash answers with a prime far more often than any other model.
+- **Every reply is valid.** Every call so far has returned a reply, and every reply has been a bare number in 0–99, so every model scores perfectly on Valid Answers.
+- **Reasoning doesn't fix it.** Gemini 3.8 Flash, gpt-oss-120b and Gemma 4 reason by default, and spend many tokens on a two-digit answer that the other models give directly. They're still far from uniform.
+
+## Limitations
+
+- **Provider defaults.** Temperature and reasoning are whatever each provider uses by default, because kaggle-benchmarks doesn't send a temperature through Kaggle's Model Proxy. RandomBench measures each model as it's served, not at the temperature that would suit it best. In a small probe, Gemini 3.1 Flash-Lite still answered 42 every time when a temperature was sent explicitly. So its 42s don't come from a low default temperature, unless the proxy ignores the parameter.
+- **Pooled wordings.** A model's answers are scored together across the wordings. A model whose favorite changes with the wording therefore looks more random pooled than under any one wording. Most models so far have the same favorite under every wording, and pooling barely changes their scores. Gemini 3.8 Flash and gpt-oss-120b are the exceptions: their favorite changes with the wording, and pooling lifts their scores noticeably.
+- **Lenient share checks.** A share check measures one share's distance from its ideal. Avoiding a set entirely costs only that set's ideal share, and a lopsided distribution can still hit the ideal by chance, as gpt-oss-120b's primes do. That's why the headline uses only validity and uniformity.
+- **Intervals.** A bootstrap resample holds only answers the model gave, so a model that has only ever given one answer gets an interval of zero width, which understates its uncertainty slightly. Near a perfect score the intervals are approximate, because scores are capped at 1. The Favorite Number score swings widely when two favorites nearly tie, as gpt-oss-120b's 57s and 42s do. Kaggle shows only each score's value, not its interval.
+- **One question, one number.** Each call asks for a single number in English, with no tools. Asking for many numbers at once, or letting a model run code, would measure something else.
+- **A snapshot of a few models.** They're mostly small, fast models, run through Kaggle's Model Proxy. Providers can update a model behind the same name, and larger models may behave differently.
+
+## Reproduce the scores
+
+The scores are recomputed from the raw replies in [data/](data/), so this needs no API key and makes no model calls:
+
+```bash
+python -m venv .venv && source .venv/bin/activate   # Git Bash on Windows: .venv/Scripts/activate
+pip install -r requirements-dev.txt
+python -m pytest                      # the offline tests
+python -m randombench.score           # every model's scores and intervals
+python -m randombench.calibration <N> # what a perfect generator scores at N answers
+```
+
+On Windows, set `PYTHONUTF8=1` first. Making new draws needs a Kaggle account and spends Model Proxy quota. [CLAUDE.md](CLAUDE.md) lists every command.
+
+## Repository
+
+- [randombench/](randombench/): the prompts, the parser, the checks, and the scripts that extract, score and build.
+- [tasks/collect.py](tasks/collect.py): RandomBench Draws, the Kaggle task that makes the draws.
+- [tasks/scores/](tasks/scores/): the scoring tasks, one per score. `python -m randombench.build` generates them from [tasks/templates/score.py](tasks/templates/score.py), with the stored replies embedded.
+- [data/](data/): every raw reply, one JSON Lines file per Kaggle run.
+- [probes/](probes/): small experiments that tested the platform along the way.
+- [PLAN.md](PLAN.md): the design, every decision and the reasons for it, and what each step found.
+
 ## Status
 
-Early days. The design is drafted and the build is under way, but there are no results yet. [PLAN.md](PLAN.md) has the full design, the open questions and the step-by-step plan. This is going to be iterative and adaptive.
+The first results are in. Publishing the tasks and the Kaggle Benchmarks comes next, and they'll be linked here then. This is going to be iterative and adaptive.
 
 ## Built with
 
