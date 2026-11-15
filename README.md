@@ -36,7 +36,7 @@ Out in the world, the right distribution is rarely known, so the gap is hard to 
 
 ## How it works
 
-1. **Draw.** Each model is asked for a random integer from 0 to 99, many times over. Every request is a fresh single-turn conversation with no tools, so the model never sees its earlier answers. The requests rotate through several wordings, each used equally often, from the terse `Random integer, 0–99 inclusive. Number only.` to a raffle draw ([randombench/prompts.py](randombench/prompts.py)). Every wording asks for a random integer, says both ends of the range count, and asks for the number only. None gives an example number or names a bias, since either could steer the answer. Temperature and reasoning are left at each provider's default.
+1. **Draw.** Each model is asked for a random integer from 0 to 99, many times over. Every request is a fresh single-turn conversation with no system prompt and no tools, so the model never sees its earlier answers. The requests rotate through several wordings, each used equally often, from the terse `Random integer, 0–99 inclusive. Number only.` to a raffle draw ([randombench/prompts.py](randombench/prompts.py)). Every wording asks for a random integer, says both ends of the range count, and asks for the number only. None gives an example number or names a bias, since either could steer the answer. Claude Opus 5.5 drafted the wordings. It isn't one of the models scored, but other Claude models are. Temperature and reasoning are left at each provider's default.
 2. **Parse.** Each reply is read leniently on formatting and strictly on content ([randombench/parsing.py](randombench/parsing.py)). `Sure! **47**.` counts as 47. `47 or 52`, `47.0`, `100` and `forty-seven` are invalid, and so is a reply that restates the range, since the prompt asked for the number only.
 3. **Score.** A model's valid answers, pooled across the wordings, are checked for the biases below ([randombench/checks.py](randombench/checks.py)). Every score is in [0, 1], about 1 for a perfect random source, and comes with a 95% interval from a bootstrap of the model's replies.
 
@@ -46,7 +46,7 @@ The draws are made on [Kaggle Benchmarks](https://www.kaggle.com/benchmarks) by 
 
 The headline, **RandomBench Score**, is the share of replies that are valid times the uniformity score.
 
-Uniformity asks how many values the model is really choosing among. A model that repeats itself as often as a fair pick among K values would gets a uniformity of K/100. A perfect generator has K = 100, and a model that always gives the same answer has K = 1. So a uniformity of 0.05 means the model is as repetitive as a fair pick among 5 numbers.
+Uniformity asks how many values the model is really choosing among. If a model repeats itself as often as a fair pick among K values would, its uniformity is K/100. A perfect generator has K = 100, and a model that always gives the same answer has K = 1. So a uniformity of 0.05 means the model is as repetitive as a fair pick among 5 numbers. K is also known as the inverse Simpson index.
 
 The other checks show which biases lie behind the headline. They don't count toward it. Uniformity already reflects every bias, and adding the checks in would count some biases twice: 7, 17, 37, 47, 67 and 97 are all primes that end in 7.
 
@@ -67,7 +67,7 @@ Each score's name links to its scoring task on Kaggle.
 
 A gap is the share of answers that would have to change to reach the ideal share. That makes the share checks lenient toward avoidance. A model that never picks a multiple of 10 is only 10% away from the ideal, so it scores 0.90. One that picks nothing else scores 0.10.
 
-Even a perfect random source isn't perfectly even over a finite sample, so it scores a little under 1. `python -m randombench.calibration <N>` simulates one and shows what it scores at N answers. Each score is estimated so that its sampling noise cancels on average. A model's expected score is then its true score at any number of answers, so models with different numbers of draws can be compared.
+Even a perfect random source isn't perfectly even over a finite sample, so it scores a little under 1. On average its uniformity is 0.959 at 120 answers and 0.991 at 624. `python -m randombench.calibration <N>` simulates one and shows what it scores at N answers. Each score is estimated so that its sampling noise nearly cancels on average. A biased model's expected score is then very close to its true score at any number of answers, so models with different numbers of draws can be compared. Only near a perfect score does the estimate lean low, because scores are capped at 1.
 
 ## Results
 
@@ -88,21 +88,21 @@ What stands out so far:
 - **Whole regions go unused.** Nearly every answer lies well inside the range, and nearly every answer ends in 2, 3 or 7. No model has answered a multiple of 10 or a number in 0–9. Only Gemini 2.5 Flash has answered in 90–99 or with a repeated digit like 77, and only it and Grok 4.6 with a multiple of 5. Avoiding a set entirely gives the other models the same score on those four checks. Here the identical scores are the finding.
 - **A share check can pass by accident.** gpt-oss-120b scores close to perfect on primes. Its share of primes is near the ideal, but it comes from three favorites, 57, 42 and 73, of which only 73 is prime. Models whose favorite is 47 or 73, both prime, answer with a prime far more often than chance. Claude Sonnet 5 and 5.5 almost always do.
 - **Nearly every reply is valid.** Almost every reply is a bare number in 0–99. The exception so far is Grok 4.6, which now and then adds a confidence score after its answer, as in `47\n\confidence{80}`. The second number makes the reply invalid.
-- **Reasoning doesn't fix it.** Many of the models reason by default. Gemini 2.5 Pro, Gemini 3.1 Pro and Grok 4.6 spend hundreds of tokens on a two-digit answer that others give directly. They're still far from uniform.
+- **Reasoning helps a little, but doesn't fix it.** Many of the models reason by default. Gemini 2.5 Pro, Gemini 3.1 Pro and Grok 4.6 spend hundreds of tokens on a two-digit answer that others give directly. The models that reason tend to score higher, and the least random models all answer in a few tokens. It isn't a clean comparison, since reasoning goes with provider: every Claude model here answers in a few tokens. And the models that reason are still far from uniform.
 
 ## Limitations
 
-- **Provider defaults.** Temperature and reasoning are whatever each provider uses by default, because kaggle-benchmarks doesn't send a temperature through Kaggle's Model Proxy. RandomBench measures each model as it's served, not at the temperature that would suit it best. In a small probe, Gemini 3.1 Flash-Lite still answered 42 every time when a temperature was sent explicitly. So its 42s don't come from a low default temperature, unless the proxy ignores the parameter.
-- **Pooled wordings.** A model's answers are scored together across the wordings. A model whose favorite changes with the wording therefore looks more random pooled than under any one wording. Most models so far switch favorites with the wording, usually among 42, 47 and 73. For some, such as Claude Sonnet 4.6, GPT-5.4 mini and Gemini 3.8 Flash, pooling lifts the score noticeably.
+- **Provider defaults.** Temperature and reasoning are whatever each provider uses by default, because kaggle-benchmarks doesn't send a temperature through Kaggle's Model Proxy. RandomBench measures each model as it's served, not at the temperature that would suit it best. In a probe of 12 draws, Gemini 3.1 Flash-Lite still answered 42 every time when a temperature of 1.0 was sent explicitly. That suggests its 42s don't come from a low default temperature, though 12 draws can't rule out a small spread, and the proxy might ignore the parameter.
+- **Pooled wordings.** A model's answers are scored together across the wordings. A model whose favorite changes with the wording therefore looks more random pooled than under a typical wording. Most models so far switch favorites with the wording, usually among 42, 47 and 73. Pooling lifts GPT-5.6 Terra the most, by several places in the ranking: its favorite is 42, 57 or 73, depending on the wording. It lifts Claude Sonnet 4.6 noticeably too.
 - **Lenient share checks.** A share check measures one share's distance from its ideal. Avoiding a set entirely costs only that set's ideal share, and a lopsided distribution can still hit the ideal by chance, as gpt-oss-120b's primes do. That's why the headline uses only validity and uniformity.
-- **Intervals.** A bootstrap resample holds only answers the model gave, so a model that has only ever given one answer gets an interval of zero width, which understates its uncertainty slightly. Near a perfect score the intervals are approximate, because scores are capped at 1. The Favorite Number score swings widely when two favorites nearly tie, as gpt-oss-120b's 57s and 42s do. Kaggle shows only each score's value, not its interval.
+- **Intervals.** A bootstrap resample holds only answers the model gave. So a share check on a set the model never answered gets an interval of zero width, as Multiples of 10 and Edges do for nearly every model, and so does every score of a model that has only ever given one answer. Both understate the uncertainty: a model that gave no multiple of 10 in a few hundred draws could still give one now and then. A set answered only once or twice gets an interval that's too narrow for the same reason. Near a perfect score the intervals are approximate, because scores are capped at 1. The Favorite Number score swings widely when two favorites nearly tie, as Grok 4.7's 73s and 42s do. Kaggle shows only each score's value, not its interval.
 - **Unequal samples.** Some models have far fewer answers so far than others. The costliest got smaller runs, and some runs lost calls that the quota refused. A failed call isn't counted as an invalid answer, but it leaves the model with fewer answers, so its interval is wider. On Kaggle, which shows no intervals, its ranking can look firmer than it is.
 - **One question, one number.** Each call asks for a single number in English, with no tools. Asking for many numbers at once, or letting a model run code, would measure something else.
 - **A snapshot.** The models are ones Kaggle's Model Proxy serves, from small, fast models to larger ones. Providers can update a model behind the same name, so a later run may not reproduce a score.
 
 ## Reproduce the scores
 
-The scores are recomputed from the raw replies in [data/](data/), so this needs no API key and makes no model calls:
+The scores are recomputed from the raw replies in [data/](data/), so this needs no API key and makes no model calls. It needs Python 3.11 or later:
 
 ```bash
 python -m venv .venv && source .venv/bin/activate   # Git Bash on Windows: .venv/Scripts/activate
@@ -119,7 +119,7 @@ On Windows, set `PYTHONUTF8=1` first. Making new draws needs a Kaggle account an
 - [randombench/](randombench/): the prompts, the parser, the checks, and the scripts that extract, score and build.
 - [tasks/collect.py](tasks/collect.py): RandomBench Draws, the Kaggle task that makes the draws.
 - [tasks/scores/](tasks/scores/): the scoring tasks, one per score. `python -m randombench.build` generates them from [tasks/templates/score.py](tasks/templates/score.py), with the stored replies embedded.
-- [data/](data/): every raw reply, one JSON Lines file per Kaggle run.
+- [data/](data/): every raw reply, one JSON Lines file per Kaggle run. `data/grok-4.5-0708/` is a pilot whose calls all failed, because Kaggle's Model Proxy doesn't serve Grok 4.5. It's kept as the record and isn't scored.
 - [probes/](probes/): small experiments that tested the platform along the way.
 - [PLAN.md](PLAN.md): the design, every decision and the reasons for it, and what each step found.
 
@@ -131,7 +131,7 @@ RandomBench is public on Kaggle:
 - [RandomBench Biases](https://www.kaggle.com/benchmarks/benjaminbrumfield/randombench), the other nine scores.
 - [RandomBench Draws](https://www.kaggle.com/benchmarks/tasks/benjaminbrumfield/randombench-draws), the task that makes the draws. Each scoring task is linked from the table under [Scores](#scores).
 
-This is going to be iterative and adaptive.
+RandomBench is a work in progress. Models, draws and checks get added over time, and [PLAN.md](PLAN.md) records each step.
 
 ## Built with
 
