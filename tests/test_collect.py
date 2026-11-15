@@ -7,13 +7,17 @@ kbench.llm and hold the %choose magic.
 
 import runpy
 import shutil
+import threading
 from collections import Counter
 from pathlib import Path
+from types import SimpleNamespace
 
+import httpx
 import pytest
 
 import kaggle_benchmarks as kbench
 from kaggle_benchmarks.actors.llms import LLMResponse
+from kaggle_benchmarks.kaggle.model_proxy import ModelProxy
 
 from randombench.extract import read_run
 
@@ -80,3 +84,48 @@ def test_the_run_files_extract(task, tmp_path):
     # The balanced schedule: every prompt equally often (D9).
     per_prompt = Counter(r["prompt_id"] for r in records)
     assert len(per_prompt) == 6 and len(set(per_prompt.values())) == 1
+
+
+# What the pilot reads in the run's log (4.1)
+
+
+def test_every_run_prints_the_servers_facts(task, capsys):
+    # Even the creation run, which prompts nothing, so a push alone shows them.
+    task["collect"].run(StandIn("google/gemini-3.8-flash"))
+    out = capsys.readouterr().out
+    assert "kaggle_benchmarks 0.6.2" in out
+    assert "KAGGLE_AGENT_LLM_REASONING_EFFORT=" in out
+    assert "no draws" in out
+
+
+def test_a_stand_in_isnt_counted(task, capsys):
+    task["collect"].run(StandIn("openai/gpt-5.4-nano-2026-03-17"))
+    assert "HTTP requests: not counted" in capsys.readouterr().out
+
+
+def fake_model(client):
+    """Something shaped like a ModelProxy: llm.client._client is its httpx client."""
+    return SimpleNamespace(client=SimpleNamespace(_client=client))
+
+
+def test_the_request_counter_sees_every_request_from_every_thread(task):
+    client = httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200)))
+    with task["RequestCounter"](fake_model(client)) as requests:
+        assert requests.counting
+        threads = [threading.Thread(target=lambda: [client.get("https://proxy.test/") for _ in range(5)])
+                   for _ in range(4)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+    assert requests.count == 20
+    # The hook comes off afterwards, so a later run doesn't count twice.
+    client.get("https://proxy.test/")
+    assert requests.count == 20
+    assert client.event_hooks["request"] == []
+
+
+def test_the_request_counter_finds_a_model_proxys_hooks(task):
+    # A real ModelProxy, as kbench.llm is on Kaggle. Building one sends nothing.
+    llm = ModelProxy(model="openai/gpt-5.4-nano-2026-03-17", api_key="unused", base_url="http://127.0.0.1:9", api="openai")
+    assert task["RequestCounter"](llm).counting

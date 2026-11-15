@@ -271,18 +271,25 @@ These steps use only stored draws and simulated random numbers. No quota. The sc
 
 ### Phase 4: real runs on Kaggle
 
-- [ ] **4.1 Ready the collection task for Kaggle.** Make [tasks/collect.py](tasks/collect.py) pushable, and give it what the pilot needs. Writing it spends no quota. A local test run, if any, waits for a go-ahead. Settles D10, D12 and D14.
+- [x] **4.1 Ready the collection task for Kaggle.** Make [tasks/collect.py](tasks/collect.py) pushable, and give it what the pilot needs. Writing it spends no quota. A local test run, if any, waits for a go-ahead. Settles D10, D12 and D14.
   - Name the task (D10), and stop its creation run from prompting a model it shouldn't (D12).
   - Replace the last cell's two named local models with `collect.run(kbench.llm)`, and add `# %choose <slug>` (1.2).
   - Record what the pilot has to learn: the server's `kaggle_benchmarks` version, the value of `KAGGLE_AGENT_LLM_REASONING_EFFORT`, and the number of HTTP requests each draw makes (2.4b's request hook).
   - Set the pilot's size. The balanced schedule needs a multiple of 6 draws per model and raises an error otherwise, so 4.2's original 20 can't work.
 
-  *Done so far:* D10, D12 and D14 are settled, and [tasks/collect.py](tasks/collect.py) has its name, its allowlist, `collect.run(kbench.llm)` and `# %choose collect`. [tests/test_collect.py](tests/test_collect.py) runs the task file's own code with stand-in models that answer offline. A stand-in named `google/gemini-3.8-flash`, the creation run's model, is never prompted and gets 0. One named like nano gets every draw, and `extract.py` reads the resulting run files, checking every prompt text against `prompts.py`. Still to do: the pilot's checks and its size.
-- [ ] **4.2 Pilot.** **Quota: 18 or 24 draws on each of the six models, 108 or 144 calls in all, as 4.1 sets.**
+  *Found:*
+  - [tasks/collect.py](tasks/collect.py) is named RandomBench Draws (D10). It makes draws only for the six models in `MODELS` (D12) and returns how many got a reply (D14). Its last cells run `collect.run(kbench.llm)` and `# %choose collect`.
+  - [tests/test_collect.py](tests/test_collect.py) runs the task file's own code with stand-in models that answer offline. A stand-in named `google/gemini-3.8-flash`, the creation run's model, is never prompted and returns 0. One named like nano gets every draw, and `extract.py` reads the run files it leaves, checking every prompt text against `prompts.py`. So the task's output and the extractor are known to agree before any server run.
+  - Every run prints the server's `kaggle_benchmarks` version and the value of `KAGGLE_AGENT_LLM_REASONING_EFFORT`, the creation run included. So the pilot's push answers both before any model is prompted, in `kaggle b t log randombench-draws`.
+  - A listed model's run counts its HTTP requests with an httpx hook on the model's client and prints the count against its draws, so retries show. The hook reaches a private attribute (`llm.client._client`). A test builds a real `ModelProxy`, which sends nothing, and finds the hook list there. If the server's library differs, the run prints that it couldn't count, and still runs. A test also sends 20 requests from 4 threads through a mock transport and counts all 20.
+  - The pilot draws 24 per model, 4 per prompt: 144 calls in all. The full runs need `N_DRAWS = 600`, so 4.3 pushes a new version.
+- [ ] **4.2 Pilot.** **Quota: 144 calls**, 24 on each of the six models, plus any retries. First push `tasks/collect.py` as `randombench-draws`. Its creation run prompts no model (D12), and its log shows the server's library version and reasoning-effort variable. If those look wrong, stop before any `-m` run. Then run it with `-m` for each of the six models.
 
-  *Learn:* whether all six accept a null seed, how many tokens a draw costs (reasoning models may think at length), and the invalid-answer rates. This is the go/no-go for full runs. Also print two things that 1.3's environment dump left open:
+  *Learn:* whether all six accept a null seed, how many tokens a draw costs (reasoning models may think at length), and the invalid-answer rates. This is the go/no-go for full runs. Also check what every run prints in its log (4.1):
   - **The server's `kaggle_benchmarks` version.** Local runs use 0.6.2, and the run-file shapes that `extract.py` expects come from it.
   - **The value of `KAGGLE_AGENT_LLM_REASONING_EFFORT`.** The server sets it, but 0.6.2 never reads it: `kbench.llm` is built from `LLM_DEFAULT` with no reasoning setting (`kaggle_benchmarks/kaggle/models.py`). If the server's version does read it, server runs wouldn't use the provider's default reasoning (D1).
+  - **Retries.** Each run prints its HTTP requests against its draws.
+  - **Each model's `llm.name`.** A run whose model isn't in `MODELS` prints that it made no draws, so an id that's wrong for one of the five unconfirmed models shows at no cost.
 
   The kaggle-cli skill also contradicts itself on local reach. It says the Model Proxy key "works for all models, not just those listed" in `LLMS_AVAILABLE`, and elsewhere that local runs are limited to that list. One local call to Claude Haiku 4.5 would tell. If the key works, the pilot could run locally, with no creation run (D12).
 - [ ] **4.3 Full runs.** **Quota: 3,600 calls**, 600 on each of the six models. Download, extract and commit the data.

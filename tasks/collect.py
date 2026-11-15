@@ -10,13 +10,21 @@
 # runs the task once on the server's default model, which isn't one of them,
 # so that run prompts nothing and returns 0. So does a local run, whose
 # kbench.llm is LLM_DEFAULT from .env, unless LLM_DEFAULT names one of the six.
+#
+# Each run prints what the pilot has to learn about the server (4.1), and a
+# listed model's run also prints how many HTTP requests its draws made. The
+# printed lines are in `kaggle b t log`.
+import importlib.metadata
+import os
 import random
+import threading
 
 import pandas as pd
 
 import kaggle_benchmarks as kbench
 
-N_DRAWS = 12
+# The pilot's size (4.2): 4 draws per prompt. The full runs (4.3) use 600.
+N_DRAWS = 24
 N_JOBS = 4
 
 # The llm.name of each model in PLAN.md's model table. Kaggle runs and local
@@ -180,6 +188,52 @@ def balanced_schedule(n_draws: int) -> list[str]:
 
 
 # %%
+def report_environment() -> None:
+    """Print the server facts that 1.3's environment dump left open (PLAN.md 4.1)."""
+    # Local runs use 0.6.2, and extract.py expects its run-file shapes.
+    print(f"kaggle_benchmarks {importlib.metadata.version('kaggle_benchmarks')}")
+    # 0.6.2 never reads this variable. If the server's version does, its runs
+    # may not use the provider's default reasoning (D1).
+    effort = os.environ.get("KAGGLE_AGENT_LLM_REASONING_EFFORT")
+    print(f"KAGGLE_AGENT_LLM_REASONING_EFFORT={effort!r}")
+
+
+class RequestCounter:
+    """Counts the HTTP requests a model's client sends, retries included.
+
+    The OpenAI client retries a failed request on its own, and a retry leaves
+    no trace in the run file (2.4). An httpx request hook sees every request
+    (2.4b). It reaches into a private attribute, so a model without one, such
+    as a stand-in or a client from a different library version, isn't counted.
+    """
+
+    def __init__(self, llm):
+        self.count = 0
+        self._lock = threading.Lock()
+        try:
+            self._hooks = llm.client._client.event_hooks["request"]
+        except (AttributeError, KeyError, TypeError):
+            self._hooks = None
+
+    @property
+    def counting(self) -> bool:
+        return self._hooks is not None
+
+    def _hook(self, request) -> None:
+        with self._lock:  # draws run in N_JOBS threads
+            self.count += 1
+
+    def __enter__(self):
+        if self.counting:
+            self._hooks.append(self._hook)
+        return self
+
+    def __exit__(self, *exc) -> None:
+        if self.counting:
+            self._hooks.remove(self._hook)
+
+
+# %%
 @kbench.task(name="draw", store_task=False)
 def draw(llm, draw_index: int, prompt_id: str) -> dict:
     # A sub-run record doesn't hold its parameters, so the result carries them
@@ -201,16 +255,25 @@ def draw(llm, draw_index: int, prompt_id: str) -> dict:
     description="Asks the model for a random integer from 0 to 99, many times, each in a fresh conversation, and stores every raw reply.",
 )
 def collect(llm) -> int:
+    # Printed in every run, the creation run included, so a push alone shows
+    # the server's facts without prompting a model.
+    report_environment()
     if llm.name not in MODELS:
         # A push's creation run, or a model RandomBench doesn't cover (D12).
+        print(f"{llm.name} isn't one of RandomBench's models: no draws")
         return 0
     schedule = balanced_schedule(N_DRAWS)
-    draws = draw.evaluate(
-        llm=[llm],
-        evaluation_data=pd.DataFrame({"draw_index": range(N_DRAWS), "prompt_id": schedule}),
-        n_jobs=N_JOBS,
-        on_failure="continue",
-    )
+    with RequestCounter(llm) as requests:
+        draws = draw.evaluate(
+            llm=[llm],
+            evaluation_data=pd.DataFrame({"draw_index": range(N_DRAWS), "prompt_id": schedule}),
+            n_jobs=N_JOBS,
+            on_failure="continue",
+        )
+    if requests.counting:
+        print(f"HTTP requests: {requests.count} for {N_DRAWS} draws, so {requests.count - N_DRAWS} were retries")
+    else:
+        print("HTTP requests: not counted, because the model's client has no httpx hooks")
     # The number of draws with a reply (D14).
     return sum("reply" in run.result for run in draws.completed_runs)
 
