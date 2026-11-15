@@ -15,6 +15,7 @@ The `kaggle-benchmarks` skill covers the general rules. On top of those:
 
 - Keep the slug in `@kbench.task(name=...)` stable, so a push makes a new version rather than a new task.
 - A push uploads only the task file, so everything the task needs on Kaggle (prompts, parsing) must be in it. A task never imports `randombench`. It holds a copy of each module it uses: put an empty `# --- begin randombench/<module>.py ---` / `# --- end randombench/<module>.py ---` pair where the module goes, then run `python -m randombench.sync` (PLAN.md D6).
+- The ten scoring tasks in `tasks/scores/` are generated (PLAN.md D20). Never edit them. Edit `tasks/templates/score.py`, or `SCORING_TASKS` in `randombench/build.py`, and run `python -m randombench.build`. The files embed the stored replies in `data/`, so rebuild after extracting new runs too.
 - Never write a comment that starts with `# %` or `# !`, or a bare `#%%`. When the CLI converts the file to a notebook, jupytext turns these into magics, shell commands or cell breaks. `# %choose <slug>` is the one deliberate exception, and a test checks every task file.
 - Pass `seed=None` to `llm.prompt()`. The default seed, 0, could make a model give the same answer every time.
 - Don't pass `schema=`. Every model replies in plain text, and our own parser reads it (PLAN.md, "Replies").
@@ -33,12 +34,18 @@ python -m pytest
 set -a && source .env && set +a && PYTHONUTF8=1 python <task>.py
 
 # tasks/collect.py prompts only the six models in its MODELS list, and .env's
-# LLM_DEFAULT isn't one of them, so a plain local run makes no calls. To draw
-# from one, override LLM_DEFAULT after sourcing .env (ask first: it spends quota).
-set -a && source .env && set +a && LLM_DEFAULT=openai/gpt-5.4-nano-2026-03-17 PYTHONUTF8=1 python tasks/collect.py
+# LLM_DEFAULT isn't one of them, so a plain local run makes no calls.
+# kaggle_benchmarks loads .env by itself on import, over the shell's own
+# variables, so LLM_DEFAULT can't be overridden on the command line (PLAN.md
+# 4.5b). To draw from one of the six locally, change LLM_DEFAULT in .env
+# (ask first: it spends quota).
 
 # Refresh the copies of shared modules in task files (tests fail if stale)
 python -m randombench.sync
+
+# Rebuild the scoring task files, tasks/scores/<slug>.py, from the template
+# and data/ (tests fail if stale). They never prompt a model.
+python -m randombench.build
 
 # Push, then run on Kaggle. Ask first: the run calls models.
 kaggle b t push <slug> -f <task>.py --wait

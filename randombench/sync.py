@@ -92,7 +92,10 @@ def sync(task_file: Path) -> bool:
 
 
 def task_files() -> list[Path]:
-    return sorted((ROOT / "tasks").glob("*.py"))
+    """The pushable task files: tasks/*.py and the scoring tasks in tasks/scores/ (4.5b).
+    The template in tasks/templates/ isn't one."""
+    tasks = ROOT / "tasks"
+    return sorted([*tasks.glob("*.py"), *(tasks / "scores").glob("*.py")])
 
 
 def main(argv: list[str] | None = None) -> None:
