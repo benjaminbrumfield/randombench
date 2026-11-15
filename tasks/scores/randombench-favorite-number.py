@@ -52,12 +52,12 @@ STORED = {
         },
     },
     'anthropic/claude-opus-4-5@20251101': {
-        'runs': ['6851587'],
+        'runs': ['6851587', '6854128'],
         'failed': 0,
         'replies': {
-            '47': 19,
-            '73': 4,
-            '42': 1,
+            '47': 217,
+            '73': 57,
+            '42': 50,
         },
     },
     'anthropic/claude-opus-4-6@default': {
