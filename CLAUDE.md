@@ -47,7 +47,11 @@ set -a && source .env && set +a && PYTHONUTF8=1 python <task>.py
 python -m randombench.sync
 
 # Rebuild the scoring task files, tasks/scores/<slug>.py, from the template
-# and data/ (tests fail if stale). They never prompt a model.
+# and data/ (tests fail if stale). They never prompt a model. This also writes
+# the leaderboard page, docs/index.html, which GitHub Pages serves from main
+# (PLAN.md 5.3, D26). Never edit the page: edit randombench/page.html, or
+# randombench/page.py for its numbers and model names. A push to main with a
+# new page publishes it.
 python -m randombench.build
 
 # Push, then run on Kaggle. Ask first: the run calls models. A push's creation

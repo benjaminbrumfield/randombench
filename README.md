@@ -78,7 +78,7 @@ The models so far:
 - **OpenAI:** GPT-5.4 mini, GPT-5.4 nano, GPT-5.6 Luna, GPT-5.6 Terra, GPT-6 Luna, gpt-oss-120b
 - **xAI:** Grok 4.6, Grok 4.7
 
-`python -m randombench.score` prints each model's current scores and their intervals from the stored replies. Two Kaggle Benchmarks show the same scores, without the intervals: [RandomBench](https://www.kaggle.com/benchmarks/benjaminbrumfield/randombench-overall) ranks the models by RandomBench Score, and [RandomBench Biases](https://www.kaggle.com/benchmarks/benjaminbrumfield/randombench) shows the other nine.
+`python -m randombench.score` prints each model's current scores and their intervals from the stored replies. Two Kaggle Benchmarks show the same scores, without the intervals: [RandomBench](https://www.kaggle.com/benchmarks/benjaminbrumfield/randombench-overall) ranks the models by RandomBench Score, and [RandomBench Biases](https://www.kaggle.com/benchmarks/benjaminbrumfield/randombench) shows the other nine. The [leaderboard page](https://benjaminbrumfield.github.io/randombench/) shows all ten with their intervals, one model per row.
 
 What stands out so far:
 
@@ -119,6 +119,7 @@ On Windows, set `PYTHONUTF8=1` first. Making new draws needs a Kaggle account an
 - [randombench/](randombench/): the prompts, the parser, the checks, and the scripts that extract, score, and build.
 - [tasks/collect.py](tasks/collect.py): RandomBench Draws, the Kaggle task that makes the draws.
 - [tasks/scores/](tasks/scores/): the scoring tasks, one per score. `python -m randombench.build` generates them from [tasks/templates/score.py](tasks/templates/score.py), with the stored replies embedded.
+- [docs/index.html](docs/index.html): the leaderboard page. `python -m randombench.build` generates it from [randombench/page.html](randombench/page.html) and the stored replies, and GitHub Pages serves it.
 - [data/](data/): every raw reply, one JSON Lines file per Kaggle run. `data/grok-4.5-0708/` is a pilot whose calls all failed, because Kaggle's Model Proxy doesn't serve Grok 4.5. It's kept as the record and isn't scored.
 - [probes/](probes/): small experiments that tested the platform along the way.
 - [PLAN.md](PLAN.md): the design, every decision and the reasons for it, and what each step found.
@@ -130,6 +131,8 @@ RandomBench is public on Kaggle:
 - [RandomBench](https://www.kaggle.com/benchmarks/benjaminbrumfield/randombench-overall), the models ranked by RandomBench Score.
 - [RandomBench Biases](https://www.kaggle.com/benchmarks/benjaminbrumfield/randombench), the other nine scores.
 - [RandomBench Draws](https://www.kaggle.com/benchmarks/tasks/benjaminbrumfield/randombench-draws), the task that makes the draws. Each scoring task is linked from the table under [Scores](#scores).
+
+The [leaderboard page](https://benjaminbrumfield.github.io/randombench/) shows the same scores with their 95% intervals, one model per row, which the Benchmarks can't show. It's rebuilt from [data/](data/) whenever new draws are stored.
 
 RandomBench is a work in progress. Models, draws, and checks get added over time, and [PLAN.md](PLAN.md) records each step.
 

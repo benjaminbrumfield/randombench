@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>RandomBench Leaderboard</title>
+<meta name="description" content="How well can language models pick numbers at random? RandomBench's scores, with 95% intervals.">
+<link rel="icon" href="data:,">
+<style>
+/* Written by `python -m randombench.build` from randombench/page.html (PLAN.md 5.3).
+
+   Layout: one column. Prose holds to about 65 characters, and the two tables take the full width,
+   up to 1080px. Rows are separated by hairline rules, never boxed. One typeface, one accent. */
+:root {
+  --bg: #fbfcfc;
+  --fg: #152226;
+  --soft: #45545a;      /* the ± figures: lighter than the score, still readable on a shaded cell */
+  --muted: #5d6c71;     /* rank numbers, providers, captions */
+  --rule: #dbe2e4;
+  --accent: #0d7282;
+  --shade-max: 30%;     /* the strongest a Biases cell is shaded */
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --step--1: 0.8125rem; /* 13px */
+  --step-0: 0.9375rem;  /* 15px */
+  --step-1: 1.0625rem;  /* 17px */
+  --step-3: 2rem;       /* 32px */
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1416; --fg: #e1e9eb; --soft: #b3c0c4; --muted: #95a4a9; --rule: #243137;
+    --accent: #52c0d1; --shade-max: 32%;
+  }
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 400 var(--step-0)/1.55 var(--sans);
+  padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 56px 72px;
+  -webkit-text-size-adjust: 100%;
+}
+.page { max-width: 1080px; margin: 0 auto; display: grid; gap: 56px; }
+.prose { max-width: 65ch; }
+a { color: var(--accent); text-underline-offset: 0.18em; text-decoration-thickness: 1px; }
+a:hover { text-decoration-thickness: 2px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+code { font-size: 0.95em; }
+
+header { display: grid; gap: 14px; }
+h1 { font-size: var(--step-3); line-height: 1.1; font-weight: 650; letter-spacing: -0.015em; margin: 0; }
+.lede { font-size: var(--step-1); color: var(--muted); margin: 0; text-wrap: balance; }
+header p { margin: 0; }
+.meta { font-size: var(--step--1); color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 18px; }
+
+section { display: grid; gap: 16px; min-width: 0; }
+h2 { font-size: var(--step-1); font-weight: 650; margin: 0; letter-spacing: 0.005em; }
+.caption { color: var(--muted); margin: 0; }
+.note { font-size: var(--step--1); color: var(--muted); margin: 0; max-width: 65ch; }
+
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { padding: 10px; text-align: left; vertical-align: baseline; }
+th:first-child, td:first-child { padding-left: 0; }
+th:last-child, td:last-child { padding-right: 0; }
+thead th {
+  font-size: var(--step--1); font-weight: 600; color: var(--muted);
+  letter-spacing: 0.02em; vertical-align: bottom; border-bottom: 1px solid var(--fg);
+  padding-bottom: 8px;
+}
+tbody tr { border-bottom: 1px solid var(--rule); }
+.num { text-align: right; white-space: nowrap; }
+.pm { font-size: 0.8em; color: var(--soft); margin-left: 0.15em; }
+.name { font-weight: 550; }
+.prov { color: var(--muted); font-size: var(--step--1); margin-left: 0.35em; }
+.scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* Ranking */
+.rank .n { width: 2.2em; color: var(--muted); }
+.rank .replies { color: var(--muted); }
+.rank .score { font-weight: 600; }
+.rank .score .pm { font-weight: 400; }
+.rank td.plot, .rank th.plot { width: 38%; padding-left: 22px; vertical-align: middle; }
+.axis { position: relative; height: 1.2em; font-weight: 400; }
+.tick { position: absolute; left: var(--x); transform: translateX(-50%); }
+.tick:first-child { transform: none; }
+.tick:last-child { transform: translateX(-100%); }
+.strip {
+  position: relative; height: 20px;
+  background: linear-gradient(to right, var(--rule) 1px, transparent 1px) 0 0 / calc(100% / var(--steps)) 100% repeat-x;
+  box-shadow: inset -1px 0 var(--rule);
+}
+.ci {
+  position: absolute; top: 50%; left: var(--lo); width: calc(var(--hi) - var(--lo)); height: 4px;
+  transform: translateY(-50%); border-radius: 2px;
+  background: color-mix(in oklab, var(--accent) 38%, var(--bg));
+}
+.dot {
+  position: absolute; top: 50%; left: var(--x); width: 9px; height: 9px; border-radius: 50%;
+  transform: translate(-50%, -50%); background: var(--accent); box-shadow: 0 0 0 2px var(--bg);
+}
+
+/* Biases */
+.biases { min-width: 940px; }
+.biases th.model { font-weight: 400; position: sticky; left: 0; background: var(--bg); z-index: 1; min-width: 11.5em; }
+.biases thead th.model { z-index: 2; }
+.biases thead th.num { padding-left: 6px; padding-right: 6px; }
+.biases thead .h, .biases thead .low { display: block; }
+.biases thead .h { white-space: normal; text-wrap: balance; }
+.biases thead .low { font-weight: 400; font-size: 0.92em; margin-top: 2px; }
+.biases td.cell {
+  background: color-mix(in oklab, var(--accent) calc(var(--f, 0) * var(--shade-max)), var(--bg));
+  padding-left: 8px; padding-right: 8px;
+}
+.biases thead button {
+  font: inherit; color: inherit; letter-spacing: inherit; background: none; border: 0; padding: 0;
+  margin: 0; text-align: inherit; cursor: pointer; width: 100%;
+}
+.biases thead button:hover .h { color: var(--fg); }
+.biases thead th[aria-sort] { color: var(--fg); }
+.biases thead th[aria-sort] .h::after { content: " ↓"; color: var(--accent); }
+
+footer { font-size: var(--step--1); color: var(--muted); border-top: 1px solid var(--rule); padding-top: 18px; }
+footer p { margin: 0 0 6px; max-width: 75ch; }
+
+@media (max-width: 600px) {
+  body { padding-block: 32px 48px; }
+  .page { gap: 44px; }
+  h1 { font-size: 1.75rem; }
+  .rank th, .rank td { padding-left: 6px; padding-right: 6px; }
+  .rank .n { width: 1.6em; }
+  .rank .model .prov, .rank .score .pm, .biases .model .prov { display: block; margin-left: 0; }
+  .rank td.plot, .rank th.plot { width: 34%; padding-left: 10px; }
+  .rank .tick:not(:first-child):not(:last-child) { display: none; }
+  .rank thead .wide { display: none; }
+}
+@media (min-width: 601px) {
+  .rank thead .narrow { display: none; }
+  .biases th.model { white-space: nowrap; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>RandomBench</h1>
+    <p class="lede">How well can language models pick numbers at random?</p>
+    <p class="prose">Each model was asked many times for a random integer from 0 to 99, in a fresh conversation every time. Its score is the share of replies that are valid times its uniformity. A score of 0.05 means the model repeats itself as often as a fair pick among 5 numbers would. A perfect random source scores close to 1.</p>
+    <p class="meta">
+      <span>Data as of <time datetime="__ISODATE__">__DATE__</time></span>
+      <span>__COUNT__ models</span>
+      <span><a href="https://github.com/benjaminbrumfield/randombench#readme">Method and limitations</a></span>
+      <span><a href="https://github.com/benjaminbrumfield/randombench">Code and data on GitHub</a></span>
+    </p>
+  </header>
+
+  <section aria-labelledby="ranking-h">
+    <h2 id="ranking-h">Ranking</h2>
+    <p class="caption prose">Ranked by RandomBench Score, highest first. Each bar is a 95% interval, and models whose bars overlap can't yet be told apart. The axis ends at __AXIS__. A perfect random source scores close to 1.</p>
+    <div class="scroll">
+      <table class="rank" style="--steps:__STEPS__">
+        <thead><tr>
+          <th class="n" scope="col"><span class="wide">Rank</span><span class="narrow">#</span></th>
+          <th scope="col">Model</th>
+          <th class="num" scope="col">Replies</th>
+          <th class="num" scope="col">Score</th>
+          <th class="plot" scope="col" aria-hidden="true"><div class="axis">__TICKS__</div></th>
+        </tr></thead>
+        <tbody>
+__RANKING__
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Replies counts every call that got a reply, valid or not. Calls that failed, such as those the quota refused, aren't counted. A model with fewer replies gets a wider interval, not a lower score.</p>
+  </section>
+
+  <section aria-labelledby="biases-h">
+    <h2 id="biases-h">Biases</h2>
+    <p class="caption prose">The nine checks behind the score, for the same models in the same order. They explain the ranking and don't add to it. Select a heading to sort by that check, and select it again to return to the ranking.</p>
+    <div class="scroll">
+      <table class="biases" id="biases">
+        <thead><tr><th scope="col" class="model">Model</th>__HEADINGS__</tr></thead>
+        <tbody>
+__BIASES__
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Each cell is shaded from its check's lowest possible score, unshaded, up to 1. Uniformity and Last Digit count values, so they're shaded on a log scale: a model that always gives one answer is unshaded, a fair pick among 10 of the 100 values is halfway, and all 100 is full.</p>
+    <p class="note">The share checks are lenient toward avoidance. A model that never answers a multiple of 10 is only 10% away from the ideal share, so it scores 0.900, and one that answers nothing else scores 0.100. Every score has a 95% interval from 10,000 bootstrap resamples of the model's replies.</p>
+  </section>
+
+  <footer>
+    <p>The official leaderboards are on Kaggle. <a href="https://www.kaggle.com/benchmarks/benjaminbrumfield/randombench-overall">RandomBench</a> ranks the models by score, and <a href="https://www.kaggle.com/benchmarks/benjaminbrumfield/randombench">RandomBench Biases</a> holds the nine checks. They show the same scores without the intervals.</p>
+    <p>This page is built from the stored replies by <code>python -m randombench.build</code>.</p>
+  </footer>
+</div>
+
+<script>
+// Sorting the Biases table. Without it, the page reads in the ranking's order.
+(function () {
+  var table = document.getElementById("biases");
+  var body = table.tBodies[0];
+  var heads = table.tHead.querySelectorAll("th.num");
+  function reorder(compare) {
+    Array.prototype.slice.call(body.rows).sort(compare).forEach(function (row) { body.appendChild(row); });
+  }
+  heads.forEach(function (th) {
+    var button = document.createElement("button");
+    button.type = "button";
+    while (th.firstChild) button.appendChild(th.firstChild);
+    th.appendChild(button);
+    button.addEventListener("click", function () {
+      var sorted = th.hasAttribute("aria-sort");
+      heads.forEach(function (h) { h.removeAttribute("aria-sort"); });
+      if (sorted) {
+        reorder(function (a, b) { return a.dataset.rank - b.dataset.rank; });
+        return;
+      }
+      th.setAttribute("aria-sort", "descending");
+      var col = th.cellIndex;
+      reorder(function (a, b) {
+        return (b.cells[col].dataset.v - a.cells[col].dataset.v) || (a.dataset.rank - b.dataset.rank);
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>

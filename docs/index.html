@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>RandomBench Leaderboard</title>
+<meta name="description" content="How well can language models pick numbers at random? RandomBench's scores, with 95% intervals.">
+<link rel="icon" href="data:,">
+<style>
+/* Written by `python -m randombench.build` from randombench/page.html (PLAN.md 5.3).
+
+   Layout: one column. Prose holds to about 65 characters, and the two tables take the full width,
+   up to 1080px. Rows are separated by hairline rules, never boxed. One typeface, one accent. */
+:root {
+  --bg: #fbfcfc;
+  --fg: #152226;
+  --soft: #45545a;      /* the ± figures: lighter than the score, still readable on a shaded cell */
+  --muted: #5d6c71;     /* rank numbers, providers, captions */
+  --rule: #dbe2e4;
+  --accent: #0d7282;
+  --shade-max: 30%;     /* the strongest a Biases cell is shaded */
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --step--1: 0.8125rem; /* 13px */
+  --step-0: 0.9375rem;  /* 15px */
+  --step-1: 1.0625rem;  /* 17px */
+  --step-3: 2rem;       /* 32px */
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1416; --fg: #e1e9eb; --soft: #b3c0c4; --muted: #95a4a9; --rule: #243137;
+    --accent: #52c0d1; --shade-max: 32%;
+  }
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 400 var(--step-0)/1.55 var(--sans);
+  padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 56px 72px;
+  -webkit-text-size-adjust: 100%;
+}
+.page { max-width: 1080px; margin: 0 auto; display: grid; gap: 56px; }
+.prose { max-width: 65ch; }
+a { color: var(--accent); text-underline-offset: 0.18em; text-decoration-thickness: 1px; }
+a:hover { text-decoration-thickness: 2px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+code { font-size: 0.95em; }
+
+header { display: grid; gap: 14px; }
+h1 { font-size: var(--step-3); line-height: 1.1; font-weight: 650; letter-spacing: -0.015em; margin: 0; }
+.lede { font-size: var(--step-1); color: var(--muted); margin: 0; text-wrap: balance; }
+header p { margin: 0; }
+.meta { font-size: var(--step--1); color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 18px; }
+
+section { display: grid; gap: 16px; min-width: 0; }
+h2 { font-size: var(--step-1); font-weight: 650; margin: 0; letter-spacing: 0.005em; }
+.caption { color: var(--muted); margin: 0; }
+.note { font-size: var(--step--1); color: var(--muted); margin: 0; max-width: 65ch; }
+
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { padding: 10px; text-align: left; vertical-align: baseline; }
+th:first-child, td:first-child { padding-left: 0; }
+th:last-child, td:last-child { padding-right: 0; }
+thead th {
+  font-size: var(--step--1); font-weight: 600; color: var(--muted);
+  letter-spacing: 0.02em; vertical-align: bottom; border-bottom: 1px solid var(--fg);
+  padding-bottom: 8px;
+}
+tbody tr { border-bottom: 1px solid var(--rule); }
+.num { text-align: right; white-space: nowrap; }
+.pm { font-size: 0.8em; color: var(--soft); margin-left: 0.15em; }
+.name { font-weight: 550; }
+.prov { color: var(--muted); font-size: var(--step--1); margin-left: 0.35em; }
+.scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* Ranking */
+.rank .n { width: 2.2em; color: var(--muted); }
+.rank .replies { color: var(--muted); }
+.rank .score { font-weight: 600; }
+.rank .score .pm { font-weight: 400; }
+.rank td.plot, .rank th.plot { width: 38%; padding-left: 22px; vertical-align: middle; }
+.axis { position: relative; height: 1.2em; font-weight: 400; }
+.tick { position: absolute; left: var(--x); transform: translateX(-50%); }
+.tick:first-child { transform: none; }
+.tick:last-child { transform: translateX(-100%); }
+.strip {
+  position: relative; height: 20px;
+  background: linear-gradient(to right, var(--rule) 1px, transparent 1px) 0 0 / calc(100% / var(--steps)) 100% repeat-x;
+  box-shadow: inset -1px 0 var(--rule);
+}
+.ci {
+  position: absolute; top: 50%; left: var(--lo); width: calc(var(--hi) - var(--lo)); height: 4px;
+  transform: translateY(-50%); border-radius: 2px;
+  background: color-mix(in oklab, var(--accent) 38%, var(--bg));
+}
+.dot {
+  position: absolute; top: 50%; left: var(--x); width: 9px; height: 9px; border-radius: 50%;
+  transform: translate(-50%, -50%); background: var(--accent); box-shadow: 0 0 0 2px var(--bg);
+}
+
+/* Biases */
+.biases { min-width: 940px; }
+.biases th.model { font-weight: 400; position: sticky; left: 0; background: var(--bg); z-index: 1; min-width: 11.5em; }
+.biases thead th.model { z-index: 2; }
+.biases thead th.num { padding-left: 6px; padding-right: 6px; }
+.biases thead .h, .biases thead .low { display: block; }
+.biases thead .h { white-space: normal; text-wrap: balance; }
+.biases thead .low { font-weight: 400; font-size: 0.92em; margin-top: 2px; }
+.biases td.cell {
+  background: color-mix(in oklab, var(--accent) calc(var(--f, 0) * var(--shade-max)), var(--bg));
+  padding-left: 8px; padding-right: 8px;
+}
+.biases thead button {
+  font: inherit; color: inherit; letter-spacing: inherit; background: none; border: 0; padding: 0;
+  margin: 0; text-align: inherit; cursor: pointer; width: 100%;
+}
+.biases thead button:hover .h { color: var(--fg); }
+.biases thead th[aria-sort] { color: var(--fg); }
+.biases thead th[aria-sort] .h::after { content: " ↓"; color: var(--accent); }
+
+footer { font-size: var(--step--1); color: var(--muted); border-top: 1px solid var(--rule); padding-top: 18px; }
+footer p { margin: 0 0 6px; max-width: 75ch; }
+
+@media (max-width: 600px) {
+  body { padding-block: 32px 48px; }
+  .page { gap: 44px; }
+  h1 { font-size: 1.75rem; }
+  .rank th, .rank td { padding-left: 6px; padding-right: 6px; }
+  .rank .n { width: 1.6em; }
+  .rank .model .prov, .rank .score .pm, .biases .model .prov { display: block; margin-left: 0; }
+  .rank td.plot, .rank th.plot { width: 34%; padding-left: 10px; }
+  .rank .tick:not(:first-child):not(:last-child) { display: none; }
+  .rank thead .wide { display: none; }
+}
+@media (min-width: 601px) {
+  .rank thead .narrow { display: none; }
+  .biases th.model { white-space: nowrap; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>RandomBench</h1>
+    <p class="lede">How well can language models pick numbers at random?</p>
+    <p class="prose">Each model was asked many times for a random integer from 0 to 99, in a fresh conversation every time. Its score is the share of replies that are valid times its uniformity. A score of 0.05 means the model repeats itself as often as a fair pick among 5 numbers would. A perfect random source scores close to 1.</p>
+    <p class="meta">
+      <span>Data as of <time datetime="2026-11-15">November 15, 2026</time></span>
+      <span>23 models</span>
+      <span><a href="https://github.com/benjaminbrumfield/randombench#readme">Method and limitations</a></span>
+      <span><a href="https://github.com/benjaminbrumfield/randombench">Code and data on GitHub</a></span>
+    </p>
+  </header>
+
+  <section aria-labelledby="ranking-h">
+    <h2 id="ranking-h">Ranking</h2>
+    <p class="caption prose">Ranked by RandomBench Score, highest first. Each bar is a 95% interval, and models whose bars overlap can't yet be told apart. The axis ends at 0.12. A perfect random source scores close to 1.</p>
+    <div class="scroll">
+      <table class="rank" style="--steps:3">
+        <thead><tr>
+          <th class="n" scope="col"><span class="wide">Rank</span><span class="narrow">#</span></th>
+          <th scope="col">Model</th>
+          <th class="num" scope="col">Replies</th>
+          <th class="num" scope="col">Score</th>
+          <th class="plot" scope="col" aria-hidden="true"><div class="axis"><span class="tick" style="--x:0.00%">0</span><span class="tick" style="--x:33.33%">0.04</span><span class="tick" style="--x:66.67%">0.08</span><span class="tick" style="--x:100.00%">0.12</span></div></th>
+        </tr></thead>
+        <tbody>
+<tr data-model="google/gemini-2.5-flash"><td class="n">1</td><td class="model"><span class="name">Gemini 2.5 Flash</span> <span class="prov">Google</span></td><td class="num replies">621</td><td class="num score">0.108 <span class="pm">±0.011</span></td><td class="plot" aria-hidden="true"><div class="strip" style="--lo:81.32%;--hi:99.23%;--x:90.28%"><i class="ci"></i><b class="dot"></b></div></td></tr>
+<tr data-model="xai/grok-4.6"><td class="n">2</td><td class="model"><span class="name">Grok 4.6</span> <span class="prov">xAI</span></td><td class="num replies">120</td><td class="num score">0.074 <span class="pm">±0.023</span></td><td class="plot" aria-hidden="true"><div class="strip" style="--lo:42.45%;--hi:81.19%;--x:61.82%"><i class="ci"></i><b class="dot"></b></div></td></tr>
+<tr data-model="google/gemini-2.5-pro"><td class="n">3</td><td class="model"><span class="name">Gemini 2.5 Pro</span> <span class="prov">Google</span></td><td class="num replies">120</td><td class="num score">0.042 <span class="pm">±0.009</span></td><td class="plot" aria-hidden="true"><div class="strip" style="--lo:27.38%;--hi:41.97%;--x:34.67%"><i class="ci"></i><b class="dot"></b></div></td></tr>
+<tr data-model="openai/gpt-5.6-terra"><td class="n">4</td><td class="model"><span class="name">GPT-5.6 Terra</span> <span class="prov">OpenAI</span></td><td class="num replies">229</td><td class="num score">0.040 <span class="pm">±0.004</span></td><td class="plot" aria-hidden="true"><div class="strip" style="--lo:29.90%;--hi:36.35%;--x:33.12%"><i class="ci"></i><b class="dot"></b></div></td></tr>
+<tr data-model="xai/grok-4.7"><td class="n">5</td><td class="model"><span class="name">Grok 4.7</span> <span class="prov">xAI</span></td><td class="num replies">120</td><td class="num score">0.037 <span class="pm">±0.006</span></td><td class="plot" aria-hidden="true"><div class="strip" style="--lo:25.40%;--hi:35.85%;--x:30.62%"><i class="ci"></i><b class="dot"></b></div></td></tr>
+<tr data-model="openai/gpt-5.4-mini-2026-03-17"><td class="n">6</td><td class="model"><span class="name">GPT-5.4 mini</span> <span class="prov">OpenAI</span></td><td class="num replies">624</td><td class="num score">0.037 <span class="pm">±0.002</span></td><td class="plot" aria-hidden="true"><div class="strip" style="--lo:29.01%;--hi:31.89%;--x:30.45%"><i class="ci"></i><b class="dot"></b></div></td></tr>
+<tr data-model="google/gemini-3.8-flash"><td class="n">7</td><td class="model"><span class="name">Gemini 3.8 Flash</span> <span class="prov">Google</span></td><td class="num replies">624</td><td class="num score">0.034 <span class="pm">±0.002</span></td><td class="plot" aria-hidden="true"><div class="strip" style="--lo:27.04%;--hi:30.12%;--x:28.58%"><i class="ci"></i><b class="dot"></b></div></td></tr>
+<tr data-model="openai/gpt-5.4-nano-2026-03-17"><td class="n">8</td><td class="model"><span class="name">GPT-5.4 nano</span> <span class="prov">OpenAI</span></td><td class="num replies">624</td><td class="num score">0.033 <span class="pm">±0.003</span></td><td class="plot" aria-hidden="true"><div class="strip" style="--lo:24.41%;--hi:30.05%;--x:27.23%"><i class="ci"></i><b class="dot"></b></div></td></tr>
+<tr data-model="openai/gpt-oss-120b"><td class="n">9</td><td class="model"><span class="name">gpt-oss-120b</span> <span class="prov">OpenAI</span></td><td class="num replies">624</td><td class="num score">0.032 <span class="pm">±0.002</span></td><td class="plot" aria-hidden="true"><div class="strip" style="--lo:25.71%;--hi:28.44%;--x:27.07%"><i class="ci"></i><b class="dot"></b></div></td></tr>
+<tr data-model="google/gemini-3.1-pro-preview"><td class="n">10</td><td class="model"><span class="name">Gemini 3.1 Pro (preview)</span> <span class="prov">Google</span></td><td class="num replies">120</td><td class="num score">0.032 <span class="pm">±0.008</span></td><td class="plot" aria-hidden="true"><div class="strip" style="--lo:19.90%;--hi:32.69%;--x:26.29%"><i class="ci"></i><b class="dot"></b></div></td></tr>
+<tr data-model="google/gemini-3.6-flash"><td class="n">11</td><td class="model"><span class="name">Gemini 3.6 Flash</span> <span class="prov">Google</span></td><td class="num replies">591</td><td class="num score">0.027 <span class="pm">±0.002</span></td><td class="plot" aria-hidden="true"><div class="strip" style="--lo:21.33%;--hi:24.20%;--x:22.76%"><i class="ci"></i><b class="dot"></b></div></td></tr>
+<tr data-model="openai/gpt-5.6-luna"><td class="n">12</td><td class="model"><span class="name">GPT-5.6 Luna</span> <span class="prov">OpenAI</span></td><td class="num replies">624</td><td class="num score">0.027 <span class="pm">±0.003</span></td><td class="plot" aria-hidden="true"><div class="strip" style="--lo:20.02%;--hi:24.23%;--x:22.13%"><i class="ci"></i><b class="dot"></b></div></td></tr>
+<tr data-model="google/gemini-3-flash-preview"><td class="n">13</td><td class="model"><span class="name">Gemini 3 Flash (preview)</span> <span class="prov">Google</span></td><td class="num replies">591</td><td class="num score">0.021 <span class="pm">±0.002</span></td><td class="plot" aria-hidden="true"><div class="strip" style="--lo:16.56%;--hi:19.26%;--x:17.91%"><i class="ci"></i><b class="dot"></b></div></td></tr>
+<tr data-model="google/gemma-4-26b-a4b"><td class="n">14</td><td class="model"><span class="name">Gemma 4 26B A4B</span> <span class="prov">Google</span></td><td class="num replies">624</td><td class="num score">0.021 <span class="pm">±0.001</span></td><td class="plot" aria-hidden="true"><div class="strip" style="--lo:16.83%;--hi:18.81%;--x:17.82%"><i class="ci"></i><b class="dot"></b></div></td></tr>
+<tr data-model="anthropic/claude-haiku-5-5"><td class="n">15</td><td class="model"><span class="name">Claude Haiku 5.5</span> <span class="prov">Anthropic</span></td><td class="num replies">624</td><td class="num score">0.021 <span class="pm">±0.002</span></td><td class="plot" aria-hidden="true"><div class="strip" style="--lo:16.25%;--hi:19.38%;--x:17.82%"><i class="ci"></i><b class="dot"></b></div></td></tr>
+<tr data-model="google/gemini-4-argon"><td class="n">16</td><td class="model"><span class="name">Gemini 4 Argon</span> <span class="prov">Google</span></td><td class="num replies">583</td><td class="num score">0.020 <span class="pm">±0.001</span></td><td class="plot" aria-hidden="true"><div class="strip" style="--lo:15.63%;--hi:18.12%;--x:16.87%"><i class="ci"></i><b class="dot"></b></div></td></tr>
+<tr data-model="openai/gpt-6-luna"><td class="n">17</td><td class="model"><span class="name">GPT-6 Luna</span> <span class="prov">OpenAI</span></td><td class="num replies">624</td><td class="num score">0.019 <span class="pm">±0.001</span></td><td class="plot" aria-hidden="true"><div class="strip" style="--lo:14.50%;--hi:16.74%;--x:15.62%"><i class="ci"></i><b class="dot"></b></div></td></tr>
+<tr data-model="anthropic/claude-sonnet-4-6@default"><td class="n">18</td><td class="model"><span class="name">Claude Sonnet 4.6</span> <span class="prov">Anthropic</span></td><td class="num replies">623</td><td class="num score">0.015 <span class="pm">±0.001</span></td><td class="plot" aria-hidden="true"><div class="strip" style="--lo:11.73%;--hi:13.10%;--x:12.42%"><i class="ci"></i><b class="dot"></b></div></td></tr>
+<tr data-model="anthropic/claude-haiku-4-5@20251001"><td class="n">19</td><td class="model"><span class="name">Claude Haiku 4.5</span> <span class="prov">Anthropic</span></td><td class="num replies">624</td><td class="num score">0.013 <span class="pm">±0.001</span></td><td class="plot" aria-hidden="true"><div class="strip" style="--lo:9.94%;--hi:10.94%;--x:10.44%"><i class="ci"></i><b class="dot"></b></div></td></tr>
+<tr data-model="anthropic/claude-sonnet-5@default"><td class="n">20</td><td class="model"><span class="name">Claude Sonnet 5</span> <span class="prov">Anthropic</span></td><td class="num replies">498</td><td class="num score">0.012 <span class="pm">±0.001</span></td><td class="plot" aria-hidden="true"><div class="strip" style="--lo:9.67%;--hi:10.81%;--x:10.24%"><i class="ci"></i><b class="dot"></b></div></td></tr>
+<tr data-model="anthropic/claude-sonnet-5-5@default"><td class="n">21</td><td class="model"><span class="name">Claude Sonnet 5.5</span> <span class="prov">Anthropic</span></td><td class="num replies">250</td><td class="num score">0.012 <span class="pm">±0.001</span></td><td class="plot" aria-hidden="true"><div class="strip" style="--lo:9.12%;--hi:10.52%;--x:9.82%"><i class="ci"></i><b class="dot"></b></div></td></tr>
+<tr data-model="google/gemini-3.5-flash-lite"><td class="n">22</td><td class="model"><span class="name">Gemini 3.5 Flash-Lite</span> <span class="prov">Google</span></td><td class="num replies">624</td><td class="num score">0.011 <span class="pm">±0.000</span></td><td class="plot" aria-hidden="true"><div class="strip" style="--lo:8.60%;--hi:9.06%;--x:8.83%"><i class="ci"></i><b class="dot"></b></div></td></tr>
+<tr data-model="google/gemini-3.1-flash-lite-preview"><td class="n">23</td><td class="model"><span class="name">Gemini 3.1 Flash-Lite (preview)</span> <span class="prov">Google</span></td><td class="num replies">624</td><td class="num score">0.010 <span class="pm">±0.000</span></td><td class="plot" aria-hidden="true"><div class="strip" style="--lo:8.33%;--hi:8.33%;--x:8.33%"><i class="ci"></i><b class="dot"></b></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Replies counts every call that got a reply, valid or not. Calls that failed, such as those the quota refused, aren't counted. A model with fewer replies gets a wider interval, not a lower score.</p>
+  </section>
+
+  <section aria-labelledby="biases-h">
+    <h2 id="biases-h">Biases</h2>
+    <p class="caption prose">The nine checks behind the score, for the same models in the same order. They explain the ranking and don't add to it. Select a heading to sort by that check, and select it again to return to the ranking.</p>
+    <div class="scroll">
+      <table class="biases" id="biases">
+        <thead><tr><th scope="col" class="model">Model</th><th scope="col" class="num"><span class="h">Valid Answers</span><span class="low">lowest 0</span></th><th scope="col" class="num"><span class="h">Uniformity</span><span class="low">lowest 0.01</span></th><th scope="col" class="num"><span class="h">Primes</span><span class="low">lowest 0.25</span></th><th scope="col" class="num"><span class="h">Multiples of 10</span><span class="low">lowest 0.10</span></th><th scope="col" class="num"><span class="h">Multiples of 5</span><span class="low">lowest 0.20</span></th><th scope="col" class="num"><span class="h">Favorite Number</span><span class="low">lowest 0</span></th><th scope="col" class="num"><span class="h">Edges</span><span class="low">lowest 0.20</span></th><th scope="col" class="num"><span class="h">Repeated Digits</span><span class="low">lowest 0.09</span></th><th scope="col" class="num"><span class="h">Last Digit</span><span class="low">lowest 0.10</span></th></tr></thead>
+        <tbody>
+<tr data-model="google/gemini-2.5-flash" data-rank="1"><th scope="row" class="model"><span class="name">Gemini 2.5 Flash</span> <span class="prov">Google</span></th><td class="num cell" data-v="1.000000" style="--f:1.000">1.000 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.108334" style="--f:0.517">0.108 <span class="pm">±0.011</span></td><td class="num cell" data-v="0.733847" style="--f:0.645">0.734 <span class="pm">±0.040</span></td><td class="num cell" data-v="0.900000" style="--f:0.889">0.900 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.806468" style="--f:0.758">0.806 <span class="pm">±0.006</span></td><td class="num cell" data-v="0.832805" style="--f:0.833">0.833 <span class="pm">±0.047</span></td><td class="num cell" data-v="0.833975" style="--f:0.792">0.834 <span class="pm">±0.014</span></td><td class="num cell" data-v="0.911625" style="--f:0.903">0.912 <span class="pm">±0.003</span></td><td class="num cell" data-v="0.303323" style="--f:0.482">0.303 <span class="pm">±0.024</span></td></tr>
+<tr data-model="xai/grok-4.6" data-rank="2"><th scope="row" class="model"><span class="name">Grok 4.6</span> <span class="prov">xAI</span></th><td class="num cell" data-v="0.983333" style="--f:0.983">0.983 <span class="pm">±0.023</span></td><td class="num cell" data-v="0.075443" style="--f:0.439">0.075 <span class="pm">±0.024</span></td><td class="num cell" data-v="0.676943" style="--f:0.569">0.677 <span class="pm">±0.092</span></td><td class="num cell" data-v="0.900000" style="--f:0.889">0.900 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.808662" style="--f:0.761">0.809 <span class="pm">±0.017</span></td><td class="num cell" data-v="0.693374" style="--f:0.693">0.693 <span class="pm">±0.088</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.910000" style="--f:0.901">0.910 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.358784" style="--f:0.555">0.359 <span class="pm">±0.089</span></td></tr>
+<tr data-model="google/gemini-2.5-pro" data-rank="3"><th scope="row" class="model"><span class="name">Gemini 2.5 Pro</span> <span class="prov">Google</span></th><td class="num cell" data-v="1.000000" style="--f:1.000">1.000 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.041608" style="--f:0.310">0.042 <span class="pm">±0.009</span></td><td class="num cell" data-v="0.669745" style="--f:0.560">0.670 <span class="pm">±0.090</span></td><td class="num cell" data-v="0.900000" style="--f:0.889">0.900 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.597643" style="--f:0.598">0.598 <span class="pm">±0.098</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.910000" style="--f:0.901">0.910 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.274827" style="--f:0.439">0.275 <span class="pm">±0.046</span></td></tr>
+<tr data-model="openai/gpt-5.6-terra" data-rank="4"><th scope="row" class="model"><span class="name">GPT-5.6 Terra</span> <span class="prov">OpenAI</span></th><td class="num cell" data-v="1.000000" style="--f:1.000">1.000 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.039747" style="--f:0.300">0.040 <span class="pm">±0.004</span></td><td class="num cell" data-v="0.842861" style="--f:0.790">0.843 <span class="pm">±0.066</span></td><td class="num cell" data-v="0.900000" style="--f:0.889">0.900 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.652816" style="--f:0.653">0.653 <span class="pm">±0.092</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.910000" style="--f:0.901">0.910 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.293656" style="--f:0.468">0.294 <span class="pm">±0.012</span></td></tr>
+<tr data-model="xai/grok-4.7" data-rank="5"><th scope="row" class="model"><span class="name">Grok 4.7</span> <span class="prov">xAI</span></th><td class="num cell" data-v="1.000000" style="--f:1.000">1.000 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.036747" style="--f:0.283">0.037 <span class="pm">±0.006</span></td><td class="num cell" data-v="0.695046" style="--f:0.593">0.695 <span class="pm">±0.090</span></td><td class="num cell" data-v="0.900000" style="--f:0.889">0.900 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.622896" style="--f:0.623">0.623 <span class="pm">±0.189</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.910000" style="--f:0.901">0.910 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.326176" style="--f:0.513">0.326 <span class="pm">±0.036</span></td></tr>
+<tr data-model="openai/gpt-5.4-mini-2026-03-17" data-rank="6"><th scope="row" class="model"><span class="name">GPT-5.4 mini</span> <span class="prov">OpenAI</span></th><td class="num cell" data-v="1.000000" style="--f:1.000">1.000 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.036542" style="--f:0.281">0.037 <span class="pm">±0.002</span></td><td class="num cell" data-v="0.484253" style="--f:0.312">0.484 <span class="pm">±0.033</span></td><td class="num cell" data-v="0.900000" style="--f:0.889">0.900 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.636169" style="--f:0.636">0.636 <span class="pm">±0.038</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.910000" style="--f:0.901">0.910 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.262344" style="--f:0.419">0.262 <span class="pm">±0.014</span></td></tr>
+<tr data-model="google/gemini-3.8-flash" data-rank="7"><th scope="row" class="model"><span class="name">Gemini 3.8 Flash</span> <span class="prov">Google</span></th><td class="num cell" data-v="1.000000" style="--f:1.000">1.000 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.034299" style="--f:0.268">0.034 <span class="pm">±0.002</span></td><td class="num cell" data-v="0.517954" style="--f:0.357">0.518 <span class="pm">±0.035</span></td><td class="num cell" data-v="0.900000" style="--f:0.889">0.900 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.613507" style="--f:0.614">0.614 <span class="pm">±0.039</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.910000" style="--f:0.901">0.910 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.296798" style="--f:0.472">0.297 <span class="pm">±0.009</span></td></tr>
+<tr data-model="openai/gpt-5.4-nano-2026-03-17" data-rank="8"><th scope="row" class="model"><span class="name">GPT-5.4 nano</span> <span class="prov">OpenAI</span></th><td class="num cell" data-v="1.000000" style="--f:1.000">1.000 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.032676" style="--f:0.257">0.033 <span class="pm">±0.003</span></td><td class="num cell" data-v="0.897611" style="--f:0.863">0.898 <span class="pm">±0.038</span></td><td class="num cell" data-v="0.900000" style="--f:0.889">0.900 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.498575" style="--f:0.499">0.499 <span class="pm">±0.040</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.910000" style="--f:0.901">0.910 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.244185" style="--f:0.388">0.244 <span class="pm">±0.012</span></td></tr>
+<tr data-model="openai/gpt-oss-120b" data-rank="9"><th scope="row" class="model"><span class="name">gpt-oss-120b</span> <span class="prov">OpenAI</span></th><td class="num cell" data-v="1.000000" style="--f:1.000">1.000 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.032485" style="--f:0.256">0.032 <span class="pm">±0.002</span></td><td class="num cell" data-v="1.000000" style="--f:1.000">1.000 <span class="pm">±0.022</span></td><td class="num cell" data-v="0.900000" style="--f:0.889">0.900 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.628076" style="--f:0.628">0.628 <span class="pm">±0.108</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.910000" style="--f:0.901">0.910 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.290074" style="--f:0.463">0.290 <span class="pm">±0.012</span></td></tr>
+<tr data-model="google/gemini-3.1-pro-preview" data-rank="10"><th scope="row" class="model"><span class="name">Gemini 3.1 Pro (preview)</span> <span class="prov">Google</span></th><td class="num cell" data-v="1.000000" style="--f:1.000">1.000 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.031551" style="--f:0.250">0.032 <span class="pm">±0.008</span></td><td class="num cell" data-v="0.568770" style="--f:0.425">0.569 <span class="pm">±0.084</span></td><td class="num cell" data-v="0.900000" style="--f:0.889">0.900 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.479798" style="--f:0.480">0.480 <span class="pm">±0.089</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.910000" style="--f:0.901">0.910 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.259731" style="--f:0.415">0.260 <span class="pm">±0.049</span></td></tr>
+<tr data-model="google/gemini-3.6-flash" data-rank="11"><th scope="row" class="model"><span class="name">Gemini 3.6 Flash</span> <span class="prov">Google</span></th><td class="num cell" data-v="1.000000" style="--f:1.000">1.000 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.027316" style="--f:0.218">0.027 <span class="pm">±0.002</span></td><td class="num cell" data-v="0.615994" style="--f:0.488">0.616 <span class="pm">±0.039</span></td><td class="num cell" data-v="0.900000" style="--f:0.889">0.900 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.522996" style="--f:0.523">0.523 <span class="pm">±0.041</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.910000" style="--f:0.901">0.910 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.263301" style="--f:0.420">0.263 <span class="pm">±0.014</span></td></tr>
+<tr data-model="openai/gpt-5.6-luna" data-rank="12"><th scope="row" class="model"><span class="name">GPT-5.6 Luna</span> <span class="prov">OpenAI</span></th><td class="num cell" data-v="1.000000" style="--f:1.000">1.000 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.026552" style="--f:0.212">0.027 <span class="pm">±0.003</span></td><td class="num cell" data-v="0.397603" style="--f:0.197">0.398 <span class="pm">±0.028</span></td><td class="num cell" data-v="0.900000" style="--f:0.889">0.900 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.430588" style="--f:0.431">0.431 <span class="pm">±0.039</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.910000" style="--f:0.901">0.910 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.141363" style="--f:0.150">0.141 <span class="pm">±0.009</span></td></tr>
+<tr data-model="google/gemini-3-flash-preview" data-rank="13"><th scope="row" class="model"><span class="name">Gemini 3 Flash (preview)</span> <span class="prov">Google</span></th><td class="num cell" data-v="1.000000" style="--f:1.000">1.000 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.021490" style="--f:0.166">0.021 <span class="pm">±0.002</span></td><td class="num cell" data-v="0.905133" style="--f:0.874">0.905 <span class="pm">±0.039</span></td><td class="num cell" data-v="0.900000" style="--f:0.889">0.900 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.377720" style="--f:0.378">0.378 <span class="pm">±0.040</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.910000" style="--f:0.901">0.910 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.211934" style="--f:0.326">0.212 <span class="pm">±0.015</span></td></tr>
+<tr data-model="google/gemma-4-26b-a4b" data-rank="14"><th scope="row" class="model"><span class="name">Gemma 4 26B A4B</span> <span class="prov">Google</span></th><td class="num cell" data-v="1.000000" style="--f:1.000">1.000 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.021383" style="--f:0.165">0.021 <span class="pm">±0.001</span></td><td class="num cell" data-v="0.863569" style="--f:0.818">0.864 <span class="pm">±0.038</span></td><td class="num cell" data-v="0.900000" style="--f:0.889">0.900 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.414400" style="--f:0.414">0.414 <span class="pm">±0.039</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.910000" style="--f:0.901">0.910 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.211092" style="--f:0.324">0.211 <span class="pm">±0.011</span></td></tr>
+<tr data-model="anthropic/claude-haiku-5-5" data-rank="15"><th scope="row" class="model"><span class="name">Claude Haiku 5.5</span> <span class="prov">Anthropic</span></th><td class="num cell" data-v="1.000000" style="--f:1.000">1.000 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.021379" style="--f:0.165">0.021 <span class="pm">±0.002</span></td><td class="num cell" data-v="0.402417" style="--f:0.203">0.402 <span class="pm">±0.028</span></td><td class="num cell" data-v="0.900000" style="--f:0.889">0.900 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.344794" style="--f:0.345">0.345 <span class="pm">±0.037</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.910000" style="--f:0.901">0.910 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.203422" style="--f:0.308">0.203 <span class="pm">±0.015</span></td></tr>
+<tr data-model="google/gemini-4-argon" data-rank="16"><th scope="row" class="model"><span class="name">Gemini 4 Argon</span> <span class="prov">Google</span></th><td class="num cell" data-v="1.000000" style="--f:1.000">1.000 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.020250" style="--f:0.153">0.020 <span class="pm">±0.001</span></td><td class="num cell" data-v="0.955410" style="--f:0.941">0.955 <span class="pm">±0.041</span></td><td class="num cell" data-v="0.900000" style="--f:0.889">0.900 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.349984" style="--f:0.350">0.350 <span class="pm">±0.039</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.910000" style="--f:0.901">0.910 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.194999" style="--f:0.290">0.195 <span class="pm">±0.013</span></td></tr>
+<tr data-model="openai/gpt-6-luna" data-rank="17"><th scope="row" class="model"><span class="name">GPT-6 Luna</span> <span class="prov">OpenAI</span></th><td class="num cell" data-v="1.000000" style="--f:1.000">1.000 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.018745" style="--f:0.136">0.019 <span class="pm">±0.001</span></td><td class="num cell" data-v="0.320590" style="--f:0.094">0.321 <span class="pm">±0.020</span></td><td class="num cell" data-v="0.900000" style="--f:0.889">0.900 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.309182" style="--f:0.309">0.309 <span class="pm">±0.036</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.910000" style="--f:0.901">0.910 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.118466" style="--f:0.074">0.118 <span class="pm">±0.005</span></td></tr>
+<tr data-model="anthropic/claude-sonnet-4-6@default" data-rank="18"><th scope="row" class="model"><span class="name">Claude Sonnet 4.6</span> <span class="prov">Anthropic</span></th><td class="num cell" data-v="1.000000" style="--f:1.000">1.000 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.014901" style="--f:0.087">0.015 <span class="pm">±0.001</span></td><td class="num cell" data-v="0.457306" style="--f:0.276">0.457 <span class="pm">±0.032</span></td><td class="num cell" data-v="0.900000" style="--f:0.889">0.900 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.209154" style="--f:0.209">0.209 <span class="pm">±0.032</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.910000" style="--f:0.901">0.910 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.149010" style="--f:0.173">0.149 <span class="pm">±0.008</span></td></tr>
+<tr data-model="anthropic/claude-haiku-4-5@20251001" data-rank="19"><th scope="row" class="model"><span class="name">Claude Haiku 4.5</span> <span class="prov">Anthropic</span></th><td class="num cell" data-v="1.000000" style="--f:1.000">1.000 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.012531" style="--f:0.049">0.013 <span class="pm">±0.001</span></td><td class="num cell" data-v="0.864377" style="--f:0.819">0.864 <span class="pm">±0.025</span></td><td class="num cell" data-v="0.900000" style="--f:0.889">0.900 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.114931" style="--f:0.115">0.115 <span class="pm">±0.025</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.910000" style="--f:0.901">0.910 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.125313" style="--f:0.098">0.125 <span class="pm">±0.006</span></td></tr>
+<tr data-model="anthropic/claude-sonnet-5@default" data-rank="20"><th scope="row" class="model"><span class="name">Claude Sonnet 5</span> <span class="prov">Anthropic</span></th><td class="num cell" data-v="1.000000" style="--f:1.000">1.000 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.012291" style="--f:0.045">0.012 <span class="pm">±0.001</span></td><td class="num cell" data-v="0.280161" style="--f:0.040">0.280 <span class="pm">±0.015</span></td><td class="num cell" data-v="0.900000" style="--f:0.889">0.900 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.101416" style="--f:0.101">0.101 <span class="pm">±0.027</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.910000" style="--f:0.901">0.910 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.118673" style="--f:0.074">0.119 <span class="pm">±0.006</span></td></tr>
+<tr data-model="anthropic/claude-sonnet-5-5@default" data-rank="21"><th scope="row" class="model"><span class="name">Claude Sonnet 5.5</span> <span class="prov">Anthropic</span></th><td class="num cell" data-v="1.000000" style="--f:1.000">1.000 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.011786" style="--f:0.036">0.012 <span class="pm">±0.001</span></td><td class="num cell" data-v="0.282087" style="--f:0.043">0.282 <span class="pm">±0.022</span></td><td class="num cell" data-v="0.900000" style="--f:0.889">0.900 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.080808" style="--f:0.081">0.081 <span class="pm">±0.034</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.910000" style="--f:0.901">0.910 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.104118" style="--f:0.018">0.104 <span class="pm">±0.004</span></td></tr>
+<tr data-model="google/gemini-3.5-flash-lite" data-rank="22"><th scope="row" class="model"><span class="name">Gemini 3.5 Flash-Lite</span> <span class="prov">Google</span></th><td class="num cell" data-v="1.000000" style="--f:1.000">1.000 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.010595" style="--f:0.013">0.011 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.778948" style="--f:0.705">0.779 <span class="pm">±0.013</span></td><td class="num cell" data-v="0.900000" style="--f:0.889">0.900 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.029138" style="--f:0.029">0.029 <span class="pm">±0.013</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.910000" style="--f:0.901">0.910 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.105945" style="--f:0.025">0.106 <span class="pm">±0.003</span></td></tr>
+<tr data-model="google/gemini-3.1-flash-lite-preview" data-rank="23"><th scope="row" class="model"><span class="name">Gemini 3.1 Flash-Lite (preview)</span> <span class="prov">Google</span></th><td class="num cell" data-v="1.000000" style="--f:1.000">1.000 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.010000" style="--f:0.000">0.010 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.750000" style="--f:0.667">0.750 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.900000" style="--f:0.889">0.900 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.000000" style="--f:0.000">0.000 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.800000" style="--f:0.750">0.800 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.910000" style="--f:0.901">0.910 <span class="pm">±0.000</span></td><td class="num cell" data-v="0.100000" style="--f:0.000">0.100 <span class="pm">±0.000</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Each cell is shaded from its check's lowest possible score, unshaded, up to 1. Uniformity and Last Digit count values, so they're shaded on a log scale: a model that always gives one answer is unshaded, a fair pick among 10 of the 100 values is halfway, and all 100 is full.</p>
+    <p class="note">The share checks are lenient toward avoidance. A model that never answers a multiple of 10 is only 10% away from the ideal share, so it scores 0.900, and one that answers nothing else scores 0.100. Every score has a 95% interval from 10,000 bootstrap resamples of the model's replies.</p>
+  </section>
+
+  <footer>
+    <p>The official leaderboards are on Kaggle. <a href="https://www.kaggle.com/benchmarks/benjaminbrumfield/randombench-overall">RandomBench</a> ranks the models by score, and <a href="https://www.kaggle.com/benchmarks/benjaminbrumfield/randombench">RandomBench Biases</a> holds the nine checks. They show the same scores without the intervals.</p>
+    <p>This page is built from the stored replies by <code>python -m randombench.build</code>.</p>
+  </footer>
+</div>
+
+<script>
+// Sorting the Biases table. Without it, the page reads in the ranking's order.
+(function () {
+  var table = document.getElementById("biases");
+  var body = table.tBodies[0];
+  var heads = table.tHead.querySelectorAll("th.num");
+  function reorder(compare) {
+    Array.prototype.slice.call(body.rows).sort(compare).forEach(function (row) { body.appendChild(row); });
+  }
+  heads.forEach(function (th) {
+    var button = document.createElement("button");
+    button.type = "button";
+    while (th.firstChild) button.appendChild(th.firstChild);
+    th.appendChild(button);
+    button.addEventListener("click", function () {
+      var sorted = th.hasAttribute("aria-sort");
+      heads.forEach(function (h) { h.removeAttribute("aria-sort"); });
+      if (sorted) {
+        reorder(function (a, b) { return a.dataset.rank - b.dataset.rank; });
+        return;
+      }
+      th.setAttribute("aria-sort", "descending");
+      var col = th.cellIndex;
+      reorder(function (a, b) {
+        return (b.cells[col].dataset.v - a.cells[col].dataset.v) || (a.dataset.rank - b.dataset.rank);
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,4 +1,5 @@
-"""Write the ten scoring task files from one template (PLAN.md 4.5b, D20).
+"""Write the ten scoring task files from one template (PLAN.md 4.5b, D20),
+and the leaderboard page, docs/index.html (5.3, D26).
 
 Each score gets a task of its own (D2): the headline and the nine
 sub-scores. A push uploads one file, so each task needs a file, and the ten
@@ -13,7 +14,10 @@ Each file holds its title as a string literal. The CLI finds a task's title
 by reading the file's syntax, and a title that's looked up or computed isn't
 found.
 
-A test fails when a file is out of date, so build again after changing the
+The page shows every model's scores from data/, as randombench/page.py
+explains.
+
+A test fails when a file is out of date, so build again after changing a
 template, a shared module, or data/.
 
 Usage: python -m randombench.build [--data data]
@@ -26,6 +30,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from randombench.extract import load_draws
+from randombench.page import PAGE, newest, render_page
+from randombench.score import score_draws
 from randombench.sync import ROOT, synced
 
 TEMPLATE = ROOT / "tasks" / "templates" / "score.py"
@@ -181,22 +187,26 @@ def render(task: ScoringTask, stored: dict[str, dict]) -> str:
     return synced(text)
 
 
+def _write(file: Path, text: str) -> tuple[Path, bool]:
+    """Write the file if its text differs. Return it, and whether it changed."""
+    changed = not file.is_file() or file.read_text(encoding="utf-8") != text
+    if changed:
+        file.parent.mkdir(exist_ok=True)
+        file.write_text(text, encoding="utf-8", newline="\n")
+    return file, changed
+
+
 def build(data_dir: Path = DATA) -> list[tuple[Path, bool]]:
-    """Write every scoring task file. Return each file, and whether it changed."""
-    stored = stored_replies(load_draws(data_dir))
-    SCORES_DIR.mkdir(exist_ok=True)
-    results = []
-    for task in SCORING_TASKS:
-        text = render(task, stored)
-        changed = not task.file.is_file() or task.file.read_text(encoding="utf-8") != text
-        if changed:
-            task.file.write_text(text, encoding="utf-8", newline="\n")
-        results.append((task.file, changed))
+    """Write every scoring task file and the page. Return each file, and whether it changed."""
+    draws = load_draws(data_dir)
+    stored = stored_replies(draws)
+    results = [_write(task.file, render(task, stored)) for task in SCORING_TASKS]
+    results.append(_write(PAGE, render_page(score_draws(draws), newest(draws))))
     return results
 
 
 def main(argv: list[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(description="Write the scoring task files from the template and data/.")
+    parser = argparse.ArgumentParser(description="Write the scoring task files and the page from data/.")
     parser.add_argument("--data", type=Path, default=DATA, help="where the records are")
     args = parser.parse_args(argv)
     for file, changed in build(args.data):
