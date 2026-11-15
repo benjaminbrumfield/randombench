@@ -23,8 +23,8 @@ import pandas as pd
 
 import kaggle_benchmarks as kbench
 
-# The pilot's size (4.2): 4 draws per prompt. The full runs (4.3) use 600.
-N_DRAWS = 24
+# The full runs' size (4.3): 100 draws per prompt. The pilot (4.2) used 24.
+N_DRAWS = 600
 N_JOBS = 4
 
 # The llm.name of each model in PLAN.md's model table. Kaggle runs and local
