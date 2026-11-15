@@ -24,9 +24,10 @@ import pandas as pd
 
 import kaggle_benchmarks as kbench
 
-# The pilots' size (4.2, 4.7, 4.10): 4 draws per prompt. The full runs (4.3,
-# 4.8) used 600.
-N_DRAWS = 24
+# A run's draws split evenly across the six prompts (D9). The full runs (4.3,
+# 4.8, 4.11) made 600, and the pilots (4.2, 4.7, 4.10) 24. In 4.11, the four
+# costliest models made 96, to stay well inside the daily quota.
+N_DRAWS = 96
 N_JOBS = 4
 
 # The llm.name of each model in PLAN.md's model table, from the server's
@@ -48,7 +49,7 @@ MODELS = (
     "google/gemini-3.1-pro-preview",
     "google/gemini-3.6-flash",
     "google/gemini-4-argon",
-    "xai/grok-4.5-0708",
+    # Not Grok 4.5: the server lists it, but Model Proxy doesn't serve it (D24).
     "xai/grok-4.6",
     "xai/grok-4.7",
     "openai/gpt-5.4-mini-2026-03-17",

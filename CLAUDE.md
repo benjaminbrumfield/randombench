@@ -53,7 +53,11 @@ python -m randombench.build
 # Push, then run on Kaggle. Ask first: the run calls models. A push's creation
 # run uses Gemini 3.8 Flash, the server's default model, which MODELS leaves
 # out, so pushing prompts nothing (PLAN.md D23). The scoring tasks never
-# prompt a model.
+# prompt a model. Model Proxy holds each call's maximum possible cost (up to
+# $1.54 for GPT-5.6 Terra) against the daily quota until the call finishes.
+# So run at most two collection runs at once, and check the extracted draws
+# for errors: a refused call is still one request, so the log's retry count
+# can't show it (PLAN.md 4.11).
 kaggle b t push <slug> -f <task>.py --wait
 kaggle b t run <slug> -m <model> --wait
 
