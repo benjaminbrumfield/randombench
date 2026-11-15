@@ -522,6 +522,17 @@ These steps use only stored draws and simulated random numbers. No quota. The sc
   - **Check:** a test confirms that every number on the page matches `python -m randombench.score`.
 
   *Learn:* how Pages serves a branch's folder, and how long a push takes to show up. Whether the seeded bootstrap (`score_intervals`, seed 0) writes the same bytes on another machine, which the staleness test relies on. Whether scoring every model in a test makes the suite noticeably slower. Whether shading from each check's lowest score still separates the models, since every model's uniformity sits near that check's lowest score, 0.01.
+- [x] **5.4a License.** No quota. Before the repo went public, three reviews read all of it: the code, the method and the stored data, and this plan with CLAUDE.md. None found anything private. No file or commit holds a secret, a personal email or a private note, and every commit uses the GitHub noreply address. None found a wrong score or ranking either. Their other findings are split across 5.4a–d, one commit each. The repo had no license, so nobody could reuse its code or data. It's MIT now, in [LICENSE](LICENSE), covering the code and the stored replies. The vendored skills keep their upstream Apache-2.0 licenses ([.claude/skills/SOURCES.md](.claude/skills/SOURCES.md)).
+- [ ] **5.4b README claims.** No quota. Some sentences claim more than the data shows:
+  - The README says a model's expected score is its true score at any number of answers. That's only nearly true: a perfect generator averages 0.959 uniformity at 120 answers and 0.991 at 624.
+  - The pooling limitation's examples date from the seven-model era and leave out GPT-5.6 Terra, the model pooling lifts most.
+  - "Reasoning doesn't fix it" reads as no effect, though the models that reason tend to score higher.
+  - The interval limitation names only the single-answer case, but every share check on a set a model never answered shows ±0.000.
+  - The temperature conclusion rests on 12 draws.
+
+  The README also doesn't say who wrote the prompts, and "Status" ends on a vague line.
+- [ ] **5.4c Code.** No quota. `python -m randombench.score` heads the valid share "invalid", next to a count of invalid replies, and prints Grok 4.5 as a 24th row of dashes. The code imports numpy and pandas, and the tests three more packages, none of them in the requirements. `probes/` has no index, and `probes/temperature.py` writes a `sent.json` that git doesn't ignore. A docstring and a test comment are stale.
+- [ ] **5.4d This plan and CLAUDE.md.** No quota. "Decided" and the decisions table still describe six or seven models in places (D1, D3, D12, D17, D18, D21, D22), and the table is headed "Open decisions" though every decision is settled. A few steps contradict later ones. Some wording reads as notes to an assistant ("the user", "Decide together"). CLAUDE.md's `%choose` rule names the wrong thing.
 
 ## Open decisions
 

@@ -136,3 +136,7 @@ This is going to be iterative and adaptive.
 ## Built with
 
 [kaggle-benchmarks](https://github.com/Kaggle/kaggle-benchmarks). The benchmark runs on [Kaggle Benchmarks](https://www.kaggle.com/benchmarks).
+
+## License
+
+MIT, in [LICENSE](LICENSE), for the code and the stored replies. The skills vendored in [.claude/skills/](.claude/skills/) keep their upstream Apache-2.0 licenses.
