@@ -28,9 +28,9 @@ import kaggle_benchmarks as kbench
 # 4.8, 4.11) made 600, and the pilots (4.2, 4.7, 4.10) 24. In 4.11, the four
 # costliest models made 96, to stay well inside the daily quota. Version 8
 # piloted the 13 flagship models with 24 draws each. Since version 9, each run
-# makes 96 and goes to the model with the fewest replies, so every model's
-# draws grow in steps of 96.
-N_DRAWS = 96
+# goes to the model with the fewest replies. Version 9's runs made 96, and
+# since version 10 they make 300.
+N_DRAWS = 300
 # Draws made at once. Model Proxy holds each call's maximum possible cost
 # against the daily quota until it finishes (4.11), and a flagship model's
 # hold can be several dollars, so runs since the flagship pilots make one at
