@@ -151,7 +151,7 @@ footer p { margin: 0 0 6px; max-width: 75ch; }
   <header>
     <h1>RandomBench</h1>
     <p class="lede">How well can language models pick numbers at random?</p>
-    <p class="prose">Each model was asked many times for a random integer from 0 to 99, in a fresh conversation every time. Its score is the share of replies that are valid times its uniformity. A score of 0.05 means the model repeats itself as often as a fair pick among 5 numbers would. A perfect random source scores close to 1.</p>
+    <p class="prose">Each model was asked many times for a random integer from 0 to 99, in a fresh conversation every time. A model that gives the same answer every time scores 0.01, and a perfect random number generator scores about 1.</p>
     <p class="meta">
       <span>Data as of <time datetime="2026-11-15">November 15, 2026</time></span>
       <span>23 models</span>
@@ -162,7 +162,6 @@ footer p { margin: 0 0 6px; max-width: 75ch; }
 
   <section aria-labelledby="ranking-h">
     <h2 id="ranking-h">Ranking</h2>
-    <p class="caption prose">Ranked by RandomBench Score, highest first. Each bar is a 95% interval, and models whose bars overlap can't yet be told apart. The axis ends at 0.12. A perfect random source scores close to 1.</p>
     <div class="scroll">
       <table class="rank" style="--steps:3">
         <thead><tr>
@@ -204,7 +203,7 @@ footer p { margin: 0 0 6px; max-width: 75ch; }
 
   <section aria-labelledby="biases-h">
     <h2 id="biases-h">Biases</h2>
-    <p class="caption prose">Each model's favorite answer, then the nine checks behind the score, for the same models in the same order. The checks explain the ranking and don't add to it. Select a heading to sort by that column, and select it again to return to the ranking.</p>
+    <p class="caption prose">These checks show the biases that make each model's picks less random. Select a heading to sort by it, and select it again to return to the ranking.</p>
     <div class="scroll">
       <table class="biases" id="biases">
         <thead><tr><th scope="col" class="model">Model</th><th scope="col" class="num"><span class="h">Favorite</span><span class="low">and its share</span></th><th scope="col" class="num"><span class="h">Valid Answers</span><span class="low">lowest 0</span></th><th scope="col" class="num"><span class="h">Uniformity</span><span class="low">lowest 0.01</span></th><th scope="col" class="num"><span class="h">Primes</span><span class="low">lowest 0.25</span></th><th scope="col" class="num"><span class="h">Multiples of 10</span><span class="low">lowest 0.10</span></th><th scope="col" class="num"><span class="h">Multiples of 5</span><span class="low">lowest 0.20</span></th><th scope="col" class="num"><span class="h">Favorite Number</span><span class="low">lowest 0</span></th><th scope="col" class="num"><span class="h">Edges</span><span class="low">lowest 0.20</span></th><th scope="col" class="num"><span class="h">Repeated Digits</span><span class="low">lowest 0.09</span></th><th scope="col" class="num"><span class="h">Last Digit</span><span class="low">lowest 0.10</span></th></tr></thead>

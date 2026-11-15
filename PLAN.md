@@ -591,6 +591,10 @@ These steps use only stored draws and simulated random numbers. No quota. The sc
   - **Favorite column:** every model has a single favorite now, so no cell shows a tie yet. 22 of the 23 favorites are 42, 47, or 73. Sorting by the column puts the 42s first, the largest share first within each, from Gemini 3.1 Flash-Lite's 100% down.
   - **Width:** the new column made the Biases table about 1,200 px wide, more than the page's 1,080. The page is now 1,200 px wide, and the Biases cells' padding went from 8 to 7 px a side, so both tables fit from a 1,232 px window up. At 390 px the page doesn't scroll sideways, the Ranking table still fits, and the Biases table scrolls inside its frame as before.
   - **README:** "Results" is now a paragraph that links to the page and its findings, plus the Benchmarks and `python -m randombench.score`. The list of models is gone. The suite has 344 tests and runs in about 32 s.
+- [x] **5.6 Page copy.** No quota. The page's opening paragraph explained the score with a formula and a worked example before showing any scores. It now gives the scale's two ends instead. The Ranking caption is gone, and the Biases caption is shorter.
+  - **Opening:** "A model that gives the same answer every time scores 0.01, and a perfect random number generator scores about 1." The lowest isn't 0.00: one value is a fair pick among K = 1 of 100, so uniformity is 0.01, and Gemini 3.1 Flash-Lite, which has answered only 42, shows 0.010. Only invalid replies can bring a score lower. The page no longer gives the formula, which the README's method section does.
+  - **Ranking:** no caption. The axis's tick labels already show where it ends, so the template's `__AXIS__` placeholder is gone too. The page no longer explains the bars as 95% intervals, apart from the Biases note's mention of the bootstrap.
+  - **Biases:** "These checks show the biases that make each model's picks less random," then how to sort. The old caption said the checks "don't add to" the ranking, though two of them make up the score.
 
 ## Decisions
 

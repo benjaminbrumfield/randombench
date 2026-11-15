@@ -31,7 +31,7 @@ from randombench.sync import ROOT
 TEMPLATE = Path(__file__).with_name("page.html")
 PAGE = ROOT / "docs" / "index.html"
 
-PLACEHOLDERS = {"__DATE__", "__ISODATE__", "__COUNT__", "__AXIS__", "__STEPS__", "__TICKS__",
+PLACEHOLDERS = {"__DATE__", "__ISODATE__", "__COUNT__", "__STEPS__", "__TICKS__",
                 "__RANKING__", "__HEADINGS__", "__BIASES__"}
 _PLACEHOLDER = re.compile(r"__[A-Z]+__")
 
@@ -244,7 +244,6 @@ def render_page(results: list[ModelScores], as_of: datetime) -> str:
         "__DATE__": f"{as_of:%B} {as_of.day}, {as_of.year}",
         "__ISODATE__": f"{as_of:%Y-%m-%d}",
         "__COUNT__": str(len(models)),
-        "__AXIS__": f"{top:.{decimals}f}",
         "__STEPS__": str(steps),
         "__TICKS__": ticks,
         "__HEADINGS__": headings,
