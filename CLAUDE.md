@@ -16,7 +16,7 @@ The `kaggle-benchmarks` skill covers the general rules. On top of those:
 - Keep the slug in `@kbench.task(name=...)` stable, so a push makes a new version rather than a new task.
 - A push uploads only the task file, so everything the task needs on Kaggle (prompts, parsing) must be in it. A task never imports `randombench`. It holds a copy of each module it uses: put an empty `# --- begin randombench/<module>.py ---` / `# --- end randombench/<module>.py ---` pair where the module goes, then run `python -m randombench.sync` (PLAN.md D6).
 - The ten scoring tasks in `tasks/scores/` are generated (PLAN.md D20). Never edit them. Edit `tasks/templates/score.py`, or `SCORING_TASKS` in `randombench/build.py`, and run `python -m randombench.build`. The files embed the stored replies in `data/`, so rebuild after extracting new runs too.
-- Never write a comment that starts with `# %` or `# !`, or a bare `#%%`. When the CLI converts the file to a notebook, jupytext turns these into magics, shell commands or cell breaks. `# %choose <slug>` is the one deliberate exception, and a test checks every task file.
+- Never write a comment that starts with `# %` or `# !`, or a bare `#%%`. When the CLI converts the file to a notebook, jupytext turns these into magics, shell commands or cell breaks. `# %choose <task variable>`, such as `# %choose collect`, is the one deliberate exception, and a test checks every task file.
 - Pass `seed=None` to `llm.prompt()`. The default seed, 0, could make a model give the same answer every time.
 - Don't pass `schema=`. Every model replies in plain text, and our own parser reads it (PLAN.md, "Replies").
 
