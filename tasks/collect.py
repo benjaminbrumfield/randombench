@@ -5,8 +5,11 @@
 #
 # A push uploads only this file, so it holds its own copy of
 # randombench/prompts.py, kept current by `python -m randombench.sync` (D6).
-# For now it runs locally only, at a small size: the last cell names two
-# local models. Its name is provisional (D10).
+#
+# It makes draws only for the six models in MODELS (D12). Every push first
+# runs the task once on the server's default model, which isn't one of them,
+# so that run prompts nothing and returns 0. So does a local run, whose
+# kbench.llm is LLM_DEFAULT from .env, unless LLM_DEFAULT names one of the six.
 import random
 
 import pandas as pd
@@ -15,6 +18,18 @@ import kaggle_benchmarks as kbench
 
 N_DRAWS = 12
 N_JOBS = 4
+
+# The llm.name of each model in PLAN.md's model table. Kaggle runs and local
+# runs use the same names. Any other model makes no draws, so an id that's
+# wrong here costs a wasted run, not unwanted calls.
+MODELS = (
+    "openai/gpt-5.4-nano-2026-03-17",
+    "google/gemini-3.1-flash-lite-preview",
+    "google/gemini-3.5-flash-lite",
+    "anthropic/claude-haiku-4-5@20251001",
+    "google/gemma-4-26b-a4b",
+    "openai/gpt-oss-120b",
+)
 
 
 # %%
@@ -180,10 +195,15 @@ def draw(llm, draw_index: int, prompt_id: str) -> dict:
 
 # %%
 @kbench.task(
-    name="randombench-collect",
+    # The slug, randombench-draws, is permanent (D10). The title can change
+    # only to another that slugifies the same way.
+    name="RandomBench Draws",
     description="Asks the model for a random integer from 0 to 99, many times, each in a fresh conversation, and stores every raw reply.",
 )
 def collect(llm) -> int:
+    if llm.name not in MODELS:
+        # A push's creation run, or a model RandomBench doesn't cover (D12).
+        return 0
     schedule = balanced_schedule(N_DRAWS)
     draws = draw.evaluate(
         llm=[llm],
@@ -196,5 +216,15 @@ def collect(llm) -> int:
 
 
 # %%
-for name in ["openai/gpt-5.4-nano-2026-03-17", "google/gemini-3.1-flash-lite-preview"]:
-    run = collect.run(kbench.llms[name])
+# On Kaggle, kbench.llm is the -m model, or the server's default in a push's
+# creation run. Locally it's LLM_DEFAULT. Assigned, so the notebook doesn't
+# display the run.
+run = collect.run(kbench.llm)
+
+# %%
+# Deletes every .task.json and .run.json except this task's own and its latest
+# run, so the download holds the parent run file, not one file per draw (1.2).
+# jupytext turns this comment into the magic when the CLI converts the file,
+# and it stays a comment when the file runs as a script. It names the task's
+# variable, because the title has a space.
+# %choose collect

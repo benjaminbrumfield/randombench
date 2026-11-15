@@ -4,7 +4,7 @@ Loads the records in data/ (2.5), merges each model's draws across its runs
 (D3), parses each reply (2.2) and scores the answers (3.3). A failed call
 has no reply, so it's left out and doesn't count as an invalid answer, but
 the table shows how many there were. This runs offline only. A scoring task
-does the same parse-then-score_answers step itself (3.6).
+does the same parse-then-score_answers step itself (4.5).
 
 Usage: python -m randombench.score [--data data]
 """

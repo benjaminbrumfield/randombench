@@ -32,6 +32,11 @@ python -m pytest
 # Run locally. Ask first if the task calls a model.
 set -a && source .env && set +a && PYTHONUTF8=1 python <task>.py
 
+# tasks/collect.py prompts only the six models in its MODELS list, and .env's
+# LLM_DEFAULT isn't one of them, so a plain local run makes no calls. To draw
+# from one, override LLM_DEFAULT after sourcing .env (ask first: it spends quota).
+set -a && source .env && set +a && LLM_DEFAULT=openai/gpt-5.4-nano-2026-03-17 PYTHONUTF8=1 python tasks/collect.py
+
 # Refresh the copies of shared modules in task files (tests fail if stale)
 python -m randombench.sync
 
