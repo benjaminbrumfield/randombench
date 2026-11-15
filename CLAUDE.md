@@ -2,11 +2,11 @@
 
 RandomBench measures how well LLMs generate random integers from 0 to 99 and scores their answers for biases, such as favoring primes or round numbers. It's built with [`kaggle_benchmarks`](https://github.com/Kaggle/kaggle-benchmarks) and runs on Kaggle Benchmarks.
 
-[PLAN.md](PLAN.md) holds the design, the decisions, and the build steps. Read it before starting work, and record decisions there.
+[PLAN.md](PLAN.md) holds the design, the decisions (D1–D30), and the steps of the original build. It's finished: read it for background, and cite its decisions, but don't add to it.
 
 ## How we work
 
-- **One step at a time.** Each PLAN.md step is one small commit. This is a learning project, so explain what each step shows, and raise open decisions instead of settling them quietly.
+- **One step at a time.** Each change is one small commit. This is a learning project, so explain what each change shows, and raise open decisions instead of settling them quietly.
 - **Ask before any LLM call.** Local task runs, probe scripts, and `kaggle b t run` all spend Model Proxy quota. Pushing `randombench-draws` doesn't: its creation run uses Gemini 3.8 Flash, which `MODELS` leaves out (PLAN.md D23). Adding Gemini 3.8 Flash back would make every push spend `N_DRAWS` calls. Say which models and how many calls, then wait for a yes. Read-only commands such as `kaggle b t models` are fine.
 
 ## Writing tasks

@@ -108,7 +108,7 @@ On Windows, set `PYTHONUTF8=1` first. Making new draws needs a Kaggle account an
 - [docs/index.html](docs/index.html): the leaderboard page. `python -m randombench.build` generates it from [randombench/page.html](randombench/page.html) and the stored replies, and GitHub Pages serves it. [tests/test_findings.py](tests/test_findings.py) checks each of its findings against the stored replies.
 - [data/](data/): every raw reply, one JSON Lines file per Kaggle run. `data/grok-4.5-0708/` is a pilot whose calls all failed, because Kaggle's Model Proxy doesn't serve Grok 4.5. It's kept as the record and isn't scored.
 - [probes/](probes/): small experiments that tested the platform along the way.
-- [PLAN.md](PLAN.md): the design, every decision and the reasons for it, and what each step found.
+- [PLAN.md](PLAN.md): the design, every decision and the reasons for it, and what each step of the original build found. It's finished, so changes since then are recorded only in the commit history.
 
 ## Status
 
@@ -120,7 +120,7 @@ RandomBench is public on Kaggle:
 
 The [leaderboard page](https://benjaminbrumfield.github.io/randombench/) shows the same scores with their 95% intervals, one model per row, which the Benchmarks can't show, and what stands out in them. It's rebuilt from [data/](data/) whenever new draws are stored.
 
-RandomBench is a work in progress. Models, draws, and checks get added over time, and [PLAN.md](PLAN.md) records each step.
+RandomBench is a work in progress. Models, draws, and checks get added over time. [PLAN.md](PLAN.md) records the original build, and the commit history records what has changed since.
 
 ## Built with
 
