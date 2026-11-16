@@ -1,5 +1,6 @@
 """The leaderboard page, docs/index.html (PLAN.md 5.3), checked offline."""
 
+import json
 import math
 import re
 from datetime import datetime, timezone
@@ -12,6 +13,8 @@ from randombench.extract import load_draws
 from randombench.page import (
     CHECK_NAMES,
     DISPLAY_NAMES,
+    HEAT_DARK,
+    HEAT_FLOOR,
     LOWEST,
     PAGE,
     _answers_cell,
@@ -23,6 +26,7 @@ from randombench.page import (
     axis,
     favorites,
     newest,
+    panel_data,
     ranked,
     render_page,
     shade,
@@ -78,6 +82,11 @@ class Tables(HTMLParser):
 def shown(score, half) -> str:
     """A score as the page shows it."""
     return "—" if score is None else f"{score:.3f} ±{half:.3f}"
+
+
+def pair(score, half) -> list[str]:
+    """A score as the panel's data holds it."""
+    return ["—", ""] if score is None else [f"{score:.3f}", f"±{half:.3f}"]
 
 
 # The names and the scales
@@ -193,11 +202,33 @@ def test_the_panel_is_the_top_models():
     panel = text[text.index('<aside class="panel"'):text.index("</aside>")]
     r = ranked(EXPECTED)[0]
     name, provider = DISPLAY_NAMES[r.model]
-    assert f"<h3>{name}</h3>" in panel and f"· {provider} ·" in panel
+    assert re.search(r"<h3[^>]*>(.*?)</h3>", panel)[1] == name and f"· {provider} ·" in panel
     big = re.sub(r"<[^>]+>", "", re.search(r'<p class="big">(.*?)</p>', panel)[1])
     assert big == shown(r.scores["headline"], r.intervals["headline"])
     checks = [re.sub(r"<[^>]+>", "", v) for v in re.findall(r'<dd class="num">(.*?)</dd>', panel)]
     assert checks == [shown(r.scores[k], r.intervals[k]) for k in CHECK_NAMES]
+
+
+def test_every_models_panel_data_is_the_scorers():
+    text = PAGE.read_text(encoding="utf-8")
+    raw = re.search(r'<script type="application/json" id="panel-data">(.*?)</script>', text, re.S)[1]
+    assert "<" not in raw  # so nothing in it can end the script early
+    data = json.loads(raw)
+    assert data["dark"] == HEAT_DARK
+    models = ranked(EXPECTED)
+    assert [m["model"] for m in data["models"]] == [r.model for r in models]
+    for rank, (m, r) in enumerate(zip(data["models"], models), 1):
+        name, provider = DISPLAY_NAMES[r.model]
+        assert m["name"] == name
+        assert m["about"] == f"Rank {rank} of {len(models)} · {provider} · {r.draws - r.failed} replies"
+        assert m["score"] == pair(r.scores["headline"], r.intervals["headline"])
+        assert [c[:2] for c in m["checks"]] == [pair(r.scores[k], r.intervals[k]) for k in CHECK_NAMES]
+        assert [c[2] for c in m["checks"]] == pytest.approx([shade(k, r.scores[k]) for k in CHECK_NAMES], abs=5e-4)
+        assert m["fav"] == favorites(r.counts)[0]
+        top = max(r.counts)
+        assert m["t"] == pytest.approx([max(HEAT_FLOOR, c / top) if c else 0 for c in r.counts], abs=5e-4)
+    # The panel the build writes is the first model's, as the script would show it.
+    assert _panel(data["models"][0]) in text
 
 
 def test_the_headline_is_the_ranking():
@@ -266,7 +297,10 @@ def test_the_distribution_draws_favorites_in_orange_and_circles_values_never_giv
 
 def test_the_panel_shades_each_square_by_its_count_over_the_favorites():
     [r] = score_draws([{"model": NANO, "reply": x} for x in ["42"] * 4 + ["47"] * 3 + ["37"] * 2 + ["7"]])
-    found = re.findall(r'<span(?: class="(\w+)")?(?: style="--t:([0-9.]+)")?>(\d+)</span>', _panel(r, 1, 1))
+    d = panel_data(r, 1, 1)
+    assert (d["fav"], d["t"][42], d["t"][47], d["t"][0]) == ([42], 1, 0.75, 0)
+    assert "Favorite <strong>42</strong>: 40% of its valid answers." == d["key"]
+    found = re.findall(r'<span(?: class="(\w+)")?(?: style="--t:([0-9.]+)")?>(\d+)</span>', _panel(d))
     squares = {int(value): (cls, t) for cls, t, value in found}
     assert len(squares) == 100
     assert squares[42] == ("fav", "")

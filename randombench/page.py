@@ -13,10 +13,12 @@ every model's favorite in orange.
 
 The page has two tables (D27). Ranking orders the models by the headline,
 charts each one's answers from 0 to 99, and draws each one's interval on a
-shared scale. Beside it, a panel shows the top model's answers on a 10 by 10
-grid and its nine checks as bars. Biases holds each model's favorite answer (D30), then the nine
-sub-scores for the same models in the same order, each cell shaded by its
-score (D28). The template, page.html
+shared scale. Beside it, a panel shows one model's answers on a 10 by 10 grid
+and its nine checks as bars. The build writes the top model's panel, so the
+page reads without JavaScript, and every model's panel data as JSON, which
+the page's script puts in the panel when a row is selected. Biases holds each
+model's favorite answer (D30), then the nine sub-scores for the same models in
+the same order, each cell shaded by its score (D28). The template, page.html
 beside this file, holds the page's text and style, and this fills in the
 numbers. Below the tables, the findings are written by hand in the template,
 and tests/test_findings.py checks each one against data/ (D29).
@@ -26,6 +28,7 @@ test fails when it's stale (D26). It's dated by the newest stored draw, not
 by the build, so rebuilding unchanged data writes the same bytes.
 """
 
+import json
 import math
 import re
 from datetime import datetime
@@ -41,7 +44,7 @@ PAGE = ROOT / "docs" / "index.html"
 
 PLACEHOLDERS = {"__DATE__", "__ISODATE__", "__COUNT__", "__PROVIDERS__", "__ANSWERS__", "__BEST__",
                 "__BESTMODEL__", "__COMMON__", "__COMMONSHARE__", "__DIST__", "__FAVORITES__",
-                "__NEVER__", "__PANEL__", "__STEPS__", "__TICKS__",
+                "__NEVER__", "__PANEL__", "__PANELS__", "__STEPS__", "__TICKS__",
                 "__RANKING__", "__HEADINGS__", "__BIASES__"}
 _PLACEHOLDER = re.compile(r"__[A-Z]+__")
 
@@ -239,53 +242,93 @@ HEAT_FLOOR = 0.12
 HEAT_DARK = 0.6
 
 
-def _panel(r: ModelScores, rank: int, of: int) -> str:
-    """The panel beside the Ranking, for one model: its score, its answers on a 10 by 10 grid, and its nine checks.
+def _pair(score: float | None, half: float | None) -> list[str]:
+    """A score and its interval as the page shows them, such as ["0.158", "±0.025"], or ["—", ""]."""
+    return [_number(score), "" if half is None else f"±{half:.3f}"]
 
-    The build writes it for the top-ranked model, so it reads without
-    JavaScript. The squares run 0 to 99, ten to a row, and are shaded in
-    proportion to the count, as the Answers bars are, with the favorite in
-    orange. Each check's bar is shaded as its Biases cell is (D28).
+
+def _scored(value: str, pm: str) -> str:
+    """A _pair in HTML, as _number and _plus_minus write it. The page's script writes it the same way."""
+    return escape(value) + (f' <span class="pm">{escape(pm)}</span>' if pm else "")
+
+
+def panel_data(r: ModelScores, rank: int, of: int) -> dict:
+    """What the panel shows for one model, each part formatted as it's shown.
+
+    The build writes the top model's panel from it, and the page carries every
+    model's, as JSON, for its script to put in the panel when a row is
+    selected. So every number and word in the panel is made here, once, and
+    the script only puts them in place. That matters because JavaScript
+    rounds an exact tie, such as 0.0625, the other way from Python.
+
+    The squares run 0 to 99. Each one's t is its count over the favorite's,
+    but at least HEAT_FLOOR, and 0 if the model never gave it. The favorites
+    are listed apart, so a tie shows every one. Each check's bar is shaded as
+    its Biases cell is (D28). The key is HTML; the rest is text.
     """
     name, provider = DISPLAY_NAMES[r.model]
     found = favorites(r.counts)
-    values = found[0] if found else []
     top = max(r.counts)
+    replies = r.draws - r.failed
+    if found:
+        values, share = found
+        key = f"Favorite <strong>{', '.join(map(str, values))}</strong>: {share:.0%} of its valid answers."
+    else:
+        values, key = [], "No valid answers yet."
+    return {
+        "model": r.model,
+        "about": f"Rank {rank} of {of} · {provider} · {replies} repl{'y' if replies == 1 else 'ies'}",
+        "name": name,
+        "score": _pair(r.scores["headline"], r.intervals["headline"]),
+        "fav": values,
+        "t": [round(max(HEAT_FLOOR, count / top), 3) if count else 0 for count in r.counts],
+        "key": key,
+        "checks": [_pair(r.scores[k], r.intervals[k]) + [round(shade(k, r.scores[k]), 3)] for k in CHECK_NAMES],
+    }
+
+
+def _panel(d: dict) -> str:
+    """The panel beside the Ranking, from a model's panel_data: its score, its answers on a 10 by 10 grid, and its nine checks.
+
+    A square darker than HEAT_DARK gets the class hi, for lighter text, as the
+    page's script gives it.
+    """
     squares = []
-    for value, count in enumerate(r.counts):
-        if value in values:
+    for value, t in enumerate(d["t"]):
+        if value in d["fav"]:
             squares.append(f'<span class="fav">{value}</span>')
-        elif not count:
+        elif not t:
             squares.append(f'<span class="none">{value}</span>')
         else:
-            t = max(HEAT_FLOOR, count / top)
             dark = ' class="hi"' if t > HEAT_DARK else ""
             squares.append(f'<span{dark} style="--t:{t:.3f}">{value}</span>')
-    if found:
-        fav, share = ", ".join(map(str, values)), f"{found[1]:.0%}"
-        key = (f"Favorite <strong>{fav}</strong>: {share} of its valid answers. "
-               f"Darker squares were answered more often, and dashed ones never.")
-        label = f"{escape(name)}'s answers on a 10 by 10 grid of 0 to 99. Favorite {fav}, {share} of its valid answers."
-    else:
-        key = "No valid answers yet."
-        label = f"{escape(name)} has no valid answers yet."
     checks = "".join(
         f'<div><dt>{title}<small>lowest {_short(LOWEST[k], 2)}</small></dt>'
-        f'<dd aria-hidden="true"><span class="meter"><i style="--f:{shade(k, r.scores[k]):.3f}"></i></span></dd>'
-        f'<dd class="num">{_number(r.scores[k])}{_plus_minus(r.intervals[k])}</dd></div>'
-        for k, title in CHECK_NAMES.items())
-    replies = r.draws - r.failed
-    return (f'    <aside class="panel" aria-label="Selected model">\n'
-            f'      <p class="about">Rank {rank} of {of} · {escape(provider)} · '
-            f'{replies} repl{"y" if replies == 1 else "ies"}</p>\n'
-            f'      <h3>{escape(name)}</h3>\n'
-            f'      <p class="big">{_number(r.scores["headline"])}{_plus_minus(r.intervals["headline"])}</p>\n'
-            f'      <div class="heat" role="img" aria-label="{label}">{"".join(squares)}</div>\n'
-            f'      <p class="key">{key}</p>\n'
+        f'<dd aria-hidden="true"><span class="meter"><i style="--f:{f:.3f}"></i></span></dd>'
+        f'<dd class="num">{_scored(value, pm)}</dd></div>'
+        for (k, title), (value, pm, f) in zip(CHECK_NAMES.items(), d["checks"]))
+    return (f'    <aside class="panel" id="panel" aria-label="Selected model">\n'
+            f'      <p class="about">{escape(d["about"])}</p>\n'
+            f'      <h3 aria-live="polite">{escape(d["name"])}</h3>\n'
+            f'      <p class="big">{_scored(*d["score"])}</p>\n'
+            f'      <div class="heat" role="img" aria-label="The answers on a 10 by 10 grid of 0 to 99">'
+            f'{"".join(squares)}</div>\n'
+            f'      <p class="key"><span class="fav-key">{d["key"]}</span> '
+            f'Darker squares were answered more often, and dashed ones never.</p>\n'
             f'      <h4>Bias checks</h4>\n'
             f'      <dl class="checks">{checks}</dl>\n'
             f"      <p class=\"key\">Each bar runs from the check's lowest possible score, empty, to 1, full.</p>\n"
             f'    </aside>')
+
+
+def _panels_json(panels: list[dict]) -> str:
+    """Every model's panel_data, as the JSON the page's script reads, one model to a line.
+
+    Each < is escaped, so that nothing in it can end the script early, as a
+    </script> would. JSON.parse reads \\u003c back as <.
+    """
+    models = ",\n".join(json.dumps(p, ensure_ascii=False, separators=(",", ":")) for p in panels)
+    return f'{{"dark":{HEAT_DARK},"models":[\n{models}\n]}}'.replace("<", "\\u003c")
 
 
 def axis(top: float) -> tuple[float, int]:
@@ -419,6 +462,8 @@ def render_page(results: list[ModelScores], as_of: datetime) -> str:
     favs = {v for r in models if (found := favorites(r.counts)) for v in found[0]}
     never = sum(1 for share in shares if not share)
 
+    panels = [panel_data(r, rank, len(models)) for rank, r in enumerate(models, 1)]
+
     text = TEMPLATE.read_text(encoding="utf-8")
     found = set(_PLACEHOLDER.findall(text))
     if found != PLACEHOLDERS:
@@ -437,7 +482,8 @@ def render_page(results: list[ModelScores], as_of: datetime) -> str:
         "__DIST__": _distribution(shares, favs),
         "__FAVORITES__": _series([f"{v} ({shares[v]:.1%})" for v in sorted(favs, key=lambda v: -shares[v])]),
         "__NEVER__": f"{never} value{'' if never == 1 else 's'}",
-        "__PANEL__": _panel(models[0], 1, len(models)) if models else "",
+        "__PANEL__": _panel(panels[0]) if panels else "",
+        "__PANELS__": _panels_json(panels),
         "__STEPS__": str(steps),
         "__TICKS__": ticks,
         "__HEADINGS__": headings,

@@ -12,7 +12,7 @@
 
    Layout: one column, up to 1320px wide, so the Ranking and the panel beside it fit without scrolling.
    Paragraphs stop at about 80 characters, however wide the page.
-   The text spans the same width as the tables and narrows with the window. Rows are separated by hairline rules, never boxed; only the summary cards are. One typeface, and two accents: teal for scores, and orange for favorite answers. */
+   The text spans the same width as the tables and narrows with the window. Rows are separated by hairline rules, never boxed; only the summary cards and the panel are. One typeface, and two accents: teal for scores, and orange for favorite answers. */
 :root {
   --bg: #fbfcfc;
   --card: #ffffff;
@@ -118,6 +118,15 @@ tbody tr { border-bottom: 1px solid var(--rule); }
 /* Ranking, with the selected model's panel beside it, or under it on narrower screens */
 .ranked { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px 32px; align-items: start; }
 .ranked-table { display: grid; gap: 16px; min-width: 0; }
+.rank tbody tr { --row: var(--bg); background: var(--row); }
+.rank tbody tr:has(.pick) { cursor: pointer; }  /* once the script has made each name a button */
+.rank tbody tr:has(.pick):hover { --row: color-mix(in oklab, var(--accent) 4%, var(--bg)); }
+.rank tbody tr:has([aria-current]) { --row: color-mix(in oklab, var(--accent) 9%, var(--bg)); }
+.pick {
+  font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0;
+  text-align: inherit; cursor: pointer;
+}
+.pick:hover .name { text-decoration: underline; text-underline-offset: 0.18em; text-decoration-thickness: 1px; }
 .rank .n { width: 2.2em; color: var(--muted); }
 .rank .replies { color: var(--muted); }
 .rank .score { font-weight: 600; }
@@ -146,14 +155,14 @@ tbody tr { border-bottom: 1px solid var(--rule); }
 }
 .dot {
   position: absolute; top: 50%; left: var(--x); width: 9px; height: 9px; border-radius: 50%;
-  transform: translate(-50%, -50%); background: var(--accent); box-shadow: 0 0 0 2px var(--bg);
+  transform: translate(-50%, -50%); background: var(--accent); box-shadow: 0 0 0 2px var(--row, var(--bg));
 }
 
 /* The selected model's panel. Its 100 squares are the values 0 to 99, ten to a row, each shaded by --t,
    its count over the favorite's. */
 .panel {
   background: var(--card); border: 1px solid var(--rule); border-radius: 12px; padding: 20px;
-  display: grid; gap: 14px; font-size: 0.875rem; min-width: 0;
+  display: grid; gap: 14px; font-size: 0.875rem; min-width: 0; scroll-margin-top: 16px;
 }
 .panel p { margin: 0; }
 .panel .about { font-size: var(--step--1); color: var(--muted); }
@@ -269,6 +278,7 @@ __DIST__
 
   <section aria-labelledby="ranking-h">
     <h2 id="ranking-h">Ranking</h2>
+    <p class="caption" id="pick-hint" hidden>Select a model to see its answers and bias checks.</p>
     <div class="ranked">
     <div class="ranked-table">
     <div class="scroll">
@@ -356,6 +366,87 @@ __BIASES__
       });
     });
   });
+})();
+</script>
+<script type="application/json" id="panel-data">
+__PANELS__
+</script>
+<script>
+// The panel beside the Ranking. The build writes the top model's panel into
+// the page, so it reads without JavaScript, and every model's panel data as
+// the JSON above (randombench/page.py's panel_data). Selecting a row puts that
+// model's into the panel. Every number and word comes formatted from the build,
+// and this only puts them in place.
+(function () {
+  var panel = document.getElementById("panel");
+  if (!panel) return;
+  var data = JSON.parse(document.getElementById("panel-data").textContent);
+  var byModel = {};
+  data.models.forEach(function (m) { byModel[m.model] = m; });
+  var body = document.querySelector(".rank tbody");
+  var heading = panel.querySelector("h3");
+  var squares = panel.querySelectorAll(".heat span");
+  var meters = panel.querySelectorAll(".meter i");
+  var numbers = panel.querySelectorAll(".checks .num");
+  var still = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+  // A score and its interval, as page.py's _scored writes them: 0.158 <span class="pm">±0.025</span>.
+  function scored(el, pair) {
+    el.textContent = pair[0];
+    if (pair[1]) {
+      var pm = document.createElement("span");
+      pm.className = "pm";
+      pm.textContent = pair[1];
+      el.append(" ", pm);
+    }
+  }
+
+  function show(m) {
+    panel.querySelector(".about").textContent = m.about;
+    heading.textContent = m.name;
+    scored(panel.querySelector(".big"), m.score);
+    squares.forEach(function (square, value) {
+      var t = m.t[value];
+      square.className = m.fav.indexOf(value) >= 0 ? "fav" : !t ? "none" : t > data.dark ? "hi" : "";
+      square.style.setProperty("--t", t);
+    });
+    panel.querySelector(".fav-key").innerHTML = m.key;
+    m.checks.forEach(function (check, i) {
+      scored(numbers[i], check);
+      meters[i].style.setProperty("--f", check[2]);
+    });
+  }
+
+  function select(row) {
+    body.querySelectorAll(".pick").forEach(function (button) {
+      if (button.closest("tr") === row) button.setAttribute("aria-current", "true");
+      else button.removeAttribute("aria-current");
+    });
+    show(byModel[row.dataset.model]);
+    // Where the panel is under the table, or scrolled away, bring it into view.
+    var box = heading.getBoundingClientRect();
+    if (box.top < 0 || box.bottom > window.innerHeight) {
+      panel.scrollIntoView({ block: "start", behavior: still.matches ? "auto" : "smooth" });
+    }
+  }
+
+  // Each model's name becomes a button, for the keyboard, and a click anywhere
+  // on its row selects it too. The top model starts selected.
+  Array.prototype.forEach.call(body.rows, function (row, i) {
+    var cell = row.querySelector(".model");
+    var button = document.createElement("button");
+    button.type = "button";
+    button.className = "pick";
+    button.setAttribute("aria-controls", "panel");
+    if (i === 0) button.setAttribute("aria-current", "true");
+    while (cell.firstChild) button.appendChild(cell.firstChild);
+    cell.appendChild(button);
+  });
+  body.addEventListener("click", function (event) {
+    var row = event.target.closest("tr");
+    if (row) select(row);
+  });
+  document.getElementById("pick-hint").hidden = false;
 })();
 </script>
 </body>
