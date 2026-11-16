@@ -19,7 +19,6 @@ from randombench.page import (
     PAGE,
     _answers_cell,
     _distribution,
-    _favorite_cell,
     _panel,
     _series,
     average_shares,
@@ -87,6 +86,13 @@ def shown(score, half) -> str:
 def pair(score, half) -> list[str]:
     """A score as the panel's data holds it."""
     return ["—", ""] if score is None else [f"{score:.3f}", f"±{half:.3f}"]
+
+
+def panel_json(text: str) -> dict:
+    """Every model's panel data, from the page's JSON."""
+    raw = re.search(r'<script type="application/json" id="panel-data">(.*?)</script>', text, re.S)[1]
+    assert "<" not in raw  # so nothing in it can end the script early
+    return json.loads(raw)
 
 
 # The names and the scales
@@ -163,17 +169,7 @@ def test_every_number_on_the_page_is_the_scorers():
         texts = [text for _, text in cells]
         assert texts[:4] == [str(rank), f"{name} {provider}", str(r.draws - r.failed),
                              shown(r.scores["headline"], r.intervals["headline"])]
-
-    biases = tables.rows("biases")
-    assert [attrs["data-model"] for attrs, _ in biases] == order
-    for attrs, cells in biases:
-        r = by_model[attrs["data-model"]]
-        values, top = favorites(r.counts)
-        assert cells[1][1] == f"{', '.join(map(str, values))} · {top:.0%}"
-        assert values == [v for v, c in enumerate(r.counts) if c == max(r.counts)]
-        assert [text for _, text in cells[2:]] == [shown(r.scores[k], r.intervals[k]) for k in CHECK_NAMES]
-        # What the sort reads.
-        assert [float(a["data-v"]) for a, _ in cells[2:]] == pytest.approx([r.scores[k] for k in CHECK_NAMES], abs=1e-6)
+    # Each model's checks are in its panel data, which the next tests check.
 
 
 def test_the_summary_cards_are_the_scorers():
@@ -211,9 +207,7 @@ def test_the_panel_is_the_top_models():
 
 def test_every_models_panel_data_is_the_scorers():
     text = PAGE.read_text(encoding="utf-8")
-    raw = re.search(r'<script type="application/json" id="panel-data">(.*?)</script>', text, re.S)[1]
-    assert "<" not in raw  # so nothing in it can end the script early
-    data = json.loads(raw)
+    data = panel_json(text)
     assert data["dark"] == HEAT_DARK
     models = ranked(EXPECTED)
     assert [m["model"] for m in data["models"]] == [r.model for r in models]
@@ -256,12 +250,15 @@ def test_a_model_with_no_replies_is_left_out_and_one_with_no_headline_goes_last(
         {"model": GEMINI, "reply": "forty-two"},  # one reply, invalid, so no headline
         {"model": GROK_45, "reply": None},  # a failed call
     ]
-    tables = Tables(render_page(score_draws(draws), datetime(2026, 1, 2, tzinfo=timezone.utc)))
-    ranking = tables.rows("rank")
+    text = render_page(score_draws(draws), datetime(2026, 1, 2, tzinfo=timezone.utc))
+    ranking = Tables(text).rows("rank")
     assert [attrs["data-model"] for attrs, _ in ranking] == [NANO, GEMINI]
     assert [text for _, text in ranking[1][1]][3] == "—"
-    gemini = [text for _, text in tables.rows("biases")[1][1][1:]]
-    assert gemini == ["—", "0.000 ±0.000"] + ["—"] * 8  # no favorite without a valid answer
+    gemini = panel_json(text)["models"][1]
+    assert gemini["score"] == ["—", ""]
+    assert [c[:2] for c in gemini["checks"]] == [["0.000", "±0.000"]] + [["—", ""]] * 8
+    assert (gemini["fav"], gemini["key"]) == ([], "No valid answers yet.")  # no favorite without a valid answer
+    assert gemini["t"] == [0] * 100
 
 
 def test_a_tie_for_favorite_shows_every_tied_value():
@@ -269,7 +266,7 @@ def test_a_tie_for_favorite_shows_every_tied_value():
     counts[42], counts[73], counts[7] = 3, 3, 1
     assert favorites(counts) == ([42, 73], 3 / 7)
     assert favorites([0] * 100) is None
-    assert ">42, 73 <" in _favorite_cell(counts)
+    assert 'aria-label="Favorite 42, 73: 43% of its valid answers"' in _answers_cell(counts)
 
 
 def test_the_answers_chart_draws_each_value_given_with_the_favorites_apart():
@@ -312,15 +309,6 @@ def test_the_panel_shades_each_square_by_its_count_over_the_favorites():
 
 def test_a_series_reads_as_a_sentence():
     assert [_series(["a"]), _series(["a", "b"]), _series(["a", "b", "c"])] == ["a", "a and b", "a, b, and c"]
-
-
-def test_sorting_the_favorites_groups_them_in_ascending_order_largest_share_first():
-    def key(favorite, count):
-        counts = [0] * 100
-        counts[favorite], counts[99] = count, 10 - count
-        return float(re.search(r'data-v="([-0-9.]+)"', _favorite_cell(counts))[1])
-    # The table sorts from the highest data-v down.
-    assert sorted([(47, 9), (42, 6), (73, 8), (42, 9)], key=lambda f: -key(*f)) == [(42, 9), (42, 6), (47, 9), (73, 8)]
 
 
 def test_the_page_is_dated_by_the_newest_draw():

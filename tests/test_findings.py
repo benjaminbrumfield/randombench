@@ -2,7 +2,7 @@
 
 The rest of the page is rebuilt from data/, but its findings are written by
 hand in randombench/page.html, so new draws could leave them contradicting the
-tables above them. So each finding has a test here, test_finding_ and its
+numbers above them. So each finding has a test here, test_finding_ and its
 data-finding, that checks what it claims. When new draws break one, rewrite
 the finding first, then its test to match.
 """

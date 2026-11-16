@@ -12,7 +12,7 @@
 
    Layout: one column, up to 1320px wide, so the Ranking and the panel beside it fit without scrolling.
    Paragraphs stop at about 80 characters, however wide the page.
-   The text spans the same width as the tables and narrows with the window. Rows are separated by hairline rules, never boxed; only the summary cards and the panel are. One typeface, and two accents: teal for scores, and orange for favorite answers. */
+   Rows are separated by hairline rules, never boxed; only the summary cards and the panel are. One typeface, and two accents: teal for scores, and orange for favorite answers. */
 :root {
   --bg: #fbfcfc;
   --card: #ffffff;
@@ -25,7 +25,6 @@
   --on-fav: #ffffff;    /* text on --fav */
   --deep: #083f48;      /* the panel's most-answered squares; the lighter ones mix it with --card */
   --on-deep: #ffffff;   /* text on the darker squares */
-  --shade-max: 30%;    /* the strongest a Biases cell is shaded */
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --step--1: 0.8125rem; /* 13px */
   --step-0: 0.9375rem;  /* 15px */
@@ -36,7 +35,6 @@
   :root {
     --bg: #0e1416; --card: #141d20; --fg: #e1e9eb; --soft: #b3c0c4; --muted: #95a4a9; --rule: #243137;
     --accent: #52c0d1; --fav: #ee8a45; --on-fav: #0e1416; --deep: #9be0ea; --on-deep: #0e1416;
-    --shade-max: 32%;
   }
 }
 
@@ -192,26 +190,6 @@ tbody tr { border-bottom: 1px solid var(--rule); }
 .meter { display: block; height: 6px; border-radius: 3px; background: var(--rule); overflow: hidden; }
 .meter i { display: block; height: 100%; width: calc(var(--f, 0) * 100%); background: var(--accent); border-radius: 3px; }
 
-/* Biases */
-.biases { min-width: 1020px; }
-.biases th.model { font-weight: 400; position: sticky; left: 0; background: var(--bg); z-index: 1; min-width: 11.5em; }
-.biases thead th.model { z-index: 2; }
-.biases thead th.num { padding-left: 6px; padding-right: 6px; }
-.biases thead .h, .biases thead .low { display: block; }
-.biases thead .h { white-space: normal; text-wrap: balance; }
-.biases thead .low { font-weight: 400; font-size: 0.92em; margin-top: 2px; }
-.biases td.cell {
-  background: color-mix(in oklab, var(--accent) calc(var(--f, 0) * var(--shade-max)), var(--bg));
-  padding-left: 7px; padding-right: 7px;
-}
-.biases thead button {
-  font: inherit; color: inherit; letter-spacing: inherit; background: none; border: 0; padding: 0;
-  margin: 0; text-align: inherit; cursor: pointer; width: 100%;
-}
-.biases thead button:hover .h { color: var(--fg); }
-.biases thead th[aria-sort] { color: var(--fg); }
-.biases thead th[aria-sort] .h::after { content: " ↓"; color: var(--accent); }
-
 /* What stands out */
 .findings { display: grid; gap: 14px; }
 .findings p { margin: 0; max-width: 80ch; }
@@ -236,7 +214,7 @@ footer p { margin: 0 0 6px; }
   h1 { font-size: 1.75rem; }
   .rank th, .rank td { padding-left: 6px; padding-right: 6px; }
   .rank .n { width: 1.6em; }
-  .rank .model .prov, .rank .score .pm, .biases .model .prov { display: block; margin-left: 0; }
+  .rank .model .prov, .rank .score .pm { display: block; margin-left: 0; }
   .rank td.plot, .rank th.plot { width: 34%; padding-left: 10px; }
   .rank .answers { display: none; }
   .rank .tick:not(:first-child):not(:last-child) { display: none; }
@@ -244,7 +222,6 @@ footer p { margin: 0 0 6px; }
 }
 @media (min-width: 601px) {
   .rank thead .narrow { display: none; }
-  .biases th.model { white-space: nowrap; }
 }
 </style>
 </head>
@@ -297,25 +274,11 @@ __RANKING__
       </table>
     </div>
     <p class="note">Answers draws how often the model gave each value, from 0 at the left to 99 at the right, with its favorite in orange. Each bar's height is in proportion to its count, with a floor so that a value given only once still shows.</p>
-    <p class="note">Replies counts every call that got a reply, valid or not. Calls that failed, such as those the quota refused, aren't counted. A model with fewer replies gets a wider interval, not a lower score.</p>
+    <p class="note">Replies counts every call that got a reply, valid or not. Calls that failed, such as those the quota refused, aren't counted. Every score's 95% interval comes from 10,000 bootstrap resamples of the model's replies, so a model with fewer replies gets a wider interval, not a lower score.</p>
+    <p class="note">The bias checks on a share of the answers, such as Multiples of 10, are lenient toward avoidance. A model that never answers a multiple of 10 is only 10% away from the ideal share, so it scores 0.900, and one that answers nothing else scores 0.100.</p>
     </div>
 __PANEL__
     </div>
-  </section>
-
-  <section aria-labelledby="biases-h">
-    <h2 id="biases-h">Biases</h2>
-    <p class="caption">These checks show the biases that make each model's picks less random. Select a heading to sort by it, and select it again to return to the ranking.</p>
-    <div class="scroll">
-      <table class="biases" id="biases">
-        <thead><tr><th scope="col" class="model">Model</th>__HEADINGS__</tr></thead>
-        <tbody>
-__BIASES__
-        </tbody>
-      </table>
-    </div>
-    <p class="note">Each cell is shaded from its check's lowest possible score, unshaded, up to 1. Uniformity and Last Digit count values, so they're shaded on a log scale: a model that always gives one answer is unshaded, a fair pick among 10 of the 100 values is halfway, and all 100 is full.</p>
-    <p class="note">The share checks are lenient toward avoidance. A model that never answers a multiple of 10 is only 10% away from the ideal share, so it scores 0.900, and one that answers nothing else scores 0.100. Every score has a 95% interval from 10,000 bootstrap resamples of the model's replies.</p>
   </section>
 
   <!-- Each finding is checked against data/ by the test named for its data-finding in tests/test_findings.py (PLAN.md D29). -->
@@ -338,36 +301,6 @@ __BIASES__
   </footer>
 </div>
 
-<script>
-// Sorting the Biases table. Without it, the page reads in the ranking's order.
-(function () {
-  var table = document.getElementById("biases");
-  var body = table.tBodies[0];
-  var heads = table.tHead.querySelectorAll("th.num");
-  function reorder(compare) {
-    Array.prototype.slice.call(body.rows).sort(compare).forEach(function (row) { body.appendChild(row); });
-  }
-  heads.forEach(function (th) {
-    var button = document.createElement("button");
-    button.type = "button";
-    while (th.firstChild) button.appendChild(th.firstChild);
-    th.appendChild(button);
-    button.addEventListener("click", function () {
-      var sorted = th.hasAttribute("aria-sort");
-      heads.forEach(function (h) { h.removeAttribute("aria-sort"); });
-      if (sorted) {
-        reorder(function (a, b) { return a.dataset.rank - b.dataset.rank; });
-        return;
-      }
-      th.setAttribute("aria-sort", "descending");
-      var col = th.cellIndex;
-      reorder(function (a, b) {
-        return (b.cells[col].dataset.v - a.cells[col].dataset.v) || (a.dataset.rank - b.dataset.rank);
-      });
-    });
-  });
-})();
-</script>
 <script type="application/json" id="panel-data">
 __PANELS__
 </script>

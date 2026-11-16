@@ -1,4 +1,4 @@
-"""Write the leaderboard page, docs/index.html (PLAN.md 5.3, D26, D27).
+"""Write the leaderboard page, docs/index.html (PLAN.md 5.3, D26).
 
 GitHub Pages serves it from main's docs/ folder. It shows the scores that
 `python -m randombench.score` prints, with models in rows, which Kaggle's
@@ -11,17 +11,25 @@ This computes all four, so none is a claim written by hand. Below them, "What
 the models answer" charts each value's share, averaged the same way, with
 every model's favorite in orange.
 
-The page has two tables (D27). Ranking orders the models by the headline,
-charts each one's answers from 0 to 99, and draws each one's interval on a
-shared scale. Beside it, a panel shows one model's answers on a 10 by 10 grid
-and its nine checks as bars. The build writes the top model's panel, so the
-page reads without JavaScript, and every model's panel data as JSON, which
-the page's script puts in the panel when a row is selected. Biases holds each
-model's favorite answer (D30), then the nine sub-scores for the same models in
-the same order, each cell shaded by its score (D28). The template, page.html
-beside this file, holds the page's text and style, and this fills in the
-numbers. Below the tables, the findings are written by hand in the template,
-and tests/test_findings.py checks each one against data/ (D29).
+Ranking orders the models by the headline, charts each one's answers from 0
+to 99, with its favorite in orange, and draws each one's interval on a shared
+scale. Beside it, a panel shows one model's answers on a 10 by 10 grid and its
+nine checks as bars, each filled from its check's lowest score to 1, as D28
+shaded the cells of the table it replaces. The build writes the
+top model's panel, so the page reads without JavaScript, and every model's
+panel data as JSON, which the page's script puts in the panel when a row is
+selected.
+
+The page used to have two tables (D27): Ranking, and Biases, which held every
+model's nine checks and, from D30, its favorite, in a column that sorted. The
+panel and the Answers column show both, so Biases is gone. What went with it
+is comparing every model on one check at a glance; the panel shows one model
+at a time.
+
+The template, page.html beside this file, holds the page's text and style,
+and this fills in the numbers. Below the Ranking, the findings are written by
+hand in the template, and tests/test_findings.py checks each one against
+data/ (D29).
 
 `python -m randombench.build` writes the page with the scoring tasks, and a
 test fails when it's stale (D26). It's dated by the newest stored draw, not
@@ -45,7 +53,7 @@ PAGE = ROOT / "docs" / "index.html"
 PLACEHOLDERS = {"__DATE__", "__ISODATE__", "__COUNT__", "__PROVIDERS__", "__ANSWERS__", "__BEST__",
                 "__BESTMODEL__", "__COMMON__", "__COMMONSHARE__", "__DIST__", "__FAVORITES__",
                 "__NEVER__", "__PANEL__", "__PANELS__", "__STEPS__", "__TICKS__",
-                "__RANKING__", "__HEADINGS__", "__BIASES__"}
+                "__RANKING__"}
 _PLACEHOLDER = re.compile(r"__[A-Z]+__")
 
 # Each model's name and provider, as the README names them. A test fails when
@@ -115,14 +123,14 @@ LOWEST = {"invalid_answers": 0.0} | {
 }
 
 # These two score an effective number of values K, out of 100 or 10, so their
-# cells are shaded on a log scale (D28): one value is unshaded, 10 of 100 is
+# bars are filled on a log scale (D28): one value is empty, 10 of 100 is
 # halfway, and every value is full. log K is the collision entropy, so the
-# shade is the share of the most entropy possible.
+# fill is the share of the most entropy possible.
 LOG_SHADED = {"uniformity", "last_digit"}
 
 
 def shade(name: str, score: float | None) -> float:
-    """How strongly a Biases cell is shaded: 0 at its check's lowest score, 1 at a score of 1."""
+    """How full a check's bar in the panel is: 0 at its check's lowest score, 1 at a score of 1."""
     if score is None:
         return 0.0
     low = LOWEST[name]
@@ -263,8 +271,8 @@ def panel_data(r: ModelScores, rank: int, of: int) -> dict:
 
     The squares run 0 to 99. Each one's t is its count over the favorite's,
     but at least HEAT_FLOOR, and 0 if the model never gave it. The favorites
-    are listed apart, so a tie shows every one. Each check's bar is shaded as
-    its Biases cell is (D28). The key is HTML; the rest is text.
+    are listed apart, so a tie shows every one. Each check's bar is as full
+    as shade() says (D28). The key is HTML; the rest is text.
     """
     name, provider = DISPLAY_NAMES[r.model]
     found = favorites(r.counts)
@@ -317,7 +325,9 @@ def _panel(d: dict) -> str:
             f'Darker squares were answered more often, and dashed ones never.</p>\n'
             f'      <h4>Bias checks</h4>\n'
             f'      <dl class="checks">{checks}</dl>\n'
-            f"      <p class=\"key\">Each bar runs from the check's lowest possible score, empty, to 1, full.</p>\n"
+            f"      <p class=\"key\">Each bar runs from the check's lowest possible score, empty, to 1, full. "
+            f"Uniformity and Last Digit are on a log scale, so that their low scores still differ: "
+            f"a Uniformity score of 0.1 fills half its bar.</p>\n"
             f'    </aside>')
 
 
@@ -372,27 +382,10 @@ def _plus_minus(half: float | None) -> str:
     return "" if half is None else f' <span class="pm">±{half:.3f}</span>'
 
 
-def _favorite_cell(counts) -> str:
-    """The Biases table's Favorite cell, such as 73 · 18%. It isn't a score, so it isn't shaded.
-
-    The table sorts each column from the highest data-v down. Here that has to
-    put the favorites in ascending order, the 42s before the 47s, and within
-    each, the largest share first. A share is at most 1, so 100 minus the
-    favorite, plus the share, does both.
-    """
-    found = favorites(counts)
-    if found is None:
-        return '<td class="num fav" data-v="-1">—</td>'
-    values, share = found
-    return (f'<td class="num fav" data-v="{N_VALUES - values[0] + share:.6f}">'
-            f'{", ".join(str(v) for v in values)} <span class="pm">· {share:.0%}</span></td>')
-
-
-def _model_cell(tag: str, model: str) -> str:
+def _model_cell(model: str) -> str:
     name, provider = DISPLAY_NAMES[model]
-    scope = ' scope="row"' if tag == "th" else ""
-    return (f'<{tag}{scope} class="model"><span class="name">{escape(name)}</span>'
-            f' <span class="prov">{escape(provider)}</span></{tag}>')
+    return (f'<td class="model"><span class="name">{escape(name)}</span>'
+            f' <span class="prov">{escape(provider)}</span></td>')
 
 
 def ranked(results: list[ModelScores]) -> list[ModelScores]:
@@ -421,32 +414,12 @@ def render_page(results: list[ModelScores], as_of: datetime) -> str:
             bar = (f'<div class="strip" style="--lo:{position(score - half)};--hi:{position(score + half)};'
                    f'--x:{position(score)}"><i class="ci"></i><b class="dot"></b></div>')
         ranking.append(
-            f'<tr data-model="{escape(r.model)}"><td class="n">{rank}</td>{_model_cell("td", r.model)}'
+            f'<tr data-model="{escape(r.model)}"><td class="n">{rank}</td>{_model_cell(r.model)}'
             f'<td class="num replies">{r.draws - r.failed}</td>'
             f'<td class="num score">{_number(score)}{_plus_minus(half)}</td>'
             f'{_answers_cell(r.counts)}'
             f'<td class="plot" aria-hidden="true">{bar}</td></tr>'
         )
-
-    headings = '<th scope="col" class="num"><span class="h">Favorite</span><span class="low">and its share</span></th>'
-    headings += "".join(
-        f'<th scope="col" class="num"><span class="h">{name}</span>'
-        f'<span class="low">lowest {_short(LOWEST[key], 2)}</span></th>'
-        for key, name in CHECK_NAMES.items()
-    )
-
-    biases = []
-    for rank, r in enumerate(models, 1):
-        cells = [_favorite_cell(r.counts)]
-        for key in CHECK_NAMES:
-            score, half = r.scores[key], r.intervals[key]
-            if score is None:
-                cells.append('<td class="num cell" data-v="-1">—</td>')
-            else:
-                cells.append(f'<td class="num cell" data-v="{score:.6f}" style="--f:{shade(key, score):.3f}">'
-                             f'{_number(score)}{_plus_minus(half)}</td>')
-        biases.append(f'<tr data-model="{escape(r.model)}" data-rank="{rank}">'
-                      f'{_model_cell("th", r.model)}{"".join(cells)}</tr>')
 
     ticks = "".join(f'<span class="tick" style="--x:{i / steps * 100:.2f}%">{_short(i * step, decimals)}</span>'
                     for i in range(steps + 1))
@@ -486,8 +459,6 @@ def render_page(results: list[ModelScores], as_of: datetime) -> str:
         "__PANELS__": _panels_json(panels),
         "__STEPS__": str(steps),
         "__TICKS__": ticks,
-        "__HEADINGS__": headings,
         "__RANKING__": "\n".join(ranking),
-        "__BIASES__": "\n".join(biases),
     }
     return _PLACEHOLDER.sub(lambda m: values[m.group()], text)
