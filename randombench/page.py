@@ -7,7 +7,9 @@ show (4.13, D25). The Benchmarks stay the official leaderboard.
 
 Four cards open the page: how many models and valid answers there are, the
 top score, and the most common answer, by its share averaged over the models.
-This computes all four, so none is a claim written by hand.
+This computes all four, so none is a claim written by hand. Below them, "What
+the models answer" charts each value's share, averaged the same way, with
+every model's favorite in orange.
 
 The page has two tables (D27). Ranking orders the models by the headline,
 charts each one's answers from 0 to 99, and draws each one's interval on a
@@ -37,7 +39,8 @@ TEMPLATE = Path(__file__).with_name("page.html")
 PAGE = ROOT / "docs" / "index.html"
 
 PLACEHOLDERS = {"__DATE__", "__ISODATE__", "__COUNT__", "__PROVIDERS__", "__ANSWERS__", "__BEST__",
-                "__BESTMODEL__", "__COMMON__", "__COMMONSHARE__", "__STEPS__", "__TICKS__",
+                "__BESTMODEL__", "__COMMON__", "__COMMONSHARE__", "__DIST__", "__FAVORITES__",
+                "__NEVER__", "__STEPS__", "__TICKS__",
                 "__RANKING__", "__HEADINGS__", "__BIASES__"}
 _PLACEHOLDER = re.compile(r"__[A-Z]+__")
 
@@ -148,6 +151,52 @@ def average_shares(all_counts) -> list[float]:
     if not answered:
         return [0.0] * N_VALUES
     return [sum(counts[v] / sum(counts) for counts in answered) / len(answered) for v in range(N_VALUES)]
+
+
+def _series(items: list[str]) -> str:
+    """Items joined as in a sentence, with a serial comma: a, b, and c."""
+    if len(items) < 3:
+        return " and ".join(items)
+    return ", ".join(items[:-1]) + ", and " + items[-1]
+
+
+# The shortest a bar in "What the models answer" can be, out of 100, so that a
+# value given once still shows.
+MIN_DIST_BAR = 1
+
+
+def _distribution(shares: list[float], favs: set[int]) -> str:
+    """The chart under "What the models answer": a bar for each value's average share.
+
+    The bars are one SVG, 100 units wide, that stretches to the page's width.
+    The labels, the circles under the values no model gave, and the axis are
+    HTML placed by percentage, so that they keep their shape as it stretches.
+    Each value in favs, some model's favorite, is drawn and labeled in orange.
+    """
+    top = max(shares)
+    if not top:
+        return ""
+    others, fav_bars, labels, never = [], [], [], []
+    for value, share in enumerate(shares):
+        x = f"--x:{value + 0.5:g}%"
+        if not share:
+            never.append(f'<i style="{x}"></i>')
+            continue
+        height = round(max(MIN_DIST_BAR, 100 * share / top), 2)
+        bar = f"M{value + 0.1:g} 100v-{height:g}h0.8V100z"
+        if value in favs:
+            fav_bars.append(bar)
+            labels.append(f'<span class="label" style="{x};--h:{height:g}%">{value}<small>{share:.1%}</small></span>')
+        else:
+            others.append(bar)
+    paths = f'<path d="{"".join(others)}"/>' if others else ""
+    paths += f'<path class="fav" d="{"".join(fav_bars)}"/>' if fav_bars else ""
+    ticks = "".join(f'<span style="--x:{v + 0.5:g}%">{v}</span>' for v in range(0, N_VALUES, 10))
+    return (f'      <div class="dist-plot" role="img" aria-label="A bar for each value from 0 to 99, '
+            f'as tall as its average share of the answers">'
+            f'<svg viewBox="0 0 {N_VALUES} 100" preserveAspectRatio="none">{paths}</svg>{"".join(labels)}</div>\n'
+            f'      <div class="dist-base" aria-hidden="true">{"".join(never)}</div>\n'
+            f'      <div class="dist-axis" aria-hidden="true">{ticks}</div>')
 
 
 # The Ranking's Answers chart: its height in SVG units, and the shortest a bar
@@ -308,6 +357,11 @@ def render_page(results: list[ModelScores], as_of: datetime) -> str:
     shares = average_shares([r.counts for r in models])
     common = max(range(N_VALUES), key=lambda v: shares[v]) if any(shares) else None
 
+    # What the models answer. Its orange values are every model's favorite,
+    # listed in the caption from the largest average share down.
+    favs = {v for r in models if (found := favorites(r.counts)) for v in found[0]}
+    never = sum(1 for share in shares if not share)
+
     text = TEMPLATE.read_text(encoding="utf-8")
     found = set(_PLACEHOLDER.findall(text))
     if found != PLACEHOLDERS:
@@ -323,6 +377,9 @@ def render_page(results: list[ModelScores], as_of: datetime) -> str:
                          f'{escape(DISPLAY_NAMES[best.model][0])}, ±{best.intervals["headline"]:.3f}',
         "__COMMON__": "—" if common is None else str(common),
         "__COMMONSHARE__": "—" if common is None else f"{shares[common]:.1%}",
+        "__DIST__": _distribution(shares, favs),
+        "__FAVORITES__": _series([f"{v} ({shares[v]:.1%})" for v in sorted(favs, key=lambda v: -shares[v])]),
+        "__NEVER__": f"{never} value{'' if never == 1 else 's'}",
         "__STEPS__": str(steps),
         "__TICKS__": ticks,
         "__HEADINGS__": headings,

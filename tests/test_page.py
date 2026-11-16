@@ -15,7 +15,9 @@ from randombench.page import (
     LOWEST,
     PAGE,
     _answers_cell,
+    _distribution,
     _favorite_cell,
+    _series,
     average_shares,
     axis,
     favorites,
@@ -176,6 +178,15 @@ def test_the_summary_cards_are_the_scorers():
     ]
 
 
+def test_the_answers_chart_labels_every_models_favorite():
+    text = PAGE.read_text(encoding="utf-8")
+    shares = average_shares([r.counts for r in ranked(EXPECTED)])
+    favs = {v for r in ranked(EXPECTED) if favorites(r.counts) for v in favorites(r.counts)[0]}
+    labels = re.findall(r'class="label"[^>]*>(\d+)<small>([^<]*)</small>', text)
+    assert {int(v) for v, _ in labels} == favs
+    assert all(share == f"{shares[int(v)]:.1%}" for v, share in labels)
+
+
 def test_the_headline_is_the_ranking():
     scores = [by.scores["headline"] for by in ranked(EXPECTED)]
     assert scores == sorted(scores, reverse=True)
@@ -227,6 +238,21 @@ def test_the_answers_chart_draws_each_value_given_with_the_favorites_apart():
     assert bars[False] == [("7", "2"), ("99", "5")]  # one answer is under the floor
     assert 'aria-label="Favorite 42, 73: 43% of its valid answers"' in cell
     assert _answers_cell([0] * 100) == '<td class="answers"></td>'  # no valid answers
+
+
+def test_the_distribution_draws_favorites_in_orange_and_circles_values_never_given():
+    shares = [0.0] * 100
+    shares[42], shares[47], shares[7] = 0.5, 0.25, 0.25
+    chart = _distribution(shares, {42})
+    assert re.search(r'<path class="fav" d="([^"]*)"', chart)[1] == "M42.1 100v-100h0.8V100z"
+    assert re.search(r'<path d="([^"]*)"', chart)[1] == "M7.1 100v-50h0.8V100zM47.1 100v-50h0.8V100z"
+    assert re.findall(r'class="label"[^>]*>(\d+)<small>([^<]*)', chart) == [("42", "50.0%")]
+    assert chart.count("<i ") == 97  # one circle for each value no model gave
+    assert _distribution([0.0] * 100, set()) == ""
+
+
+def test_a_series_reads_as_a_sentence():
+    assert [_series(["a"]), _series(["a", "b"]), _series(["a", "b", "c"])] == ["a", "a and b", "a, b, and c"]
 
 
 def test_sorting_the_favorites_groups_them_in_ascending_order_largest_share_first():
