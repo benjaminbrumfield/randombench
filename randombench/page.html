@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="light dark">
+<meta name="color-scheme" content="light">
 <title>RandomBench Leaderboard</title>
 <meta name="description" content="How well can language models pick numbers at random? RandomBench's scores, with 95% intervals.">
 <link rel="icon" href="data:,">
@@ -12,7 +12,8 @@
 
    Layout: one column, up to 1320px wide, so the Ranking and the panel beside it fit without scrolling.
    Paragraphs stop at about 80 characters, however wide the page.
-   Rows are separated by hairline rules, never boxed; only the summary cards and the panel are. One typeface, and two accents: teal for scores, and orange for favorite answers. */
+   Rows are separated by hairline rules, never boxed; only the summary cards and the panel are. One typeface, and two accents: teal for scores, and orange for favorite answers.
+   Light only, whatever the system's setting. */
 :root {
   --bg: #fbfcfc;
   --card: #ffffff;
@@ -23,19 +24,20 @@
   --accent: #0d7282;
   --fav: #c2410c;       /* a model's favorite answer, wherever it's drawn */
   --on-fav: #ffffff;    /* text on --fav */
-  --deep: #083f48;      /* the panel's most-answered squares; the lighter ones mix it with --card */
+  --deep: #083f48;      /* the panel's most-answered squares, and a link under the pointer */
   --on-deep: #ffffff;   /* text on the darker squares */
+  --picked: #e6f1f3;    /* the selected row, and the panel's palest squares */
+  --bar: #6f8f95;       /* the bars in "What the models answer" that aren't orange */
+  --spark: #6aa9b2;     /* the Answers column's bars that aren't orange */
+  --spark-base: #c7d1d4; /* the line under them */
+  --ci: #9cc6cc;        /* a score's interval */
+  --track: #e6ecee;     /* the empty part of a bias check's bar */
+  --dash: #b8c3c7;      /* the outline of a square never answered */
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --step--1: 0.8125rem; /* 13px */
   --step-0: 0.9375rem;  /* 15px */
   --step-1: 1.0625rem;  /* 17px */
   --step-3: 2rem;       /* 32px */
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0e1416; --card: #141d20; --fg: #e1e9eb; --soft: #b3c0c4; --muted: #95a4a9; --rule: #243137;
-    --accent: #52c0d1; --fav: #ee8a45; --on-fav: #0e1416; --deep: #9be0ea; --on-deep: #0e1416;
-  }
 }
 
 body {
@@ -48,8 +50,8 @@ body {
   -webkit-text-size-adjust: 100%;
 }
 .page { max-width: 1320px; margin: 0 auto; display: grid; gap: 56px; }
-a { color: var(--accent); text-underline-offset: 0.18em; text-decoration-thickness: 1px; }
-a:hover { text-decoration-thickness: 2px; }
+a { color: var(--accent); text-underline-offset: 0.18em; }
+a:hover { color: var(--deep); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
 code { font-size: 0.95em; }
 
@@ -96,7 +98,7 @@ tbody tr { border-bottom: 1px solid var(--rule); }
 /* What the models answer: bars in one stretched SVG, with HTML labels, circles, and axis placed over and under it by percentage */
 .dist { margin: 0; display: grid; gap: 0; }
 .dist-plot { position: relative; height: 200px; margin-top: 52px; }
-.dist-plot svg { display: block; width: 100%; height: 100%; fill: color-mix(in oklab, var(--accent) 50%, var(--muted)); }
+.dist-plot svg { display: block; width: 100%; height: 100%; fill: var(--bar); }
 .dist-plot .fav { fill: var(--fav); }
 .dist .label {
   position: absolute; left: var(--x); bottom: calc(var(--h) + 6px); transform: translateX(-50%);
@@ -119,7 +121,7 @@ tbody tr { border-bottom: 1px solid var(--rule); }
 .rank tbody tr { --row: var(--bg); background: var(--row); }
 .rank tbody tr:has(.pick) { cursor: pointer; }  /* once the script has made each name a button */
 .rank tbody tr:has(.pick):hover { --row: color-mix(in oklab, var(--accent) 4%, var(--bg)); }
-.rank tbody tr:has([aria-current]) { --row: color-mix(in oklab, var(--accent) 9%, var(--bg)); }
+.rank tbody tr:has([aria-current]) { --row: var(--picked); }
 .pick {
   font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0;
   text-align: inherit; cursor: pointer;
@@ -132,8 +134,8 @@ tbody tr { border-bottom: 1px solid var(--rule); }
 .rank td.answers, .rank th.answers { width: 7em; padding-left: 16px; vertical-align: middle; }
 .rank th.answers { vertical-align: bottom; }
 .answers svg {
-  display: block; width: 100%; height: 22px; border-bottom: 1px solid var(--rule);
-  fill: color-mix(in oklab, var(--accent) 60%, var(--bg));
+  display: block; width: 100%; height: 22px; border-bottom: 1px solid var(--spark-base);
+  fill: var(--spark);
 }
 .answers .fav { fill: var(--fav); }
 .rank td.plot, .rank th.plot { width: 28%; padding-left: 22px; vertical-align: middle; }
@@ -149,7 +151,7 @@ tbody tr { border-bottom: 1px solid var(--rule); }
 .ci {
   position: absolute; top: 50%; left: var(--lo); width: calc(var(--hi) - var(--lo)); height: 4px;
   transform: translateY(-50%); border-radius: 2px;
-  background: color-mix(in oklab, var(--accent) 38%, var(--bg));
+  background: var(--ci);
 }
 .dot {
   position: absolute; top: 50%; left: var(--x); width: 9px; height: 9px; border-radius: 50%;
@@ -157,7 +159,8 @@ tbody tr { border-bottom: 1px solid var(--rule); }
 }
 
 /* The selected model's panel. Its 100 squares are the values 0 to 99, ten to a row, each shaded by --t,
-   its count over the favorite's. */
+   its count over the favorite's, from --picked at 0 to --deep at 1. They mix in sRGB, so each channel
+   moves in a straight line between the two. */
 .panel {
   background: var(--card); border: 1px solid var(--rule); border-radius: 12px; padding: 20px;
   display: grid; gap: 14px; font-size: 0.875rem; min-width: 0; scroll-margin-top: 16px;
@@ -171,10 +174,10 @@ tbody tr { border-bottom: 1px solid var(--rule); }
 .heat span {
   box-sizing: border-box; aspect-ratio: 1; display: grid; place-items: center; border-radius: 3px;
   font-size: 0.6875rem; font-variant-numeric: tabular-nums; color: var(--fg);
-  background: color-mix(in oklab, var(--deep) calc(var(--t, 0) * 100%), var(--card));
+  background: color-mix(in srgb, var(--deep) calc(var(--t, 0) * 100%), var(--picked));
 }
 .heat .hi { color: var(--on-deep); }
-.heat .none { background: none; border: 1px dashed color-mix(in oklab, var(--muted) 55%, var(--card)); color: var(--muted); }
+.heat .none { background: none; border: 1px dashed var(--dash); color: var(--muted); }
 .heat .fav { background: var(--fav); color: var(--on-fav); font-weight: 650; }
 .panel .key { color: var(--muted); font-size: var(--step--1); }
 .panel .key strong { color: var(--fg); font-weight: 650; }
@@ -187,7 +190,7 @@ tbody tr { border-bottom: 1px solid var(--rule); }
 .checks dt { line-height: 1.25; }
 .checks dt small { display: block; font-size: 0.8em; color: var(--muted); }
 .checks dd { margin: 0; }
-.meter { display: block; height: 6px; border-radius: 3px; background: var(--rule); overflow: hidden; }
+.meter { display: block; height: 6px; border-radius: 3px; background: var(--track); overflow: hidden; }
 .meter i { display: block; height: 100%; width: calc(var(--f, 0) * 100%); background: var(--accent); border-radius: 3px; }
 
 /* What stands out */

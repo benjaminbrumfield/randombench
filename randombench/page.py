@@ -26,6 +26,9 @@ panel and the Answers column show both, so Biases is gone. What went with it
 is comparing every model on one check at a glance; the panel shows one model
 at a time.
 
+The page is light only, in the colors of the design it was built from. It
+used to follow the system's dark setting too, as 5.3 asked.
+
 The template, page.html beside this file, holds the page's text and style,
 and this fills in the numbers. Below the Ranking, the findings are written by
 hand in the template, and tests/test_findings.py checks each one against
