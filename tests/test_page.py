@@ -14,6 +14,7 @@ from randombench.page import (
     DISPLAY_NAMES,
     LOWEST,
     PAGE,
+    _answers_cell,
     _favorite_cell,
     axis,
     favorites,
@@ -192,6 +193,18 @@ def test_a_tie_for_favorite_shows_every_tied_value():
     assert favorites(counts) == ([42, 73], 3 / 7)
     assert favorites([0] * 100) is None
     assert ">42, 73 <" in _favorite_cell(counts)
+
+
+def test_the_answers_chart_draws_each_value_given_with_the_favorites_apart():
+    counts = [0] * 100
+    counts[42], counts[73], counts[7], counts[99] = 20, 20, 1, 5
+    cell = _answers_cell(counts)
+    paths = re.findall(r'<path( class="fav")? d="([^"]*)"', cell)
+    bars = {bool(fav): re.findall(r"M(\d+) 20v-([0-9.]+)", d) for fav, d in paths}
+    assert bars[True] == [("42", "20"), ("73", "20")]
+    assert bars[False] == [("7", "2"), ("99", "5")]  # one answer is under the floor
+    assert 'aria-label="Favorite 42, 73: 43% of its valid answers"' in cell
+    assert _answers_cell([0] * 100) == '<td class="answers"></td>'  # no valid answers
 
 
 def test_sorting_the_favorites_groups_them_in_ascending_order_largest_share_first():

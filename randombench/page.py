@@ -5,10 +5,11 @@ GitHub Pages serves it from main's docs/ folder. It shows the scores that
 Benchmarks can't show, and with each score's 95% interval, which they don't
 show (4.13, D25). The Benchmarks stay the official leaderboard.
 
-The page has two tables (D27). Ranking orders the models by the headline and
-draws each one's interval on a shared scale. Biases holds each model's
-favorite answer (D30), then the nine sub-scores for the same models in the
-same order, each cell shaded by its score (D28). The template, page.html
+The page has two tables (D27). Ranking orders the models by the headline,
+charts each one's answers from 0 to 99, and draws each one's interval on a
+shared scale. Biases holds each model's favorite answer (D30), then the nine
+sub-scores for the same models in the same order, each cell shaded by its
+score (D28). The template, page.html
 beside this file, holds the page's text and style, and this fills in the
 numbers. Below the tables, the findings are written by hand in the template,
 and tests/test_findings.py checks each one against data/ (D29).
@@ -130,6 +131,38 @@ def favorites(counts) -> tuple[list[int], float] | None:
     return [value for value, count in enumerate(counts) if count == top], top / total
 
 
+# The Ranking's Answers chart: its height in SVG units, and the shortest a bar
+# can be, so that a value given once still shows.
+BAR_HEIGHT = 20
+MIN_BAR = 2
+
+
+def _answers_cell(counts) -> str:
+    """The Ranking's Answers cell: a bar for each value the model gave, 0 at the left and 99 at the right.
+
+    A bar's height is in proportion to its count, up to the favorite's, with a
+    floor of MIN_BAR. Only the values given are drawn, as one path for the
+    favorites and one for the rest, which keeps 36 charts small. The SVG
+    stretches to the cell's width, one unit per value.
+    """
+    found = favorites(counts)
+    if found is None:
+        return '<td class="answers"></td>'
+    values, share = found
+    top = max(counts)
+    others, favs = [], []
+    for value, count in enumerate(counts):
+        if count:
+            height = round(max(MIN_BAR, BAR_HEIGHT * count / top), 1)
+            bar = f"M{value} {BAR_HEIGHT}v-{height:g}h1V{BAR_HEIGHT}z"
+            (favs if value in values else others).append(bar)
+    paths = f'<path d="{"".join(others)}"/>' if others else ""
+    paths += f'<path class="fav" d="{"".join(favs)}"/>'
+    label = f"Favorite {', '.join(str(v) for v in values)}: {share:.0%} of its valid answers"
+    return (f'<td class="answers"><svg viewBox="0 0 {N_VALUES} {BAR_HEIGHT}" preserveAspectRatio="none" '
+            f'role="img" aria-label="{label}">{paths}</svg></td>')
+
+
 def axis(top: float) -> tuple[float, int]:
     """The Ranking scale: a round step, and how many steps reach top.
 
@@ -223,6 +256,7 @@ def render_page(results: list[ModelScores], as_of: datetime) -> str:
             f'<tr data-model="{escape(r.model)}"><td class="n">{rank}</td>{_model_cell("td", r.model)}'
             f'<td class="num replies">{r.draws - r.failed}</td>'
             f'<td class="num score">{_number(score)}{_plus_minus(half)}</td>'
+            f'{_answers_cell(r.counts)}'
             f'<td class="plot" aria-hidden="true">{bar}</td></tr>'
         )
 
