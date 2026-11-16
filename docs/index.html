@@ -10,8 +10,8 @@
 <style>
 /* Written by `python -m randombench.build` from randombench/page.html (PLAN.md 5.3).
 
-   Layout: one column, up to 1320px wide, so the Ranking and the panel beside it fit without scrolling.
-   Paragraphs stop at about 80 characters, however wide the page.
+   Layout: one column, up to 1240px wide, so the Ranking and the panel beside it fit without scrolling.
+   Paragraphs stop at 60em, about 900px, however wide the page.
    Rows are separated by hairline rules, never boxed; only the summary cards and the panel are. One typeface, and two accents: teal for scores, and orange for favorite answers.
    Light only, whatever the system's setting. */
 :root {
@@ -46,19 +46,19 @@ body {
   color: var(--fg);
   font: 400 var(--step-0)/1.55 var(--sans);
   padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px));
-  padding-block: 56px 72px;
+  padding-block: 48px 72px;
   -webkit-text-size-adjust: 100%;
 }
-.page { max-width: 1320px; margin: 0 auto; display: grid; gap: 56px; }
+.page { max-width: 1240px; margin: 0 auto; display: grid; gap: 44px; }
 a { color: var(--accent); text-underline-offset: 0.18em; }
 a:hover { color: var(--deep); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
 code { font-size: 0.95em; }
 
-header { display: grid; gap: 14px; }
+header { display: grid; gap: 12px; }
 h1 { font-size: var(--step-3); line-height: 1.1; font-weight: 650; letter-spacing: -0.015em; margin: 0; }
 .lede { font-size: var(--step-1); color: var(--muted); margin: 0; text-wrap: balance; }
-header p { margin: 0; max-width: 80ch; }
+header p { margin: 0; max-width: 60em; }
 .meta { font-size: var(--step--1); color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 18px; }
 
 /* Summary cards */
@@ -195,7 +195,7 @@ tbody tr { border-bottom: 1px solid var(--rule); }
 
 /* What stands out */
 .findings { display: grid; gap: 14px; }
-.findings p { margin: 0; max-width: 80ch; }
+.findings p { margin: 0; max-width: 60em; }
 .findings strong { font-weight: 650; }
 
 footer { font-size: var(--step--1); color: var(--muted); border-top: 1px solid var(--rule); padding-top: 18px; }
@@ -214,7 +214,6 @@ footer p { margin: 0 0 6px; }
   .dist-plot { height: 140px; margin-top: 8px; }
   .dist .label { display: none; }  /* 42 and 47 would overlap; the caption names them */
   .dist-base i { width: 3px; height: 3px; top: 5px; }
-  .page { gap: 44px; }
   h1 { font-size: 1.75rem; }
   .rank th, .rank td { padding-left: 6px; padding-right: 6px; }
   .rank .n { width: 1.6em; }
@@ -236,9 +235,9 @@ footer p { margin: 0 0 6px; }
     <p class="lede">How well can language models pick numbers at random?</p>
     <p>Each model was asked many times for a random integer from 0 to 99, in a fresh conversation every time. A model that gives the same answer every time scores 0.01, and a perfect random number generator scores about 1.</p>
     <p class="meta">
-      <span>Data as of <time datetime="2026-11-16">November 16, 2026</time></span>
-      <span><a href="https://github.com/benjaminbrumfield/randombench#readme">Method and limitations</a></span>
-      <span><a href="https://github.com/benjaminbrumfield/randombench">Code and data on GitHub</a></span>
+      <a href="https://github.com/benjaminbrumfield/randombench#readme">Method and limitations</a>
+      <a href="https://github.com/benjaminbrumfield/randombench">Code and data on GitHub</a>
+      <a href="https://www.kaggle.com/benchmarks/benjaminbrumfield/randombench-overall">Official leaderboard on Kaggle</a>
     </p>
   </header>
 
@@ -346,6 +345,7 @@ footer p { margin: 0 0 6px; }
   </section>
 
   <footer>
+    <p>Data as of <time datetime="2026-11-16">November 16, 2026</time>. Every score has a 95% interval from 10,000 bootstrap resamples of the model's replies.</p>
     <p>The official leaderboards are on Kaggle. <a href="https://www.kaggle.com/benchmarks/benjaminbrumfield/randombench-overall">RandomBench</a> ranks the models by score, and <a href="https://www.kaggle.com/benchmarks/benjaminbrumfield/randombench">RandomBench Biases</a> holds the nine checks. They show the same scores without the intervals.</p>
     <p>This page is built from the stored replies by <code>python -m randombench.build</code>.</p>
   </footer>
