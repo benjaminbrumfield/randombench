@@ -13,7 +13,8 @@ every model's favorite in orange.
 
 The page has two tables (D27). Ranking orders the models by the headline,
 charts each one's answers from 0 to 99, and draws each one's interval on a
-shared scale. Biases holds each model's favorite answer (D30), then the nine
+shared scale. Beside it, a panel shows the top model's answers on a 10 by 10
+grid and its nine checks as bars. Biases holds each model's favorite answer (D30), then the nine
 sub-scores for the same models in the same order, each cell shaded by its
 score (D28). The template, page.html
 beside this file, holds the page's text and style, and this fills in the
@@ -40,7 +41,7 @@ PAGE = ROOT / "docs" / "index.html"
 
 PLACEHOLDERS = {"__DATE__", "__ISODATE__", "__COUNT__", "__PROVIDERS__", "__ANSWERS__", "__BEST__",
                 "__BESTMODEL__", "__COMMON__", "__COMMONSHARE__", "__DIST__", "__FAVORITES__",
-                "__NEVER__", "__STEPS__", "__TICKS__",
+                "__NEVER__", "__PANEL__", "__STEPS__", "__TICKS__",
                 "__RANKING__", "__HEADINGS__", "__BIASES__"}
 _PLACEHOLDER = re.compile(r"__[A-Z]+__")
 
@@ -231,6 +232,62 @@ def _answers_cell(counts) -> str:
             f'role="img" aria-label="{label}">{paths}</svg></td>')
 
 
+# The panel's squares are shaded by count over the favorite's, but never paler
+# than HEAT_FLOOR, so that a value given once still shows. Above HEAT_DARK,
+# a square's number turns to --on-deep to stay readable.
+HEAT_FLOOR = 0.12
+HEAT_DARK = 0.6
+
+
+def _panel(r: ModelScores, rank: int, of: int) -> str:
+    """The panel beside the Ranking, for one model: its score, its answers on a 10 by 10 grid, and its nine checks.
+
+    The build writes it for the top-ranked model, so it reads without
+    JavaScript. The squares run 0 to 99, ten to a row, and are shaded in
+    proportion to the count, as the Answers bars are, with the favorite in
+    orange. Each check's bar is shaded as its Biases cell is (D28).
+    """
+    name, provider = DISPLAY_NAMES[r.model]
+    found = favorites(r.counts)
+    values = found[0] if found else []
+    top = max(r.counts)
+    squares = []
+    for value, count in enumerate(r.counts):
+        if value in values:
+            squares.append(f'<span class="fav">{value}</span>')
+        elif not count:
+            squares.append(f'<span class="none">{value}</span>')
+        else:
+            t = max(HEAT_FLOOR, count / top)
+            dark = ' class="hi"' if t > HEAT_DARK else ""
+            squares.append(f'<span{dark} style="--t:{t:.3f}">{value}</span>')
+    if found:
+        fav, share = ", ".join(map(str, values)), f"{found[1]:.0%}"
+        key = (f"Favorite <strong>{fav}</strong>: {share} of its valid answers. "
+               f"Darker squares were answered more often, and dashed ones never.")
+        label = f"{escape(name)}'s answers on a 10 by 10 grid of 0 to 99. Favorite {fav}, {share} of its valid answers."
+    else:
+        key = "No valid answers yet."
+        label = f"{escape(name)} has no valid answers yet."
+    checks = "".join(
+        f'<div><dt>{title}<small>lowest {_short(LOWEST[k], 2)}</small></dt>'
+        f'<dd aria-hidden="true"><span class="meter"><i style="--f:{shade(k, r.scores[k]):.3f}"></i></span></dd>'
+        f'<dd class="num">{_number(r.scores[k])}{_plus_minus(r.intervals[k])}</dd></div>'
+        for k, title in CHECK_NAMES.items())
+    replies = r.draws - r.failed
+    return (f'    <aside class="panel" aria-label="Selected model">\n'
+            f'      <p class="about">Rank {rank} of {of} · {escape(provider)} · '
+            f'{replies} repl{"y" if replies == 1 else "ies"}</p>\n'
+            f'      <h3>{escape(name)}</h3>\n'
+            f'      <p class="big">{_number(r.scores["headline"])}{_plus_minus(r.intervals["headline"])}</p>\n'
+            f'      <div class="heat" role="img" aria-label="{label}">{"".join(squares)}</div>\n'
+            f'      <p class="key">{key}</p>\n'
+            f'      <h4>Bias checks</h4>\n'
+            f'      <dl class="checks">{checks}</dl>\n'
+            f"      <p class=\"key\">Each bar runs from the check's lowest possible score, empty, to 1, full.</p>\n"
+            f'    </aside>')
+
+
 def axis(top: float) -> tuple[float, int]:
     """The Ranking scale: a round step, and how many steps reach top.
 
@@ -380,6 +437,7 @@ def render_page(results: list[ModelScores], as_of: datetime) -> str:
         "__DIST__": _distribution(shares, favs),
         "__FAVORITES__": _series([f"{v} ({shares[v]:.1%})" for v in sorted(favs, key=lambda v: -shares[v])]),
         "__NEVER__": f"{never} value{'' if never == 1 else 's'}",
+        "__PANEL__": _panel(models[0], 1, len(models)) if models else "",
         "__STEPS__": str(steps),
         "__TICKS__": ticks,
         "__HEADINGS__": headings,

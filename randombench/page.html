@@ -10,7 +10,8 @@
 <style>
 /* Written by `python -m randombench.build` from randombench/page.html (PLAN.md 5.3).
 
-   Layout: one column, up to 1200px wide, which the Biases table needs to fit without scrolling.
+   Layout: one column, up to 1320px wide, so the Ranking and the panel beside it fit without scrolling.
+   Paragraphs stop at about 80 characters, however wide the page.
    The text spans the same width as the tables and narrows with the window. Rows are separated by hairline rules, never boxed; only the summary cards are. One typeface, and two accents: teal for scores, and orange for favorite answers. */
 :root {
   --bg: #fbfcfc;
@@ -21,6 +22,9 @@
   --rule: #dbe2e4;
   --accent: #0d7282;
   --fav: #c2410c;       /* a model's favorite answer, wherever it's drawn */
+  --on-fav: #ffffff;    /* text on --fav */
+  --deep: #083f48;      /* the panel's most-answered squares; the lighter ones mix it with --card */
+  --on-deep: #ffffff;   /* text on the darker squares */
   --shade-max: 30%;    /* the strongest a Biases cell is shaded */
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --step--1: 0.8125rem; /* 13px */
@@ -31,7 +35,8 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #0e1416; --card: #141d20; --fg: #e1e9eb; --soft: #b3c0c4; --muted: #95a4a9; --rule: #243137;
-    --accent: #52c0d1; --fav: #ee8a45; --shade-max: 32%;
+    --accent: #52c0d1; --fav: #ee8a45; --on-fav: #0e1416; --deep: #9be0ea; --on-deep: #0e1416;
+    --shade-max: 32%;
   }
 }
 
@@ -44,7 +49,7 @@ body {
   padding-block: 56px 72px;
   -webkit-text-size-adjust: 100%;
 }
-.page { max-width: 1200px; margin: 0 auto; display: grid; gap: 56px; }
+.page { max-width: 1320px; margin: 0 auto; display: grid; gap: 56px; }
 a { color: var(--accent); text-underline-offset: 0.18em; text-decoration-thickness: 1px; }
 a:hover { text-decoration-thickness: 2px; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
@@ -53,7 +58,7 @@ code { font-size: 0.95em; }
 header { display: grid; gap: 14px; }
 h1 { font-size: var(--step-3); line-height: 1.1; font-weight: 650; letter-spacing: -0.015em; margin: 0; }
 .lede { font-size: var(--step-1); color: var(--muted); margin: 0; text-wrap: balance; }
-header p { margin: 0; }
+header p { margin: 0; max-width: 80ch; }
 .meta { font-size: var(--step--1); color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 18px; }
 
 /* Summary cards */
@@ -110,19 +115,21 @@ tbody tr { border-bottom: 1px solid var(--rule); }
 .dist-axis span { position: absolute; left: var(--x); transform: translateX(-50%); }
 .dist figcaption { margin-top: 10px; }
 
-/* Ranking */
+/* Ranking, with the selected model's panel beside it, or under it on narrower screens */
+.ranked { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px 32px; align-items: start; }
+.ranked-table { display: grid; gap: 16px; min-width: 0; }
 .rank .n { width: 2.2em; color: var(--muted); }
 .rank .replies { color: var(--muted); }
 .rank .score { font-weight: 600; }
 .rank .score .pm { font-weight: 400; }
-.rank td.answers, .rank th.answers { width: 8.5em; padding-left: 16px; vertical-align: middle; }
+.rank td.answers, .rank th.answers { width: 7em; padding-left: 16px; vertical-align: middle; }
 .rank th.answers { vertical-align: bottom; }
 .answers svg {
   display: block; width: 100%; height: 22px; border-bottom: 1px solid var(--rule);
   fill: color-mix(in oklab, var(--accent) 60%, var(--bg));
 }
 .answers .fav { fill: var(--fav); }
-.rank td.plot, .rank th.plot { width: 34%; padding-left: 22px; vertical-align: middle; }
+.rank td.plot, .rank th.plot { width: 28%; padding-left: 22px; vertical-align: middle; }
 .axis { position: relative; height: 1.2em; font-weight: 400; }
 .tick { position: absolute; left: var(--x); transform: translateX(-50%); }
 .tick:first-child { transform: none; }
@@ -141,6 +148,40 @@ tbody tr { border-bottom: 1px solid var(--rule); }
   position: absolute; top: 50%; left: var(--x); width: 9px; height: 9px; border-radius: 50%;
   transform: translate(-50%, -50%); background: var(--accent); box-shadow: 0 0 0 2px var(--bg);
 }
+
+/* The selected model's panel. Its 100 squares are the values 0 to 99, ten to a row, each shaded by --t,
+   its count over the favorite's. */
+.panel {
+  background: var(--card); border: 1px solid var(--rule); border-radius: 12px; padding: 20px;
+  display: grid; gap: 14px; font-size: 0.875rem; min-width: 0;
+}
+.panel p { margin: 0; }
+.panel .about { font-size: var(--step--1); color: var(--muted); }
+.panel h3 { margin: -10px 0 0; font-size: 1.375rem; font-weight: 650; line-height: 1.25; }
+.panel .big { font-size: 2.25rem; font-weight: 650; line-height: 1; color: var(--accent); font-variant-numeric: tabular-nums; }
+.panel .big .pm { font-size: 0.42em; }
+.heat { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 3px; }
+.heat span {
+  box-sizing: border-box; aspect-ratio: 1; display: grid; place-items: center; border-radius: 3px;
+  font-size: 0.6875rem; font-variant-numeric: tabular-nums; color: var(--fg);
+  background: color-mix(in oklab, var(--deep) calc(var(--t, 0) * 100%), var(--card));
+}
+.heat .hi { color: var(--on-deep); }
+.heat .none { background: none; border: 1px dashed color-mix(in oklab, var(--muted) 55%, var(--card)); color: var(--muted); }
+.heat .fav { background: var(--fav); color: var(--on-fav); font-weight: 650; }
+.panel .key { color: var(--muted); font-size: var(--step--1); }
+.panel .key strong { color: var(--fg); font-weight: 650; }
+.panel h4 {
+  margin: 0; padding-top: 14px; border-top: 1px solid var(--rule);
+  font-size: 0.75rem; font-weight: 600; color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase;
+}
+.checks { margin: 0; display: grid; gap: 9px; }
+.checks div { display: grid; grid-template-columns: minmax(0, 8em) minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+.checks dt { line-height: 1.25; }
+.checks dt small { display: block; font-size: 0.8em; color: var(--muted); }
+.checks dd { margin: 0; }
+.meter { display: block; height: 6px; border-radius: 3px; background: var(--rule); overflow: hidden; }
+.meter i { display: block; height: 100%; width: calc(var(--f, 0) * 100%); background: var(--accent); border-radius: 3px; }
 
 /* Biases */
 .biases { min-width: 1020px; }
@@ -164,12 +205,19 @@ tbody tr { border-bottom: 1px solid var(--rule); }
 
 /* What stands out */
 .findings { display: grid; gap: 14px; }
-.findings p { margin: 0; }
+.findings p { margin: 0; max-width: 80ch; }
 .findings strong { font-weight: 650; }
 
 footer { font-size: var(--step--1); color: var(--muted); border-top: 1px solid var(--rule); padding-top: 18px; }
 footer p { margin: 0 0 6px; }
 
+@media (max-width: 1000px) {
+  .ranked { grid-template-columns: minmax(0, 1fr); }
+  .panel { max-width: 420px; }
+}
+@media (min-width: 1001px) and (min-height: 900px) {
+  .panel { position: sticky; top: 16px; }  /* only where the whole panel fits on the screen */
+}
 @media (max-width: 600px) {
   body { padding-block: 32px 48px; }
   .dist-plot { height: 140px; margin-top: 8px; }
@@ -221,6 +269,8 @@ __DIST__
 
   <section aria-labelledby="ranking-h">
     <h2 id="ranking-h">Ranking</h2>
+    <div class="ranked">
+    <div class="ranked-table">
     <div class="scroll">
       <table class="rank" style="--steps:__STEPS__">
         <thead><tr>
@@ -238,6 +288,9 @@ __RANKING__
     </div>
     <p class="note">Answers draws how often the model gave each value, from 0 at the left to 99 at the right, with its favorite in orange. Each bar's height is in proportion to its count, with a floor so that a value given only once still shows.</p>
     <p class="note">Replies counts every call that got a reply, valid or not. Calls that failed, such as those the quota refused, aren't counted. A model with fewer replies gets a wider interval, not a lower score.</p>
+    </div>
+__PANEL__
+    </div>
   </section>
 
   <section aria-labelledby="biases-h">

@@ -17,6 +17,7 @@ from randombench.page import (
     _answers_cell,
     _distribution,
     _favorite_cell,
+    _panel,
     _series,
     average_shares,
     axis,
@@ -187,6 +188,18 @@ def test_the_answers_chart_labels_every_models_favorite():
     assert all(share == f"{shares[int(v)]:.1%}" for v, share in labels)
 
 
+def test_the_panel_is_the_top_models():
+    text = PAGE.read_text(encoding="utf-8")
+    panel = text[text.index('<aside class="panel"'):text.index("</aside>")]
+    r = ranked(EXPECTED)[0]
+    name, provider = DISPLAY_NAMES[r.model]
+    assert f"<h3>{name}</h3>" in panel and f"· {provider} ·" in panel
+    big = re.sub(r"<[^>]+>", "", re.search(r'<p class="big">(.*?)</p>', panel)[1])
+    assert big == shown(r.scores["headline"], r.intervals["headline"])
+    checks = [re.sub(r"<[^>]+>", "", v) for v in re.findall(r'<dd class="num">(.*?)</dd>', panel)]
+    assert checks == [shown(r.scores[k], r.intervals[k]) for k in CHECK_NAMES]
+
+
 def test_the_headline_is_the_ranking():
     scores = [by.scores["headline"] for by in ranked(EXPECTED)]
     assert scores == sorted(scores, reverse=True)
@@ -249,6 +262,18 @@ def test_the_distribution_draws_favorites_in_orange_and_circles_values_never_giv
     assert re.findall(r'class="label"[^>]*>(\d+)<small>([^<]*)', chart) == [("42", "50.0%")]
     assert chart.count("<i ") == 97  # one circle for each value no model gave
     assert _distribution([0.0] * 100, set()) == ""
+
+
+def test_the_panel_shades_each_square_by_its_count_over_the_favorites():
+    [r] = score_draws([{"model": NANO, "reply": x} for x in ["42"] * 4 + ["47"] * 3 + ["37"] * 2 + ["7"]])
+    found = re.findall(r'<span(?: class="(\w+)")?(?: style="--t:([0-9.]+)")?>(\d+)</span>', _panel(r, 1, 1))
+    squares = {int(value): (cls, t) for cls, t, value in found}
+    assert len(squares) == 100
+    assert squares[42] == ("fav", "")
+    assert squares[47] == ("hi", "0.750")  # dark enough for --on-deep text
+    assert squares[37] == ("", "0.500")
+    assert squares[7] == ("", "0.250")
+    assert squares[0] == ("none", "")
 
 
 def test_a_series_reads_as_a_sentence():
