@@ -11,9 +11,10 @@
 /* Written by `python -m randombench.build` from randombench/page.html (PLAN.md 5.3).
 
    Layout: one column, up to 1200px wide, which the Biases table needs to fit without scrolling.
-   The text spans the same width as the tables and narrows with the window. Rows are separated by hairline rules, never boxed. One typeface, and two accents: teal for scores, and orange for favorite answers. */
+   The text spans the same width as the tables and narrows with the window. Rows are separated by hairline rules, never boxed; only the summary cards are. One typeface, and two accents: teal for scores, and orange for favorite answers. */
 :root {
   --bg: #fbfcfc;
+  --card: #ffffff;
   --fg: #152226;
   --soft: #45545a;      /* the ± figures: lighter than the score, still readable on a shaded cell */
   --muted: #5d6c71;     /* rank numbers, providers, captions */
@@ -29,7 +30,7 @@
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0e1416; --fg: #e1e9eb; --soft: #b3c0c4; --muted: #95a4a9; --rule: #243137;
+    --bg: #0e1416; --card: #141d20; --fg: #e1e9eb; --soft: #b3c0c4; --muted: #95a4a9; --rule: #243137;
     --accent: #52c0d1; --fav: #ee8a45; --shade-max: 32%;
   }
 }
@@ -54,6 +55,19 @@ h1 { font-size: var(--step-3); line-height: 1.1; font-weight: 650; letter-spacin
 .lede { font-size: var(--step-1); color: var(--muted); margin: 0; text-wrap: balance; }
 header p { margin: 0; }
 .meta { font-size: var(--step--1); color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 18px; }
+
+/* Summary cards */
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 0; }
+.card {
+  background: var(--card); border: 1px solid var(--rule); border-radius: 10px; padding: 14px 16px;
+  display: grid; gap: 2px; align-content: start; min-width: 0;
+}
+.card dt { font-size: var(--step--1); font-weight: 600; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
+.card dd { margin: 0; }
+.card .value { font-size: 1.75rem; font-weight: 650; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.card .value.score { color: var(--accent); }
+.card .value.fav { color: var(--fav); }
+.card .sub { font-size: var(--step--1); color: var(--muted); }
 
 section { display: grid; gap: 16px; min-width: 0; }
 h2 { font-size: var(--step-1); font-weight: 650; margin: 0; letter-spacing: 0.005em; }
@@ -162,11 +176,17 @@ footer p { margin: 0 0 6px; }
     <p>Each model was asked many times for a random integer from 0 to 99, in a fresh conversation every time. A model that gives the same answer every time scores 0.01, and a perfect random number generator scores about 1.</p>
     <p class="meta">
       <span>Data as of <time datetime="2026-11-16">November 16, 2026</time></span>
-      <span>36 models</span>
       <span><a href="https://github.com/benjaminbrumfield/randombench#readme">Method and limitations</a></span>
       <span><a href="https://github.com/benjaminbrumfield/randombench">Code and data on GitHub</a></span>
     </p>
   </header>
+
+  <dl class="cards">
+    <div class="card"><dt>Models</dt><dd class="value">36</dd><dd class="sub">from 4 providers</dd></div>
+    <div class="card"><dt>Answers</dt><dd class="value">17,566</dd><dd class="sub">valid replies, each in a fresh conversation</dd></div>
+    <div class="card"><dt>Most random</dt><dd class="value score">0.158</dd><dd class="sub">GPT-5.4, ±0.025</dd></div>
+    <div class="card"><dt>Most common answer</dt><dd class="value fav">42</dd><dd class="sub">30.3% of each model's answers, on average</dd></div>
+  </dl>
 
   <section aria-labelledby="ranking-h">
     <h2 id="ranking-h">Ranking</h2>

@@ -5,6 +5,10 @@ GitHub Pages serves it from main's docs/ folder. It shows the scores that
 Benchmarks can't show, and with each score's 95% interval, which they don't
 show (4.13, D25). The Benchmarks stay the official leaderboard.
 
+Four cards open the page: how many models and valid answers there are, the
+top score, and the most common answer, by its share averaged over the models.
+This computes all four, so none is a claim written by hand.
+
 The page has two tables (D27). Ranking orders the models by the headline,
 charts each one's answers from 0 to 99, and draws each one's interval on a
 shared scale. Biases holds each model's favorite answer (D30), then the nine
@@ -32,7 +36,8 @@ from randombench.sync import ROOT
 TEMPLATE = Path(__file__).with_name("page.html")
 PAGE = ROOT / "docs" / "index.html"
 
-PLACEHOLDERS = {"__DATE__", "__ISODATE__", "__COUNT__", "__STEPS__", "__TICKS__",
+PLACEHOLDERS = {"__DATE__", "__ISODATE__", "__COUNT__", "__PROVIDERS__", "__ANSWERS__", "__BEST__",
+                "__BESTMODEL__", "__COMMON__", "__COMMONSHARE__", "__STEPS__", "__TICKS__",
                 "__RANKING__", "__HEADINGS__", "__BIASES__"}
 _PLACEHOLDER = re.compile(r"__[A-Z]+__")
 
@@ -129,6 +134,20 @@ def favorites(counts) -> tuple[list[int], float] | None:
     if not total:
         return None
     return [value for value, count in enumerate(counts) if count == top], top / total
+
+
+def average_shares(all_counts) -> list[float]:
+    """Each value's share of a model's valid answers, averaged over the models that have any.
+
+    Each model counts the same, however many replies it has. Adding up every
+    model's answers instead would weigh a model with 624 replies nearly twice
+    as much as one with 324, and how many replies a model has depends on how
+    many runs it got, not on how it answers.
+    """
+    answered = [counts for counts in all_counts if sum(counts)]
+    if not answered:
+        return [0.0] * N_VALUES
+    return [sum(counts[v] / sum(counts) for counts in answered) / len(answered) for v in range(N_VALUES)]
 
 
 # The Ranking's Answers chart: its height in SVG units, and the shortest a bar
@@ -283,6 +302,12 @@ def render_page(results: list[ModelScores], as_of: datetime) -> str:
     ticks = "".join(f'<span class="tick" style="--x:{i / steps * 100:.2f}%">{_short(i * step, decimals)}</span>'
                     for i in range(steps + 1))
 
+    # The summary cards. The most common answer is the value with the largest
+    # average share, the lowest such value on a tie.
+    best = models[0] if models and models[0].scores["headline"] is not None else None
+    shares = average_shares([r.counts for r in models])
+    common = max(range(N_VALUES), key=lambda v: shares[v]) if any(shares) else None
+
     text = TEMPLATE.read_text(encoding="utf-8")
     found = set(_PLACEHOLDER.findall(text))
     if found != PLACEHOLDERS:
@@ -291,6 +316,13 @@ def render_page(results: list[ModelScores], as_of: datetime) -> str:
         "__DATE__": f"{as_of:%B} {as_of.day}, {as_of.year}",
         "__ISODATE__": f"{as_of:%Y-%m-%d}",
         "__COUNT__": str(len(models)),
+        "__PROVIDERS__": str(len({DISPLAY_NAMES[r.model][1] for r in models})),
+        "__ANSWERS__": f"{sum(sum(r.counts) for r in models):,}",
+        "__BEST__": _number(best.scores["headline"] if best else None),
+        "__BESTMODEL__": "no scores yet" if best is None else
+                         f'{escape(DISPLAY_NAMES[best.model][0])}, ±{best.intervals["headline"]:.3f}',
+        "__COMMON__": "—" if common is None else str(common),
+        "__COMMONSHARE__": "—" if common is None else f"{shares[common]:.1%}",
         "__STEPS__": str(steps),
         "__TICKS__": ticks,
         "__HEADINGS__": headings,

@@ -16,6 +16,7 @@ from randombench.page import (
     PAGE,
     _answers_cell,
     _favorite_cell,
+    average_shares,
     axis,
     favorites,
     newest,
@@ -110,6 +111,15 @@ def test_uniformity_and_last_digit_are_shaded_on_a_log_scale():
     assert shade("last_digit", math.sqrt(10) / 10) == pytest.approx(0.5)
 
 
+def test_the_average_share_counts_each_model_the_same():
+    few, many, none = [0] * 100, [0] * 100, [0] * 100
+    few[42], many[47] = 2, 6
+    shares = average_shares([few, many, none])  # a model with no valid answers is left out
+    assert shares[42] == shares[47] == 0.5  # added up instead, 47 would weigh 3 times 42
+    assert sum(shares) == pytest.approx(1)
+    assert average_shares([none]) == [0.0] * 100
+
+
 def test_the_axis_is_the_smallest_round_one_that_holds_every_interval():
     assert axis(0.119) == (0.04, 3)  # 0 to 0.12
     assert axis(0.12) == (0.04, 3)
@@ -152,6 +162,18 @@ def test_every_number_on_the_page_is_the_scorers():
         assert [text for _, text in cells[2:]] == [shown(r.scores[k], r.intervals[k]) for k in CHECK_NAMES]
         # What the sort reads.
         assert [float(a["data-v"]) for a, _ in cells[2:]] == pytest.approx([r.scores[k] for k in CHECK_NAMES], abs=1e-6)
+
+
+def test_the_summary_cards_are_the_scorers():
+    text = PAGE.read_text(encoding="utf-8")
+    models = ranked(EXPECTED)
+    shares = average_shares([r.counts for r in models])
+    assert re.findall(r'<dd class="value[^"]*">([^<]*)</dd>', text) == [
+        str(len(models)),
+        f"{sum(sum(r.counts) for r in models):,}",
+        f'{models[0].scores["headline"]:.3f}',
+        str(shares.index(max(shares))),
+    ]
 
 
 def test_the_headline_is_the_ranking():
