@@ -12,7 +12,6 @@ import statistics
 
 import numpy as np
 import pandas as pd
-import pytest
 
 from randombench.build import DATA
 from randombench.checks import MULTIPLE_OF_5, MULTIPLE_OF_10, PRIME, REPEATED_DIGITS
@@ -34,21 +33,19 @@ GEMINI_31_FLASH_LITE = "google/gemini-3.1-flash-lite-preview"
 GPT_OSS = "openai/gpt-oss-120b"
 GPT_54 = "openai/gpt-5.4-2026-03-05"
 GPT_56_LUNA = "openai/gpt-5.6-luna"
+GPT_56_TERRA = "openai/gpt-5.6-terra"
 GPT_6_LUNA = "openai/gpt-6-luna"
 GROK_46 = "xai/grok-4.6"
 GROK_47 = "xai/grok-4.7"
 HAIKU_45 = "anthropic/claude-haiku-4-5@20251001"
 HAIKU_55 = "anthropic/claude-haiku-5-5"
+OPUS_46 = "anthropic/claude-opus-4-6@default"
+OPUS_48 = "anthropic/claude-opus-4-8@default"
+OPUS_55 = "anthropic/claude-opus-5-5@default"
 SONNET_46 = "anthropic/claude-sonnet-4-6@default"
 SONNET_5 = "anthropic/claude-sonnet-5@default"
 SONNET_55 = "anthropic/claude-sonnet-5-5@default"
-
-# The 13 models added after PLAN.md's build have only 24-draw pilots so far,
-# and their draws make these findings false. The findings wait to be rewritten
-# until those models' full runs. strict, so a finding that comes true again
-# fails here until its mark is removed.
-BROKEN_BY_PILOTS = pytest.mark.xfail(
-    strict=True, reason="the 13 new models' pilot draws break this finding: rewrite it, then its test")
+RAFFLE = "raffle-66f5f2a6"  # the prompt_id of the raffle wording
 
 
 def share(counts: np.ndarray, mask: np.ndarray) -> float:
@@ -75,6 +72,17 @@ def median_tokens(model: str) -> float:
                              if d["model"] == model and d["reply"] is not None and d["output_tokens"] is not None)
 
 
+def gpt_version(model: str) -> float | None:
+    """The version number of a GPT model, such as 5.4 for GPT-5.4 mini, or None for any other model."""
+    match = re.match(r"openai/gpt-(\d+(?:\.\d+)?)", model)
+    return float(match[1]) if match else None
+
+
+def invalid_replies(model: str) -> list[dict]:
+    """The model's draws that got a reply the parser rejects."""
+    return [d for d in DRAWS if d["model"] == model and d["reply"] is not None and parse_reply(d["reply"]) is None]
+
+
 def test_every_finding_on_the_page_has_a_test_and_every_test_a_finding():
     on_page = set(re.findall(r'data-finding="([a-z-]+)"', TEMPLATE.read_text(encoding="utf-8")))
     tested = {name.removeprefix("test_finding_").replace("_", "-") for name in globals() if name.startswith("test_finding_")}
@@ -88,39 +96,52 @@ def test_finding_no_model_comes_close():
 
 def test_finding_three_numbers_dominate():
     favorite = {model: set(favorites(counts)[0]) for model, counts in COUNTS.items()}
-    assert favorite.pop(GPT_OSS) == {57}
-    assert favorite.pop(GPT_54) == {57}
-    assert COUNTS[GPT_54][47] >= 0.9 * COUNTS[GPT_54][57]  # "nearly as often"
-    assert all(f <= {42, 47, 73} for f in favorite.values()), favorite
     assert ALL[[42, 47, 73]].sum() > ALL.sum() / 2  # most of all the answers
-    assert COUNTS[GEMINI_31_FLASH_LITE][42] == COUNTS[GEMINI_31_FLASH_LITE].sum()
+    assert favorite.pop(GPT_OSS) == {57}
+    # "about equally often": within 10% of each other, whichever leads. They're 59 and 58 now.
+    assert favorite.pop(GPT_54) <= {47, 57}
+    assert abs(COUNTS[GPT_54][57] - COUNTS[GPT_54][47]) <= 0.1 * COUNTS[GPT_54][[47, 57]].max()
+    assert all(f <= {42, 47, 73} for f in favorite.values()), favorite
+    for model in [GEMINI_31_FLASH_LITE, OPUS_46]:
+        assert COUNTS[model][42] == COUNTS[model].sum(), model
     for model in [SONNET_5, SONNET_55]:
         # "about 9 times in 10": Sonnet 5's is 89.96%, so "more than" would be wrong.
         assert 0.85 < COUNTS[model][47] / COUNTS[model].sum() < 0.95, model
 
 
-@BROKEN_BY_PILOTS
 def test_finding_newer_isnt_more_random():
-    assert next(iter(MODELS)) == GEMINI_25_FLASH  # ranks first
+    first, second = list(MODELS)[:2]
+    assert first == GPT_54
+    later_gpts = [m for m in MODELS if (gpt_version(m) or 0) > 5.4]  # GPT-5.5 to GPT-6.1
+    assert len(later_gpts) >= 8 and max(map(gpt_version, later_gpts)) == 6.1
+    assert all(less_random(m, GPT_54) for m in later_gpts)
+    assert second == GEMINI_25_FLASH
     newer_geminis = [m for m in MODELS if m.startswith("google/gemini-") and not m.startswith("google/gemini-2.5")]
     assert len(newer_geminis) >= 7
     assert all(less_random(m, GEMINI_25_FLASH) for m in newer_geminis)
     assert less_random(GROK_47, GROK_46)
     assert less_random(GPT_6_LUNA, GPT_56_LUNA)
     assert less_random(SONNET_5, SONNET_46) and less_random(SONNET_55, SONNET_46)
-    assert less_random(HAIKU_45, HAIKU_55)  # the other way
+    # The other way
+    assert less_random(HAIKU_45, HAIKU_55)
+    claudes = [m for m in MODELS if m.startswith("anthropic/") and m != OPUS_55]
+    assert len(claudes) >= 10
+    assert all(less_random(m, OPUS_55) for m in claudes)
 
 
-@BROKEN_BY_PILOTS
 def test_finding_whole_regions_go_unused():
     assert share(ALL, (VALUES >= 20) & (VALUES <= 79)) > 0.95
     assert share(ALL, np.isin(VALUES % 10, [2, 3, 7])) > 0.95
-    assert answered(MULTIPLE_OF_10) == set() and answered(VALUES < 10) == set()
-    assert answered(VALUES > 89) == {GEMINI_25_FLASH}
-    assert answered(REPEATED_DIGITS) == {GEMINI_25_FLASH}
-    assert answered(MULTIPLE_OF_5) == {GEMINI_25_FLASH, GROK_46}
+    top_three = set(list(MODELS)[:3])
+    assert top_three == {GPT_54, GEMINI_25_FLASH, GROK_46}
+    assert answered(VALUES > 89) == top_three
+    assert answered(REPEATED_DIGITS) == top_three
+    assert answered(VALUES < 10) == {GPT_54, GROK_46}
+    assert answered(MULTIPLE_OF_10) == {GPT_54, GPT_56_TERRA}
+    venturers = top_three | {GPT_56_TERRA}
+    assert answered(MULTIPLE_OF_5 | (VALUES < 10) | (VALUES > 89) | REPEATED_DIGITS) == venturers
     # Every other model scores the same on the four checks.
-    others = [r for model, r in MODELS.items() if model not in {GEMINI_25_FLASH, GROK_46}]
+    others = [r for model, r in MODELS.items() if model not in venturers]
     for check in ["multiples_of_10", "multiples_of_5", "edges", "repeated_digits"]:
         assert len({r.scores[check] for r in others}) == 1, check
 
@@ -137,21 +158,38 @@ def test_finding_a_share_check_can_pass_by_accident():
         assert share(COUNTS[model], PRIME) > 0.95
 
 
-@BROKEN_BY_PILOTS
 def test_finding_nearly_every_reply_is_valid():
-    invalid = [d for d in DRAWS if d["reply"] is not None and parse_reply(d["reply"]) is None]
-    assert {d["model"] for d in invalid} == {GROK_46}
-    assert all("\\confidence{" in d["reply"] for d in invalid)
+    replies = [d for d in DRAWS if d["reply"] is not None]
+    assert sum(parse_reply(d["reply"]) is not None for d in replies) > 0.99 * len(replies)
+    assert {model for model in MODELS if invalid_replies(model)} == {OPUS_48, GROK_46, OPUS_55}
+    # Opus 4.8's are all raffle draws, and it declines nearly every raffle draw.
+    declined = invalid_replies(OPUS_48)
+    raffles = [d for d in replies if d["model"] == OPUS_48 and d["prompt_id"] == RAFFLE]
+    assert all(d["prompt_id"] == RAFFLE for d in declined)
+    assert len(declined) > 0.9 * len(raffles)
+    assert all(d["reply"].startswith("I can't") for d in declined)  # "saying it can't draw a truly random number"
+    better_ways = ("random.org", "randbetween", "randint")  # randint is Python's
+    assert all(any(way in d["reply"].lower() for way in better_ways) for d in declined)
+    # "A few offer a casual pick anyway", in bold, and "some warn" that it would favor 37, 42, or 73.
+    assert 1 <= sum(bool(re.search(r"\*\*\d+\*\*", d["reply"])) for d in declined) <= 0.2 * len(declined)
+    assert sum(bool(re.search(r"like (37|42|73)\b", d["reply"])) for d in declined) >= 5
+    assert all("\\confidence{" in d["reply"] for d in invalid_replies(GROK_46))
+    # Opus 5.5's two: an empty reply, and its reasoning written out before the number.
+    empty, reasoned = sorted(invalid_replies(OPUS_55), key=lambda d: len(d["reply"]))
+    assert empty["reply"].strip("\ufeff \n") == ""
+    assert reasoned["reply"].rstrip().endswith("73") and len(reasoned["reply"]) > 50
 
 
-@BROKEN_BY_PILOTS
 def test_finding_reasoning_helps_a_little():
     tokens = {model: median_tokens(model) for model in MODELS}
-    # Many reason: a two-digit answer takes a few tokens, so a median past 50 means reasoning.
-    assert sum(t > 50 for t in tokens.values()) >= len(tokens) / 4
-    assert all(tokens[m] > 200 for m in [GEMINI_25_PRO, GEMINI_31_PRO, GROK_46])
-    assert all(tokens[m] <= 5 for m in list(MODELS)[-5:])  # the five least random
-    assert all(t <= 5 for m, t in tokens.items() if m.startswith("anthropic/"))
-    # More tokens tend to score higher: Spearman's correlation, the correlation of the ranks.
+    # A two-digit answer takes a few tokens, so a median past 50 means reasoning at length.
+    reasoners = {m for m, t in tokens.items() if t > 50}
+    assert len(reasoners) == 10
+    assert {m for m, t in tokens.items() if t > 200} == {GEMINI_25_PRO, GEMINI_31_PRO, GROK_46}
+    # More tokens tend to score higher: Spearman's correlation, the correlation of the ranks. It's 0.44 now.
     ranks = pd.DataFrame({"tokens": tokens, "score": {m: r.scores["headline"] for m, r in MODELS.items()}}).rank()
-    assert ranks["tokens"].corr(ranks["score"]) > 0.5
+    assert ranks["tokens"].corr(ranks["score"]) > 0.3
+    assert next(iter(MODELS)) == GPT_54 and tokens[GPT_54] == 4
+    assert all(m.startswith(("google/", "xai/")) or m == GPT_OSS for m in reasoners), reasoners
+    # Still far from uniform: none as random as a fair pick among 10 of the 100 values.
+    assert all(MODELS[m].scores["uniformity"] < 0.1 for m in reasoners)
