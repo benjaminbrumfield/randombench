@@ -62,14 +62,14 @@ header p { margin: 0; max-width: 60em; }
 .meta { font-size: var(--step--1); color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 18px; }
 
 /* Summary cards */
-.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 0; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 0; }
 .card {
-  background: var(--card); border: 1px solid var(--rule); border-radius: 10px; padding: 14px 16px;
-  display: grid; gap: 2px; align-content: start; min-width: 0;
+  background: var(--card); border: 1px solid var(--rule); border-radius: 10px; padding: 16px 18px;
+  display: grid; gap: 4px; align-content: start; min-width: 0;
 }
-.card dt { font-size: var(--step--1); font-weight: 600; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
+.card dt { font-size: 0.75rem; font-weight: 600; color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase; }
 .card dd { margin: 0; }
-.card .value { font-size: 1.75rem; font-weight: 650; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.card .value { font-size: 1.875rem; font-weight: 650; line-height: 1.15; font-variant-numeric: tabular-nums; }
 .card .value.score { color: var(--accent); }
 .card .value.fav { color: var(--fav); }
 .card .sub { font-size: var(--step--1); color: var(--muted); }
@@ -211,6 +211,7 @@ footer p { margin: 0 0 6px; }
 }
 @media (max-width: 600px) {
   body { padding-block: 32px 48px; }
+  .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }  /* two to a row, not one */
   .dist-plot { height: 140px; margin-top: 8px; }
   .dist .label { display: none; }  /* 42 and 47 would overlap; the caption names them */
   .dist-base i { width: 3px; height: 3px; top: 5px; }
@@ -243,9 +244,9 @@ footer p { margin: 0 0 6px; }
 
   <dl class="cards">
     <div class="card"><dt>Models</dt><dd class="value">__COUNT__</dd><dd class="sub">from __PROVIDERS__ providers</dd></div>
-    <div class="card"><dt>Answers</dt><dd class="value">__ANSWERS__</dd><dd class="sub">valid replies, each in a fresh conversation</dd></div>
-    <div class="card"><dt>Most random</dt><dd class="value score">__BEST__</dd><dd class="sub">__BESTMODEL__</dd></div>
-    <div class="card"><dt>Most common answer</dt><dd class="value fav">__COMMON__</dd><dd class="sub">__COMMONSHARE__ of each model's answers, on average</dd></div>
+    <div class="card"><dt>Answers</dt><dd class="value">__ANSWERS__</dd><dd class="sub">each in a fresh conversation</dd></div>
+    <div class="card"><dt>Most random</dt><dd class="value score">__BEST__</dd><dd class="sub">__BESTMODEL__. A perfect source scores about 1.</dd></div>
+    <div class="card"><dt>Most common answer</dt><dd class="value fav">__COMMON__</dd><dd class="sub">__COMMONSHARE__ of the average model's answers</dd></div>
   </dl>
 
   <section aria-labelledby="answers-h">

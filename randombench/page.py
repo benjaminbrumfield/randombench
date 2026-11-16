@@ -451,8 +451,7 @@ def render_page(results: list[ModelScores], as_of: datetime) -> str:
         "__PROVIDERS__": str(len({DISPLAY_NAMES[r.model][1] for r in models})),
         "__ANSWERS__": f"{sum(sum(r.counts) for r in models):,}",
         "__BEST__": _number(best.scores["headline"] if best else None),
-        "__BESTMODEL__": "no scores yet" if best is None else
-                         f'{escape(DISPLAY_NAMES[best.model][0])}, ±{best.intervals["headline"]:.3f}',
+        "__BESTMODEL__": "No scores yet" if best is None else escape(DISPLAY_NAMES[best.model][0]),
         "__COMMON__": "—" if common is None else str(common),
         "__COMMONSHARE__": "—" if common is None else f"{shares[common]:.1%}",
         "__DIST__": _distribution(shares, favs),
