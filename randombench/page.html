@@ -202,8 +202,9 @@ footer p { margin: 0 0 6px; }
   .ranked { grid-template-columns: minmax(0, 1fr); }
   .panel { max-width: 420px; }
 }
-@media (min-width: 1001px) and (min-height: 900px) {
-  .panel { position: sticky; top: 16px; }  /* only where the whole panel fits on the screen */
+@media (min-width: 1001px) {
+  /* Beside the table, the panel stays on the screen. Where the window is too short for all of it, it scrolls. */
+  .panel { position: sticky; top: 16px; box-sizing: border-box; max-height: calc(100vh - 32px); overflow-y: auto; }
 }
 @media (max-width: 600px) {
   body { padding-block: 32px 48px; }
@@ -357,8 +358,10 @@ __PANELS__
     });
     show(byModel[row.dataset.model]);
     // Where the panel is under the table, or scrolled away, bring it into view.
-    var box = heading.getBoundingClientRect();
-    if (box.top < 0 || box.bottom > window.innerHeight) {
+    // Beside the table it stays on the screen, so the page moves only when the
+    // panel's top is above the window or in its lower half.
+    var top = panel.getBoundingClientRect().top;
+    if (top < 0 || top > window.innerHeight / 2) {
       panel.scrollIntoView({ block: "start", behavior: still.matches ? "auto" : "smooth" });
     }
   }
