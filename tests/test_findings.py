@@ -89,7 +89,8 @@ def test_finding_no_model_comes_close():
 def test_finding_three_numbers_dominate():
     favorite = {model: set(favorites(counts)[0]) for model, counts in COUNTS.items()}
     assert favorite.pop(GPT_OSS) == {57}
-    assert favorite.pop(GPT_54) == {37}
+    assert favorite.pop(GPT_54) == {57}
+    assert COUNTS[GPT_54][47] >= 0.9 * COUNTS[GPT_54][57]  # "nearly as often"
     assert all(f <= {42, 47, 73} for f in favorite.values()), favorite
     assert ALL[[42, 47, 73]].sum() > ALL.sum() / 2  # most of all the answers
     assert COUNTS[GEMINI_31_FLASH_LITE][42] == COUNTS[GEMINI_31_FLASH_LITE].sum()
