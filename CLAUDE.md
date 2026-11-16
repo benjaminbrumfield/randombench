@@ -92,6 +92,7 @@ kaggle b t publish <slug>
 - `PYTHONUTF8=1` is needed on Windows. Without it, the console UI's emoji crash the default cp1252 encoding.
 - Local runs reach only the models in `LLMS_AVAILABLE` in `.env`.
 - The API key in `.env` is short-lived; refresh it with `kaggle b auth -y`. Never commit `.env`.
+- The CLI's OAuth access token lasts 12 hours, and CLI 2.2.5 doesn't refresh it by itself. Once it expires, every `kaggle b` command except public reads such as `kaggle b leaderboard` prints "Authentication required". `export KAGGLE_API_TOKEN="$(kaggle auth print-access-token)"` gets a fresh token for that shell from the stored refresh token, with no browser login. Don't write the token to a file.
 
 ## Skills
 
