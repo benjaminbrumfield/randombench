@@ -226,6 +226,13 @@ footer p { margin: 0 0 6px; }
   /* Beside the table, the panel stays on the screen. Where the window is too short for all of it, it scrolls. */
   .panel { position: sticky; top: 16px; box-sizing: border-box; max-height: calc(100vh - 32px); overflow-y: auto; }
 }
+/* Where the table would be narrower than 720px even with the panel under it, the Answers column and its
+   note go, so that the names fit, and the panel still shows the selected model's answers. The interval
+   gets the room, so that its last two ticks stay apart. */
+@media (max-width: 751px) {
+  .rank .answers, .answers-note { display: none; }
+  .rank .plot { width: 30%; }
+}
 @media (max-width: 600px) {
   body { padding-block: 32px 48px; }
   .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }  /* two to a row, not one */
@@ -238,7 +245,6 @@ footer p { margin: 0 0 6px; }
   .rank .replies, .rank .score { width: auto; }
   .rank .model .prov, .rank .score .pm { display: block; margin-left: 0; }
   .rank .plot { width: 34%; padding-left: 10px; }
-  .rank .answers { display: none; }
   .rank .tick:not(:first-child):not(:last-child) { display: none; }
   .rank thead .wide { display: none; }
 }
@@ -337,7 +343,7 @@ footer p { margin: 0 0 6px; }
         </tbody>
       </table>
     </div>
-    <p class="note">Answers draws how often the model gave each value, with its favorite in orange. The bars follow the square root of the counts, so a value given a quarter as often as the favorite is half as tall, and one given only once still shows.</p>
+    <p class="note answers-note">Answers draws how often the model gave each value, with its favorite in orange. The bars follow the square root of the counts, so a value given a quarter as often as the favorite is half as tall, and one given only once still shows.</p>
     <p class="note">Replies counts every call that got a reply, valid or not. Calls that failed, such as those the quota refused, aren't counted. Every score's 95% interval comes from 10,000 bootstrap resamples of the model's replies, so a model with fewer replies gets a wider interval, not a lower score.</p>
     <p class="note">The bias checks on a share of the answers, such as Multiples of 10, are lenient toward avoidance. A model that never answers a multiple of 10 is only 10% away from the ideal share, so it scores 0.900, and one that answers nothing else scores 0.100.</p>
     </div>
