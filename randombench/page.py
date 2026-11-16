@@ -8,8 +8,8 @@ show (4.13, D25). The Benchmarks stay the official leaderboard.
 Four cards open the page: how many models and valid answers there are, the
 top score, and the most common answer, by its share averaged over the models.
 This computes all four, so none is a claim written by hand. Below them, "What
-the models answer" charts each value's share, averaged the same way, with
-every model's favorite in orange.
+the models answer" charts each value's share, averaged the same way, with the
+three tallest bars in orange.
 
 Ranking orders the models by the headline, charts each one's answers from 0
 to 99, with its favorite in orange, and draws each one's interval on a shared
@@ -54,7 +54,7 @@ TEMPLATE = Path(__file__).with_name("page.html")
 PAGE = ROOT / "docs" / "index.html"
 
 PLACEHOLDERS = {"__DATE__", "__ISODATE__", "__COUNT__", "__PROVIDERS__", "__ANSWERS__", "__BEST__",
-                "__BESTMODEL__", "__COMMON__", "__COMMONSHARE__", "__DIST__", "__FAVORITES__",
+                "__BESTMODEL__", "__COMMON__", "__COMMONSHARE__", "__DIST__", "__TALLEST__",
                 "__NEVER__", "__PANEL__", "__PANELS__", "__STEPS__", "__TICKS__",
                 "__RANKING__"}
 _PLACEHOLDER = re.compile(r"__[A-Z]+__")
@@ -179,19 +179,38 @@ def _series(items: list[str]) -> str:
 # value given once still shows.
 MIN_DIST_BAR = 1
 
+# How many of its tallest bars get a label: the first BIG_LABELS large and in
+# orange, and the next SMALL_LABELS small.
+BIG_LABELS = 3
+SMALL_LABELS = 2
 
-def _distribution(shares: list[float], favs: set[int]) -> str:
+
+def tallest(shares: list[float]) -> list[int]:
+    """The values given that have the largest shares, largest first, as many as get a label. A tie goes to the lower value."""
+    given = [value for value, share in enumerate(shares) if share]
+    return sorted(given, key=lambda value: (-shares[value], value))[:BIG_LABELS + SMALL_LABELS]
+
+
+def _tallest_text(shares: list[float]) -> str:
+    """The labeled values and their shares, as a sentence names them: 42 (30.3%), 47 (29.9%), and 73 (21.6%)."""
+    return _series([f"{value} ({shares[value]:.1%})" for value in tallest(shares)])
+
+
+def _distribution(shares: list[float]) -> str:
     """The chart under "What the models answer": a bar for each value's average share.
 
     The bars are one SVG, 100 units wide, that stretches to the page's width.
     The labels, the circles under the values no model gave, and the axis are
     HTML placed by percentage, so that they keep their shape as it stretches.
-    Each value in favs, some model's favorite, is drawn and labeled in orange.
+    The BIG_LABELS tallest bars are orange, with large labels in orange, and
+    the next SMALL_LABELS have small labels. The image's text for screen
+    readers names all of them.
     """
     top = max(shares)
     if not top:
         return ""
-    others, fav_bars, labels, never = [], [], [], []
+    rank = {value: i for i, value in enumerate(tallest(shares))}
+    others, big_bars, labels, never = [], [], [], []
     for value, share in enumerate(shares):
         x = f"--x:{value + 0.5:g}%"
         if not share:
@@ -199,16 +218,16 @@ def _distribution(shares: list[float], favs: set[int]) -> str:
             continue
         height = round(max(MIN_DIST_BAR, 100 * share / top), 2)
         bar = f"M{value + 0.1:g} 100v-{height:g}h0.8V100z"
-        if value in favs:
-            fav_bars.append(bar)
-            labels.append(f'<span class="label" style="{x};--h:{height:g}%">{value}<small>{share:.1%}</small></span>')
-        else:
-            others.append(bar)
+        big = rank.get(value, BIG_LABELS) < BIG_LABELS
+        (big_bars if big else others).append(bar)
+        if value in rank:
+            kind = "label" if big else "label minor"
+            labels.append(f'<span class="{kind}" style="{x};--h:{height:g}%">{value}<small>{share:.1%}</small></span>')
     paths = f'<path d="{"".join(others)}"/>' if others else ""
-    paths += f'<path class="fav" d="{"".join(fav_bars)}"/>' if fav_bars else ""
-    ticks = "".join(f'<span style="--x:{v + 0.5:g}%">{v}</span>' for v in range(0, N_VALUES, 10))
+    paths += f'<path class="fav" d="{"".join(big_bars)}"/>'
+    ticks = "".join(f'<span style="--x:{v}%">{v}</span>' for v in range(0, N_VALUES, 10))
     return (f'      <div class="dist-plot" role="img" aria-label="A bar for each value from 0 to 99, '
-            f'as tall as its average share of the answers">'
+            f'as tall as its average share of the answers. The tallest are {_tallest_text(shares)}.">'
             f'<svg viewBox="0 0 {N_VALUES} 100" preserveAspectRatio="none">{paths}</svg>{"".join(labels)}</div>\n'
             f'      <div class="dist-base" aria-hidden="true">{"".join(never)}</div>\n'
             f'      <div class="dist-axis" aria-hidden="true">{ticks}</div>')
@@ -433,9 +452,8 @@ def render_page(results: list[ModelScores], as_of: datetime) -> str:
     shares = average_shares([r.counts for r in models])
     common = max(range(N_VALUES), key=lambda v: shares[v]) if any(shares) else None
 
-    # What the models answer. Its orange values are every model's favorite,
-    # listed in the caption from the largest average share down.
-    favs = {v for r in models if (found := favorites(r.counts)) for v in found[0]}
+    # What the models answer, whose caption names the labeled values on
+    # phones, where the labels are hidden.
     never = sum(1 for share in shares if not share)
 
     panels = [panel_data(r, rank, len(models)) for rank, r in enumerate(models, 1)]
@@ -454,8 +472,8 @@ def render_page(results: list[ModelScores], as_of: datetime) -> str:
         "__BESTMODEL__": "No scores yet" if best is None else escape(DISPLAY_NAMES[best.model][0]),
         "__COMMON__": "—" if common is None else str(common),
         "__COMMONSHARE__": "—" if common is None else f"{shares[common]:.1%}",
-        "__DIST__": _distribution(shares, favs),
-        "__FAVORITES__": _series([f"{v} ({shares[v]:.1%})" for v in sorted(favs, key=lambda v: -shares[v])]),
+        "__DIST__": _distribution(shares),
+        "__TALLEST__": _tallest_text(shares),
         "__NEVER__": f"{never} value{'' if never == 1 else 's'}",
         "__PANEL__": _panel(panels[0]) if panels else "",
         "__PANELS__": _panels_json(panels),

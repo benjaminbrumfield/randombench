@@ -29,6 +29,7 @@ from randombench.page import (
     ranked,
     render_page,
     shade,
+    tallest,
 )
 from randombench.score import score_draws
 
@@ -184,13 +185,14 @@ def test_the_summary_cards_are_the_scorers():
     ]
 
 
-def test_the_answers_chart_labels_every_models_favorite():
+def test_the_answers_chart_labels_its_five_tallest_bars():
     text = PAGE.read_text(encoding="utf-8")
     shares = average_shares([r.counts for r in ranked(EXPECTED)])
-    favs = {v for r in ranked(EXPECTED) if favorites(r.counts) for v in favorites(r.counts)[0]}
-    labels = re.findall(r'class="label"[^>]*>(\d+)<small>([^<]*)</small>', text)
-    assert {int(v) for v, _ in labels} == favs
-    assert all(share == f"{shares[int(v)]:.1%}" for v, share in labels)
+    by_share = sorted(range(100), key=lambda v: -shares[v])
+    labels = re.findall(r'class="(label(?: minor)?)"[^>]*>(\d+)<small>([^<]*)</small>', text)
+    assert {int(v) for kind, v, _ in labels if kind == "label"} == set(by_share[:3])
+    assert {int(v) for kind, v, _ in labels if kind == "label minor"} == set(by_share[3:5])
+    assert all(share == f"{shares[int(v)]:.1%}" for _, v, share in labels)
 
 
 def test_the_panel_is_the_top_models():
@@ -281,15 +283,22 @@ def test_the_answers_chart_draws_each_value_given_with_the_favorites_apart():
     assert _answers_cell([0] * 100) == '<td class="answers"></td>'  # no valid answers
 
 
-def test_the_distribution_draws_favorites_in_orange_and_circles_values_never_given():
+def test_the_distribution_labels_its_tallest_bars_and_circles_values_never_given():
     shares = [0.0] * 100
-    shares[42], shares[47], shares[7] = 0.5, 0.25, 0.25
-    chart = _distribution(shares, {42})
-    assert re.search(r'<path class="fav" d="([^"]*)"', chart)[1] == "M42.1 100v-100h0.8V100z"
-    assert re.search(r'<path d="([^"]*)"', chart)[1] == "M7.1 100v-50h0.8V100zM47.1 100v-50h0.8V100z"
-    assert re.findall(r'class="label"[^>]*>(\d+)<small>([^<]*)', chart) == [("42", "50.0%")]
-    assert chart.count("<i ") == 97  # one circle for each value no model gave
-    assert _distribution([0.0] * 100, set()) == ""
+    for value, share in {42: 0.4, 47: 0.2, 73: 0.15, 37: 0.1, 57: 0.05, 7: 0.05, 9: 0.05}.items():
+        shares[value] = share
+    chart = _distribution(shares)
+    orange = re.search(r'<path class="fav" d="([^"]*)"', chart)[1]
+    assert orange == "M42.1 100v-100h0.8V100zM47.1 100v-50h0.8V100zM73.1 100v-37.5h0.8V100z"
+    assert re.findall(r"M(\d+)\.1", re.search(r'<path d="([^"]*)"', chart)[1]) == ["7", "9", "37", "57"]
+    # 7 and 57 tie for fifth, and the lower value gets the label.
+    labels = re.findall(r'class="(label(?: minor)?)"[^>]*>(\d+)<small>([^<]*)', chart)
+    assert labels == [("label minor", "7", "5.0%"), ("label minor", "37", "10.0%"), ("label", "42", "40.0%"),
+                      ("label", "47", "20.0%"), ("label", "73", "15.0%")]
+    assert "The tallest are 42 (40.0%), 47 (20.0%), 73 (15.0%), 37 (10.0%), and 7 (5.0%)." in chart
+    assert chart.count("<i ") == 93  # one circle for each value no model gave
+    assert tallest([0.5, 0.5] + [0.0] * 98) == [0, 1]  # only values given get a label
+    assert _distribution([0.0] * 100) == ""
 
 
 def test_the_panel_shades_each_square_by_its_count_over_the_favorites():
