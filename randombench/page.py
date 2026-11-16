@@ -14,11 +14,11 @@ three tallest bars in orange.
 Ranking orders the models by the headline, charts each one's answers from 0
 to 99 on a square-root scale, with its favorite in orange, and draws each
 one's interval on a shared scale. Beside it, a panel shows one model's
-answers on a 10 by 10 grid and its nine checks as bars, each filled from its
-check's lowest score to 1, as D28 shaded the cells of the table it replaces.
-The build writes the top model's panel, so the page reads without
-JavaScript, and every model's panel data as JSON, which the page's script
-puts in the panel when a row is selected.
+answers on a 10 by 10 grid, shaded on the same square-root scale, and its
+nine checks as bars, each filled from its check's lowest score to 1, as D28
+shaded the cells of the table it replaces. The build writes the top model's
+panel, so the page reads without JavaScript, and every model's panel data as
+JSON, which the page's script puts in the panel when a row is selected.
 
 The page used to have two tables (D27): Ranking, and Biases, which held every
 model's nine checks and, from D30, its favorite, in a column that sorted. The
@@ -267,11 +267,12 @@ def _answers_cell(counts) -> str:
             f'role="img" aria-label="{label}">{paths}</svg></td>')
 
 
-# The panel's squares are shaded by count over the favorite's, but never paler
-# than HEAT_FLOOR, so that a value given once still shows. Above HEAT_DARK,
-# a square's number turns to --on-deep to stay readable.
-HEAT_FLOOR = 0.12
-HEAT_DARK = 0.6
+# The panel's squares are shaded by the square root of their count over the
+# favorite's, as the Answers column's bars are tall, but never paler than
+# HEAT_FLOOR, so that a value given once still shows. Above HEAT_DARK, a
+# square's number turns to --on-deep, where it reads better than --fg does.
+HEAT_FLOOR = 0.15
+HEAT_DARK = 0.62
 
 
 def _pair(score: float | None, half: float | None) -> list[str]:
@@ -293,10 +294,11 @@ def panel_data(r: ModelScores, rank: int, of: int) -> dict:
     the script only puts them in place. That matters because JavaScript
     rounds an exact tie, such as 0.0625, the other way from Python.
 
-    The squares run 0 to 99. Each one's t is its count over the favorite's,
-    but at least HEAT_FLOOR, and 0 if the model never gave it. The favorites
-    are listed apart, so a tie shows every one. Each check's bar is as full
-    as shade() says (D28). The key is HTML; the rest is text.
+    The squares run 0 to 99. Each one's t is the square root of its count
+    over the favorite's, but at least HEAT_FLOOR, and 0 if the model never
+    gave it. The favorites are listed apart, so a tie shows every one. Each
+    check's bar is as full as shade() says (D28). The key is HTML, starting
+    with an orange swatch where there's a favorite; the rest is text.
     """
     name, provider = DISPLAY_NAMES[r.model]
     found = favorites(r.counts)
@@ -304,7 +306,8 @@ def panel_data(r: ModelScores, rank: int, of: int) -> dict:
     replies = r.draws - r.failed
     if found:
         values, share = found
-        key = f"Favorite <strong>{', '.join(map(str, values))}</strong>: {share:.0%} of its valid answers."
+        key = (f'<i class="swatch"></i>Favorite <strong>{", ".join(map(str, values))}</strong>: '
+               f"{share:.0%} of its valid answers.")
     else:
         values, key = [], "No valid answers yet."
     return {
@@ -313,7 +316,7 @@ def panel_data(r: ModelScores, rank: int, of: int) -> dict:
         "name": name,
         "score": _pair(r.scores["headline"], r.intervals["headline"]),
         "fav": values,
-        "t": [round(max(HEAT_FLOOR, count / top), 3) if count else 0 for count in r.counts],
+        "t": [round(max(HEAT_FLOOR, math.sqrt(count / top)), 3) if count else 0 for count in r.counts],
         "key": key,
         "checks": [_pair(r.scores[k], r.intervals[k]) + [round(shade(k, r.scores[k]), 3)] for k in CHECK_NAMES],
     }
@@ -340,18 +343,22 @@ def _panel(d: dict) -> str:
         f'<dd class="num">{_scored(value, pm)}</dd></div>'
         for (k, title), (value, pm, f) in zip(CHECK_NAMES.items(), d["checks"]))
     return (f'    <aside class="panel" id="panel" aria-label="Selected model">\n'
-            f'      <p class="about">{escape(d["about"])}</p>\n'
-            f'      <h3 aria-live="polite">{escape(d["name"])}</h3>\n'
+            f'      <div class="who">\n'
+            f'        <p class="about">{escape(d["about"])}</p>\n'
+            f'        <h3 aria-live="polite">{escape(d["name"])}</h3>\n'
+            f'      </div>\n'
             f'      <p class="big">{_scored(*d["score"])}</p>\n'
             f'      <div class="heat" role="img" aria-label="The answers on a 10 by 10 grid of 0 to 99">'
             f'{"".join(squares)}</div>\n'
             f'      <p class="key"><span class="fav-key">{d["key"]}</span> '
             f'Darker squares were answered more often, and dashed ones never.</p>\n'
-            f'      <h4>Bias checks</h4>\n'
-            f'      <dl class="checks">{checks}</dl>\n'
-            f"      <p class=\"key\">Each bar runs from the check's lowest possible score, empty, to 1, full. "
+            f'      <div class="bias">\n'
+            f'        <h4>Bias checks</h4>\n'
+            f'        <dl class="checks">{checks}</dl>\n'
+            f"        <p class=\"key\">Each bar runs from the check's lowest possible score to 1. "
             f"Uniformity and Last Digit are on a log scale, so that their low scores still differ: "
             f"a Uniformity score of 0.1 fills half its bar.</p>\n"
+            f'      </div>\n'
             f'    </aside>')
 
 

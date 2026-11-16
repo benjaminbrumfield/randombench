@@ -166,17 +166,21 @@ tbody tr { border-bottom: 1px solid var(--rule); }
 }
 
 /* The selected model's panel. Its 100 squares are the values 0 to 99, ten to a row, each shaded by --t,
-   its count over the favorite's, from --picked at 0 to --deep at 1. They mix in sRGB, so each channel
-   moves in a straight line between the two. */
+   the square root of its count over the favorite's, from --picked at 0 to --deep at 1. They mix in sRGB,
+   so each channel moves in a straight line between the two. */
 .panel {
-  background: var(--card); border: 1px solid var(--rule); border-radius: 12px; padding: 20px;
-  display: grid; gap: 14px; font-size: 0.875rem; min-width: 0; scroll-margin-top: 16px;
+  background: var(--card); border: 1px solid var(--rule); border-radius: 12px; padding: 22px;
+  display: grid; gap: 18px; font-size: 0.875rem; min-width: 0; scroll-margin-top: 16px;
 }
 .panel p { margin: 0; }
-.panel .about { font-size: var(--step--1); color: var(--muted); }
-.panel h3 { margin: -10px 0 0; font-size: 1.375rem; font-weight: 650; line-height: 1.25; }
-.panel .big { font-size: 2.25rem; font-weight: 650; line-height: 1; color: var(--accent); font-variant-numeric: tabular-nums; }
-.panel .big .pm { font-size: 0.42em; }
+.panel .who { display: grid; gap: 2px; }
+.panel .about { font-size: 0.75rem; color: var(--muted); }
+.panel h3 { margin: 0; font-size: 1.375rem; font-weight: 650; }
+.panel .big {
+  display: flex; align-items: baseline; gap: 10px;  /* the space before the ± drops out, and the gap replaces it */
+  font-size: 2.5rem; font-weight: 650; line-height: 1; color: var(--accent); font-variant-numeric: tabular-nums;
+}
+.panel .big .pm { font-size: 0.875rem; font-weight: 400; margin-left: 0; }
 .heat { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 3px; }
 .heat span {
   box-sizing: border-box; aspect-ratio: 1; display: grid; place-items: center; border-radius: 3px;
@@ -185,18 +189,22 @@ tbody tr { border-bottom: 1px solid var(--rule); }
 }
 .heat .hi { color: var(--on-deep); }
 .heat .none { background: none; border: 1px dashed var(--dash); color: var(--muted); }
-.heat .fav { background: var(--fav); color: var(--on-fav); font-weight: 650; }
+.heat .fav { background: var(--fav); color: var(--on-fav); }
 .panel .key { color: var(--muted); font-size: var(--step--1); }
 .panel .key strong { color: var(--fg); font-weight: 650; }
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: var(--fav); margin-right: 6px; }
+.panel .bias { display: grid; gap: 10px; padding-top: 16px; border-top: 1px solid var(--rule); }
+.panel .bias .key { font-size: 0.75rem; }
 .panel h4 {
-  margin: 0; padding-top: 14px; border-top: 1px solid var(--rule);
-  font-size: 0.75rem; font-weight: 600; color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase;
+  margin: 0; font-size: 0.75rem; font-weight: 600; color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase;
 }
-.checks { margin: 0; display: grid; gap: 9px; }
-.checks div { display: grid; grid-template-columns: minmax(0, 8em) minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+.checks { margin: 0; display: grid; gap: 10px; }
+/* A fixed column for the numbers, so that the nine bars are the same length. */
+.checks div { display: grid; grid-template-columns: minmax(0, 8em) minmax(0, 1fr) 6.4em; column-gap: 12px; align-items: center; }
 .checks dt { line-height: 1.25; }
-.checks dt small { display: block; font-size: 0.8em; color: var(--muted); }
+.checks dt small { display: block; font-size: 0.6875rem; color: var(--muted); }
 .checks dd { margin: 0; }
+.checks .pm { font-size: 0.6875rem; margin-left: 0; }  /* the space before it is enough */
 .meter { display: block; height: 6px; border-radius: 3px; background: var(--track); overflow: hidden; }
 .meter i { display: block; height: 100%; width: calc(var(--f, 0) * 100%); background: var(--accent); border-radius: 3px; }
 

@@ -222,7 +222,7 @@ def test_every_models_panel_data_is_the_scorers():
         assert [c[2] for c in m["checks"]] == pytest.approx([shade(k, r.scores[k]) for k in CHECK_NAMES], abs=5e-4)
         assert m["fav"] == favorites(r.counts)[0]
         top = max(r.counts)
-        assert m["t"] == pytest.approx([max(HEAT_FLOOR, c / top) if c else 0 for c in r.counts], abs=5e-4)
+        assert m["t"] == pytest.approx([max(HEAT_FLOOR, math.sqrt(c / top)) if c else 0 for c in r.counts], abs=5e-4)
     # The panel the build writes is the first model's, as the script would show it.
     assert _panel(data["models"][0]) in text
 
@@ -303,18 +303,19 @@ def test_the_distribution_labels_its_tallest_bars_and_circles_values_never_given
     assert _distribution([0.0] * 100) == ""
 
 
-def test_the_panel_shades_each_square_by_its_count_over_the_favorites():
-    [r] = score_draws([{"model": NANO, "reply": x} for x in ["42"] * 4 + ["47"] * 3 + ["37"] * 2 + ["7"]])
+def test_the_panel_shades_each_square_by_the_square_root_of_its_count_over_the_favorites():
+    replies = ["42"] * 64 + ["37"] * 36 + ["47"] * 16 + ["7"]
+    [r] = score_draws([{"model": NANO, "reply": x} for x in replies])
     d = panel_data(r, 1, 1)
-    assert (d["fav"], d["t"][42], d["t"][47], d["t"][0]) == ([42], 1, 0.75, 0)
-    assert "Favorite <strong>42</strong>: 40% of its valid answers." == d["key"]
+    assert (d["fav"], d["t"][42], d["t"][37], d["t"][47], d["t"][0]) == ([42], 1, 0.75, 0.5, 0)
+    assert '<i class="swatch"></i>Favorite <strong>42</strong>: 55% of its valid answers.' == d["key"]
     found = re.findall(r'<span(?: class="(\w+)")?(?: style="--t:([0-9.]+)")?>(\d+)</span>', _panel(d))
     squares = {int(value): (cls, t) for cls, t, value in found}
     assert len(squares) == 100
     assert squares[42] == ("fav", "")
-    assert squares[47] == ("hi", "0.750")  # dark enough for --on-deep text
-    assert squares[37] == ("", "0.500")
-    assert squares[7] == ("", "0.250")
+    assert squares[37] == ("hi", "0.750")  # dark enough for --on-deep text
+    assert squares[47] == ("", "0.500")  # a quarter of the favorite's count is half as dark
+    assert squares[7] == ("", f"{HEAT_FLOOR:.3f}")  # 1 of 64 is 0.125 by the square root, raised to the floor
     assert squares[0] == ("none", "")
 
 
