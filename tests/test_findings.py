@@ -90,8 +90,10 @@ def test_every_finding_on_the_page_has_a_test_and_every_test_a_finding():
 
 
 def test_finding_no_model_comes_close():
-    # "as repetitive as a fair pick among fewer than a fifth of the 100 values"
-    assert max(r.scores["uniformity"] for r in MODELS.values()) < 0.2
+    # On the Ranking's Score: "Even the most random model scores less than 0.2,
+    # and the top of its interval is less than 0.2 too." It's 0.158 ± 0.025 now.
+    most_random = max(MODELS.values(), key=lambda r: r.scores["headline"])
+    assert most_random.scores["headline"] + most_random.intervals["headline"] < 0.2
 
 
 def test_finding_three_numbers_dominate():
@@ -191,5 +193,5 @@ def test_finding_reasoning_helps_a_little():
     assert ranks["tokens"].corr(ranks["score"]) > 0.3
     assert next(iter(MODELS)) == GPT_54 and tokens[GPT_54] == 4
     assert all(m.startswith(("google/", "xai/")) or m == GPT_OSS for m in reasoners), reasoners
-    # Still far from uniform: none as random as a fair pick among 10 of the 100 values.
+    # "Still far from uniform": each scores less than 0.1 on Uniformity.
     assert all(MODELS[m].scores["uniformity"] < 0.1 for m in reasoners)
