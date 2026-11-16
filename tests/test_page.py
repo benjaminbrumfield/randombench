@@ -242,6 +242,12 @@ def test_the_page_loads_nothing_from_other_sites():
     assert all(h == "data:," or h.startswith(allowed) for h in hrefs), hrefs
 
 
+def test_every_link_opens_in_a_new_tab():
+    # Every link leaves the page, for GitHub or Kaggle, so the leaderboard stays open.
+    links = re.findall(r"<a [^>]*>", PAGE.read_text(encoding="utf-8"))
+    assert links and all('target="_blank"' in link for link in links), links
+
+
 # Rendering other data
 
 
