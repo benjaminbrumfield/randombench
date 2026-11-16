@@ -271,14 +271,16 @@ def test_a_tie_for_favorite_shows_every_tied_value():
     assert 'aria-label="Favorite 42, 73: 43% of its valid answers"' in _answers_cell(counts)
 
 
-def test_the_answers_chart_draws_each_value_given_with_the_favorites_apart():
+def test_the_answers_chart_draws_each_value_given_on_a_square_root_scale_with_the_favorites_apart():
     counts = [0] * 100
-    counts[42], counts[73], counts[7], counts[99] = 20, 20, 1, 5
+    counts[42], counts[73], counts[7], counts[99], counts[3] = 200, 200, 1, 50, 18
     cell = _answers_cell(counts)
     paths = re.findall(r'<path( class="fav")? d="([^"]*)"', cell)
-    bars = {bool(fav): re.findall(r"M(\d+) 20v-([0-9.]+)", d) for fav, d in paths}
-    assert bars[True] == [("42", "20"), ("73", "20")]
-    assert bars[False] == [("7", "2"), ("99", "5")]  # one answer is under the floor
+    bars = {bool(fav): re.findall(r"M(\d+) 100v-(\d+)h1V100z", d) for fav, d in paths}
+    assert bars[True] == [("42", "100"), ("73", "100")]
+    # A quarter of the favorite's count is half as tall, 18 of 200 is 30, and
+    # one answer, 7 by the square root, is raised to the floor of 8.
+    assert bars[False] == [("3", "30"), ("7", "8"), ("99", "50")]
     assert 'aria-label="Favorite 42, 73: 43% of its valid answers"' in cell
     assert _answers_cell([0] * 100) == '<td class="answers"></td>'  # no valid answers
 

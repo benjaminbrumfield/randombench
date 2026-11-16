@@ -12,13 +12,13 @@ the models answer" charts each value's share, averaged the same way, with the
 three tallest bars in orange.
 
 Ranking orders the models by the headline, charts each one's answers from 0
-to 99, with its favorite in orange, and draws each one's interval on a shared
-scale. Beside it, a panel shows one model's answers on a 10 by 10 grid and its
-nine checks as bars, each filled from its check's lowest score to 1, as D28
-shaded the cells of the table it replaces. The build writes the
-top model's panel, so the page reads without JavaScript, and every model's
-panel data as JSON, which the page's script puts in the panel when a row is
-selected.
+to 99 on a square-root scale, with its favorite in orange, and draws each
+one's interval on a shared scale. Beside it, a panel shows one model's
+answers on a 10 by 10 grid and its nine checks as bars, each filled from its
+check's lowest score to 1, as D28 shaded the cells of the table it replaces.
+The build writes the top model's panel, so the page reads without
+JavaScript, and every model's panel data as JSON, which the page's script
+puts in the panel when a row is selected.
 
 The page used to have two tables (D27): Ranking, and Biases, which held every
 model's nine checks and, from D30, its favorite, in a column that sorted. The
@@ -235,17 +235,19 @@ def _distribution(shares: list[float]) -> str:
 
 # The Ranking's Answers chart: its height in SVG units, and the shortest a bar
 # can be, so that a value given once still shows.
-BAR_HEIGHT = 20
-MIN_BAR = 2
+BAR_HEIGHT = 100
+MIN_BAR = 8
 
 
 def _answers_cell(counts) -> str:
     """The Ranking's Answers cell: a bar for each value the model gave, 0 at the left and 99 at the right.
 
-    A bar's height is in proportion to its count, up to the favorite's, with a
-    floor of MIN_BAR. Only the values given are drawn, as one path for the
-    favorites and one for the rest, which keeps 36 charts small. The SVG
-    stretches to the cell's width, one unit per value.
+    A bar's height is the square root of its count over the favorite's, so a
+    value given a quarter as often as the favorite is half as tall. That keeps
+    a model's rarer answers in view beside a favorite given hundreds of times,
+    and MIN_BAR keeps one given once from vanishing. Only the values given are
+    drawn, as one path for the favorites and one for the rest, which keeps 36
+    charts small. The SVG stretches to the cell's width, one unit per value.
     """
     found = favorites(counts)
     if found is None:
@@ -255,8 +257,8 @@ def _answers_cell(counts) -> str:
     others, favs = [], []
     for value, count in enumerate(counts):
         if count:
-            height = round(max(MIN_BAR, BAR_HEIGHT * count / top), 1)
-            bar = f"M{value} {BAR_HEIGHT}v-{height:g}h1V{BAR_HEIGHT}z"
+            height = max(MIN_BAR, round(BAR_HEIGHT * math.sqrt(count / top)))
+            bar = f"M{value} {BAR_HEIGHT}v-{height}h1V{BAR_HEIGHT}z"
             (favs if value in values else others).append(bar)
     paths = f'<path d="{"".join(others)}"/>' if others else ""
     paths += f'<path class="fav" d="{"".join(favs)}"/>'

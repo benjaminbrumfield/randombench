@@ -77,23 +77,21 @@ header p { margin: 0; max-width: 60em; }
 section { display: grid; gap: 12px; min-width: 0; }
 h2 { font-size: var(--step-1); font-weight: 650; margin: 0; letter-spacing: 0.005em; }
 .head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 24px; }  /* a heading, with a note at its right */
-.caption { color: var(--muted); margin: 0; }
 .note { font-size: var(--step--1); color: var(--muted); margin: 0; }
 
 table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
-th, td { padding: 10px; text-align: left; vertical-align: baseline; }
-th:first-child, td:first-child { padding-left: 0; }
-th:last-child, td:last-child { padding-right: 0; }
+th, td { padding: 7px; text-align: left; vertical-align: baseline; }  /* 14px between columns */
+th:first-child, td:first-child { padding-left: 8px; }  /* so a selected row's tint runs past its text */
+th:last-child, td:last-child { padding-right: 8px; }
 thead th {
   font-size: var(--step--1); font-weight: 600; color: var(--muted);
-  letter-spacing: 0.02em; vertical-align: bottom; border-bottom: 1px solid var(--fg);
-  padding-bottom: 8px;
+  vertical-align: bottom; border-bottom: 1px solid var(--fg); padding-block: 0 8px;
 }
 tbody tr { border-bottom: 1px solid var(--rule); }
 .num { text-align: right; white-space: nowrap; }
 .pm { font-size: 0.8em; color: var(--soft); margin-left: 0.15em; }
 .name { font-weight: 550; }
-.prov { color: var(--muted); font-size: var(--step--1); margin-left: 0.35em; }
+.prov { color: var(--muted); font-size: var(--step--1); margin-left: 6px; }
 .scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
 /* What the models answer: bars in one stretched SVG, with HTML labels, circles, and axis placed over and under it by percentage */
@@ -122,9 +120,10 @@ tbody tr { border-bottom: 1px solid var(--rule); }
 .dist figcaption { margin-top: 10px; }
 
 /* Ranking, with the selected model's panel beside it, or under it on narrower screens */
-.ranked { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px 32px; align-items: start; }
+.ranking { gap: 14px; }
+.ranked { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 24px; align-items: start; }
 .ranked-table { display: grid; gap: 16px; min-width: 0; }
-.rank tbody tr { --row: var(--bg); background: var(--row); }
+.rank tbody tr { --row: var(--bg); background: var(--row); height: 44px; }  /* at least 44px, for a finger */
 .rank tbody tr:has(.pick) { cursor: pointer; }  /* once the script has made each name a button */
 .rank tbody tr:has(.pick):hover { --row: color-mix(in oklab, var(--accent) 4%, var(--bg)); }
 .rank tbody tr:has([aria-current]) { --row: var(--picked); }
@@ -133,18 +132,20 @@ tbody tr { border-bottom: 1px solid var(--rule); }
   text-align: inherit; cursor: pointer;
 }
 .pick:hover .name { text-decoration: underline; text-underline-offset: 0.18em; text-decoration-thickness: 1px; }
+/* The model's name takes what's left after the other columns. */
 .rank .n { width: 2.2em; color: var(--muted); }
-.rank .replies { color: var(--muted); }
-.rank .score { font-weight: 600; }
-.rank .score .pm { font-weight: 400; }
-.rank td.answers, .rank th.answers { width: 7em; padding-left: 16px; vertical-align: middle; }
-.rank th.answers { vertical-align: bottom; }
+.rank .replies { width: 4em; color: var(--muted); }
+.rank .score { width: 7em; font-weight: 600; white-space: nowrap; }
+.rank .score .pm { font-weight: 400; margin-left: 3px; }
+.rank .answers { width: 120px; }
+.rank td.answers { vertical-align: middle; }
 .answers svg {
   display: block; width: 100%; height: 22px; border-bottom: 1px solid var(--spark-base);
   fill: var(--spark);
 }
 .answers .fav { fill: var(--fav); }
-.rank td.plot, .rank th.plot { width: 28%; padding-left: 22px; vertical-align: middle; }
+.rank .plot { width: 26%; }
+.rank td.plot { vertical-align: middle; }
 .axis { position: relative; height: 1.2em; font-weight: 400; }
 .tick { position: absolute; left: var(--x); transform: translateX(-50%); }
 .tick:first-child { transform: none; }
@@ -207,11 +208,13 @@ tbody tr { border-bottom: 1px solid var(--rule); }
 footer { font-size: var(--step--1); color: var(--muted); border-top: 1px solid var(--rule); padding-top: 18px; }
 footer p { margin: 0 0 6px; }
 
-@media (max-width: 1000px) {
+/* The panel goes under the table where the table would be narrower than 720px beside it,
+   too narrow for the model names. */
+@media (max-width: 1155px) {
   .ranked { grid-template-columns: minmax(0, 1fr); }
   .panel { max-width: 420px; }
 }
-@media (min-width: 1001px) {
+@media (min-width: 1156px) {
   /* Beside the table, the panel stays on the screen. Where the window is too short for all of it, it scrolls. */
   .panel { position: sticky; top: 16px; box-sizing: border-box; max-height: calc(100vh - 32px); overflow-y: auto; }
 }
@@ -224,8 +227,9 @@ footer p { margin: 0 0 6px; }
   h1 { font-size: 1.75rem; }
   .rank th, .rank td { padding-left: 6px; padding-right: 6px; }
   .rank .n { width: 1.6em; }
+  .rank .replies, .rank .score { width: auto; }
   .rank .model .prov, .rank .score .pm { display: block; margin-left: 0; }
-  .rank td.plot, .rank th.plot { width: 34%; padding-left: 10px; }
+  .rank .plot { width: 34%; padding-left: 10px; }
   .rank .answers { display: none; }
   .rank .tick:not(:first-child):not(:last-child) { display: none; }
   .rank thead .wide { display: none; }
@@ -266,9 +270,11 @@ __DIST__
     </figure>
   </section>
 
-  <section aria-labelledby="ranking-h">
-    <h2 id="ranking-h">Ranking</h2>
-    <p class="caption" id="pick-hint" hidden>Select a model to see its answers and bias checks.</p>
+  <section class="ranking" aria-labelledby="ranking-h">
+    <div class="head">
+      <h2 id="ranking-h">Ranking</h2>
+      <p class="note" id="pick-hint" hidden>Select a model to see its answers and bias checks</p>
+    </div>
     <div class="ranked">
     <div class="ranked-table">
     <div class="scroll">
@@ -278,7 +284,7 @@ __DIST__
           <th scope="col">Model</th>
           <th class="num" scope="col">Replies</th>
           <th class="num" scope="col">Score</th>
-          <th class="answers" scope="col">Answers</th>
+          <th class="answers" scope="col">Answers, 0 to 99</th>
           <th class="plot" scope="col" aria-hidden="true"><div class="axis">__TICKS__</div></th>
         </tr></thead>
         <tbody>
@@ -286,7 +292,7 @@ __RANKING__
         </tbody>
       </table>
     </div>
-    <p class="note">Answers draws how often the model gave each value, from 0 at the left to 99 at the right, with its favorite in orange. Each bar's height is in proportion to its count, with a floor so that a value given only once still shows.</p>
+    <p class="note">Answers draws how often the model gave each value, with its favorite in orange. The bars follow the square root of the counts, so a value given a quarter as often as the favorite is half as tall, and one given only once still shows.</p>
     <p class="note">Replies counts every call that got a reply, valid or not. Calls that failed, such as those the quota refused, aren't counted. Every score's 95% interval comes from 10,000 bootstrap resamples of the model's replies, so a model with fewer replies gets a wider interval, not a lower score.</p>
     <p class="note">The bias checks on a share of the answers, such as Multiples of 10, are lenient toward avoidance. A model that never answers a multiple of 10 is only 10% away from the ideal share, so it scores 0.900, and one that answers nothing else scores 0.100.</p>
     </div>
