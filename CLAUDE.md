@@ -7,7 +7,7 @@ RandomBench measures how well LLMs generate random integers from 0 to 99 and sco
 ## How we work
 
 - **One step at a time.** Each change is one small commit. This is a learning project, so explain what each change shows, and raise open decisions instead of settling them quietly.
-- **Ask before any LLM call.** Local task runs, probe scripts, and `kaggle b t run` all spend Model Proxy quota. Pushing `randombench-draws` doesn't: its creation run uses Gemini 3.8 Flash, which `MODELS` leaves out (PLAN.md D23). Adding Gemini 3.8 Flash back would make every push spend 50 to 150 calls, the size of one run. Say which models and how many calls, then wait for a yes. Read-only commands such as `kaggle b t models` are fine.
+- **Ask before any LLM call.** Local task runs, probe scripts, and `kaggle b t run` all spend Model Proxy quota. Pushing `randombench-draws` doesn't: its creation run uses Gemini 3.8 Flash, which `MODELS` leaves out (PLAN.md D23). Adding Gemini 3.8 Flash back would make every push spend 100 to 300 calls, the size of one run. Say which models and how many calls, then wait for a yes. Read-only commands such as `kaggle b t models` are fine.
 
 ## Writing tasks
 

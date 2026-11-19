@@ -36,7 +36,9 @@ import kaggle_benchmarks as kbench
 # MAX_DRAWS, both included, chosen when the run starts. Each draw's prompt is
 # chosen at random too, on its own, so a run's prompts can come up unequally
 # often. Until then, a run's draws split evenly across the six prompts (D9).
-MIN_DRAWS, MAX_DRAWS = 50, 150
+# Versions 12 and 13 drew 50 to 150 times. Since version 14, it's 100 to 300,
+# so each batch spends more of the day's quota and fewer batches run.
+MIN_DRAWS, MAX_DRAWS = 100, 300
 # Draws made at once. Model Proxy holds each call's maximum possible cost
 # against the daily quota until it finishes (4.11), and a flagship model's
 # hold can be several dollars, so runs since the flagship pilots make one at

@@ -86,7 +86,7 @@ def test_each_run_picks_its_own_number_of_draws(task, monkeypatch):
     monkeypatch.setattr(task["random"], "randint", lambda a, b: picked.append((a, b)) or 53)
     nano = StandIn("openai/gpt-5.4-nano-2026-03-17")
     assert task["collect"].run(nano).result == 53
-    assert picked == [(50, 150)]
+    assert picked == [(100, 300)]
 
 
 def test_each_draw_gets_a_prompt_at_random(task):
