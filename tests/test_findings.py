@@ -31,6 +31,7 @@ GEMINI_25_FLASH = "google/gemini-2.5-flash"
 GEMINI_25_PRO = "google/gemini-2.5-pro"
 GEMINI_31_PRO = "google/gemini-3.1-pro-preview"
 GEMINI_31_FLASH_LITE = "google/gemini-3.1-flash-lite-preview"
+GEMINI_4_NEON = "google/gemini-4-neon"
 GPT_OSS = "openai/gpt-oss-120b"
 GPT_54 = "openai/gpt-5.4-2026-03-05"
 GPT_56_LUNA = "openai/gpt-5.6-luna"
@@ -97,12 +98,12 @@ def test_finding_no_model_comes_close():
     assert most_random.scores["headline"] + most_random.intervals["headline"] < 0.2
 
 
-# GPT-6.2 Sol's and GPT-6.2 Astra's 24-draw pilots favor 63 and 68, which the
+# GPT-6.2 Astra and GPT-6.2 Sol favor 63, and Gemini 4 Neon 83, which the
 # finding's exceptions don't name. It waits to be rewritten until their
 # replies catch up with the other models', as the 13 flagship models' pilots
 # waited for their full runs. strict, so the test fails here if the finding
 # comes true again before its mark is removed.
-@pytest.mark.xfail(strict=True, reason="the GPT-6.2 pilots break this finding: rewrite it once their replies catch up, then its test")
+@pytest.mark.xfail(strict=True, reason="GPT-6.2 Astra, GPT-6.2 Sol, and Gemini 4 Neon break this finding: rewrite it once their replies catch up, then its test")
 def test_finding_three_numbers_dominate():
     favorite = {model: set(favorites(counts)[0]) for model, counts in COUNTS.items()}
     assert ALL[[42, 47, 73]].sum() > ALL.sum() / 2  # most of all the answers
@@ -126,8 +127,10 @@ def test_finding_newer_isnt_more_random():
     assert all(less_random(m, GPT_54) for m in later_gpts)
     assert second == GEMINI_25_FLASH
     newer_geminis = [m for m in MODELS if m.startswith("google/gemini-") and not m.startswith("google/gemini-2.5")]
-    assert len(newer_geminis) >= 7
-    assert all(less_random(m, GEMINI_25_FLASH) for m in newer_geminis)
+    assert len(newer_geminis) >= 7 and GEMINI_4_NEON in newer_geminis
+    # Second, so ahead of each of them, and every interval is apart but Gemini 4 Neon's.
+    assert all(less_random(m, GEMINI_25_FLASH) for m in newer_geminis if m != GEMINI_4_NEON)
+    assert not less_random(GEMINI_4_NEON, GEMINI_25_FLASH)
     assert less_random(GROK_47, GROK_46)
     assert less_random(GPT_6_LUNA, GPT_56_LUNA)
     assert less_random(SONNET_5, SONNET_46) and less_random(SONNET_55, SONNET_46)
@@ -141,13 +144,13 @@ def test_finding_newer_isnt_more_random():
 def test_finding_whole_regions_go_unused():
     assert share(ALL, (VALUES >= 20) & (VALUES <= 79)) > 0.95
     assert share(ALL, np.isin(VALUES % 10, [2, 3, 7])) > 0.95
-    top_three = set(list(MODELS)[:3])
-    assert top_three == {GPT_54, GEMINI_25_FLASH, GROK_46}
-    assert answered(VALUES > 89) == top_three
-    assert answered(REPEATED_DIGITS) == top_three
+    trio = {GPT_54, GEMINI_25_FLASH, GROK_46}
+    assert trio <= set(list(MODELS)[:4])  # "three of the four most random models"
+    assert answered(VALUES > 89) == trio
+    assert answered(REPEATED_DIGITS) == trio
     assert answered(VALUES < 10) == {GPT_54, GROK_46}
     assert answered(MULTIPLE_OF_10) == {GPT_54, GPT_56_TERRA}
-    venturers = top_three | {GPT_56_TERRA}
+    venturers = trio | {GPT_56_TERRA}
     assert answered(MULTIPLE_OF_5 | (VALUES < 10) | (VALUES > 89) | REPEATED_DIGITS) == venturers
     # Every other model scores the same on the four checks.
     others = [r for model, r in MODELS.items() if model not in venturers]
@@ -193,9 +196,9 @@ def test_finding_reasoning_helps_a_little():
     tokens = {model: median_tokens(model) for model in MODELS}
     # A two-digit answer takes a few tokens, so a median past 50 means reasoning at length.
     reasoners = {m for m, t in tokens.items() if t > 50}
-    assert len(reasoners) == 10
+    assert len(reasoners) == 11
     assert {m for m, t in tokens.items() if t > 200} == {GEMINI_25_PRO, GEMINI_31_PRO, GROK_46}
-    # More tokens tend to score higher: Spearman's correlation, the correlation of the ranks. It's 0.44 now.
+    # More tokens tend to score higher: Spearman's correlation, the correlation of the ranks. It's 0.37 now.
     ranks = pd.DataFrame({"tokens": tokens, "score": {m: r.scores["headline"] for m, r in MODELS.items()}}).rank()
     assert ranks["tokens"].corr(ranks["score"]) > 0.3
     assert next(iter(MODELS)) == GPT_54 and tokens[GPT_54] == 4

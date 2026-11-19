@@ -94,6 +94,8 @@ MODELS = (
     # Released 2026-11-17, and piloted in version 11.
     "openai/gpt-6.2-astra",
     "openai/gpt-6.2-sol",
+    # Listed by Kaggle on 2026-11-19, with no release date given.
+    "google/gemini-4-neon",
 )
 
 

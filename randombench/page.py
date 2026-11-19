@@ -82,6 +82,7 @@ DISPLAY_NAMES = {
     "google/gemini-3.6-flash": ("Gemini 3.6 Flash", "Google"),
     "google/gemini-3.8-flash": ("Gemini 3.8 Flash", "Google"),
     "google/gemini-4-argon": ("Gemini 4 Argon", "Google"),
+    "google/gemini-4-neon": ("Gemini 4 Neon", "Google"),
     "google/gemma-4-26b-a4b": ("Gemma 4 26B A4B", "Google"),
     "google/gemma-4-31b": ("Gemma 4 31B", "Google"),
     "openai/gpt-5.4-2026-03-05": ("GPT-5.4", "OpenAI"),

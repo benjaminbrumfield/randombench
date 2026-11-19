@@ -50,8 +50,8 @@ def task(tmp_path, monkeypatch):
     return runpy.run_path(str(code))
 
 
-def test_the_allowlist_holds_37_distinct_models(task):
-    assert len(task["MODELS"]) == len(set(task["MODELS"])) == 37
+def test_the_allowlist_holds_38_distinct_models(task):
+    assert len(task["MODELS"]) == len(set(task["MODELS"])) == 38
 
 
 def test_the_servers_default_model_is_never_prompted(task):
