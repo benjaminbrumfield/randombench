@@ -9,7 +9,8 @@ Four cards open the page: how many models and valid answers there are, the
 top score, and the most common answer, by its share averaged over the models.
 This computes all four, so none is a claim written by hand. Below them, "What
 the models answer" charts each value's share, averaged the same way, with the
-three tallest bars in orange.
+three tallest bars in orange. The five tallest are labeled with their shares,
+and the page's script labels any other column under the pointer the same way.
 
 A slider under the chart steps back through the days the models here were
 released (RELEASED). At each stop, the chart averages only the models
@@ -256,9 +257,23 @@ def tallest(shares: list[float]) -> list[int]:
     return sorted(given, key=lambda value: (-shares[value], value))[:BIG_LABELS + SMALL_LABELS]
 
 
+def _percent(share: float) -> str:
+    """A share as "What the models answer" labels it: to a tenth of a percent, or a hundredth below 1%.
+
+    One that rounds to 0.00% but was given is <0.01%, and one never given is
+    0%, so the two read differently.
+    """
+    text = f"{share:.1%}"
+    if text.startswith("0."):
+        text = f"{share:.2%}"
+    if text == "0.00%":
+        return "<0.01%" if share else "0%"
+    return text
+
+
 def _tallest_text(shares: list[float]) -> str:
     """The labeled values and their shares, as a sentence names them: 42 (30.3%), 47 (29.9%), and 73 (21.6%)."""
-    return _series([f"{value} ({shares[value]:.1%})" for value in tallest(shares)])
+    return _series([f"{value} ({_percent(shares[value])})" for value in tallest(shares)])
 
 
 def _x(value: int) -> str:
@@ -275,15 +290,17 @@ def distribution_data(shares: list[float]) -> dict:
     99, each with its share and its class: "label", large and in orange, for
     the BIG_LABELS tallest, whose bars are orange too, and "label minor" for
     the rest. tallest is the caption's words, shown on narrow screens, where
-    the labels are hidden.
+    the labels are hidden. shares is every value's share, for the label the
+    page's script puts over the column under the pointer.
     """
     top = max(shares)
     labeled = tallest(shares)
     return {
         "h": [round(max(MIN_DIST_BAR, 100 * share / top), 2) if share else 0 for share in shares],
-        "labels": [[value, f"{shares[value]:.1%}", "label" if labeled.index(value) < BIG_LABELS else "label minor"]
+        "labels": [[value, _percent(shares[value]), "label" if labeled.index(value) < BIG_LABELS else "label minor"]
                    for value in sorted(labeled)],
         "tallest": _tallest_text(shares),
+        "shares": [_percent(share) for share in shares],
     }
 
 

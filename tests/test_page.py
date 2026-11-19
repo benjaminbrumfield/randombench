@@ -399,6 +399,13 @@ def test_the_distribution_labels_its_tallest_bars():
                       ("label", "47", "20.0%"), ("label", "73", "15.0%")]
     assert 'style="--x:73.5%;--h:37.5">73<small>' in chart  # over the middle of its bar, at its top
     assert "The tallest are 42 (40.0%), 47 (20.0%), 73 (15.0%), 37 (10.0%), and 7 (5.0%)." in chart
+    # Every value's share, for the label over the column under the pointer.
+    # Below 1% it shows hundredths, and a share too small to show as 0.01%
+    # still reads differently from none.
+    assert [d["shares"][v] for v in (0, 9, 42)] == ["0%", "5.0%", "40.0%"]
+    small = distribution_data([0.98, 0.0094, 0.0042, 0.00004] + [0.0] * 96)["shares"]
+    assert small[:5] == ["98.0%", "0.94%", "0.42%", "<0.01%", "0%"]
+    assert distribution_data([0.99, 0.00996] + [0.0] * 98)["shares"][1] == "1.0%"  # rounds to 1.0%, so tenths
     assert tallest([0.5, 0.5] + [0.0] * 98) == [0, 1]  # only values given get a label
     assert _distribution(distribution_data([0.0] * 100)) == ""
 

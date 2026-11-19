@@ -95,10 +95,12 @@ tbody tr { border-bottom: 1px solid var(--rule); }
 .scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
 /* What the models answer: a rect for each value in one stretched SVG, with HTML labels and axis placed over and under it by percentage.
-   The SVG is flipped, so each rect's height runs up from the axis. A label's --h is its bar's height, out of 100. */
+   The SVG is flipped, so each rect's height runs up from the axis. A label's --h is its bar's height, out of 100.
+   The column under the pointer darkens its bar, unless it's orange, and gets a label like the small ones. */
 .dist { margin: 0; display: grid; gap: 0; }
 .dist-plot { position: relative; height: 220px; margin-top: 60px; }
 .dist-plot svg { display: block; width: 100%; height: 100%; fill: var(--bar); transform: scaleY(-1); }
+.dist-plot .on { fill: var(--deep); }
 .dist-plot .fav { fill: var(--fav); }
 .dist .label {
   position: absolute; left: var(--x); bottom: calc(var(--h) * 1% + 6px); transform: translateX(-50%);
@@ -108,6 +110,14 @@ tbody tr { border-bottom: 1px solid var(--rule); }
 .dist .label small { display: block; font-size: 0.75rem; font-weight: 400; color: var(--muted); }
 .dist .minor { bottom: calc(var(--h) * 1% + 4px); font-size: 0.875rem; font-weight: 650; color: var(--fg); }
 .dist .minor small { font-size: 0.6875rem; }
+/* On the page's background, so that it reads where it runs over the bars beside its own, and over the labels. */
+.dist .hover {
+  position: absolute; z-index: 1; left: var(--x); bottom: calc(var(--h) * 1% + 4px); transform: translateX(-50%);
+  padding: 0 3px; border-radius: 3px; background: var(--bg); pointer-events: none;
+  text-align: center; line-height: 1.2; white-space: nowrap; font-variant-numeric: tabular-nums;
+  font-size: 0.875rem; font-weight: 650; color: var(--fg);
+}
+.dist .hover small { display: block; font-size: 0.6875rem; font-weight: 400; color: var(--muted); }
 .dist-axis {
   position: relative; height: 1.55em; padding-top: 4px; border-top: 1px solid var(--fg);
   font-size: 0.75rem; color: var(--muted); font-variant-numeric: tabular-nums;
@@ -375,13 +385,14 @@ __TIMELINE__
 __PANELS__
 </script>
 <script>
-// The slider under "What the models answer". The build writes the chart and
-// the slider at the last stop, every model, and every stop's chart as the
-// JSON above (randombench/page.py's timeline). Moving the slider shows the
-// chart of the last stop on or before its day: the models released by then.
-// Letting go moves the thumb to that stop's dot, and the arrow keys step from
-// one stop to the next. Every number and word comes formatted from the build,
-// and this only puts them in place.
+// "What the models answer", and the slider under it. The build writes the
+// chart and the slider at the last stop, every model, and every stop's chart
+// as the JSON above (randombench/page.py's timeline). Moving the slider shows
+// the chart of the last stop on or before its day: the models released by
+// then. Letting go moves the thumb to that stop's dot, and the arrow keys step
+// from one stop to the next. Pointing at a column that has no label labels it
+// with its value and share, and darkens its bar. Every number and word comes
+// formatted from the build, and this only puts them in place.
 (function () {
   var box = document.getElementById("timeline");
   if (!box) return;
@@ -393,6 +404,34 @@ __PANELS__
   var plot = document.querySelector(".dist-plot");
   var bars = plot.querySelectorAll("rect");
   var shown = stops.length - 1;
+  var hover = document.createElement("span");
+  var hovered = -1;  // the value of the column under the pointer, or -1 for none
+  hover.className = "hover";
+  hover.hidden = true;
+  plot.appendChild(hover);
+
+  // The column under the pointer, at the stop shown.
+  function mark() {
+    var s = stops[shown];
+    bars.forEach(function (bar, value) { bar.classList.toggle("on", value === hovered); });
+    hover.hidden = hovered < 0 || s.labels.some(function (label) { return label[0] === hovered; });
+    if (hover.hidden) return;
+    var small = document.createElement("small");
+    small.textContent = s.shares[hovered];
+    hover.replaceChildren(String(hovered), small);
+    hover.style.setProperty("--x", data.x[hovered]);
+    hover.style.setProperty("--h", s.h[hovered]);
+    hover.style.removeProperty("bottom");
+    // Over any label it would cover, such as 57's when pointing at 58.
+    var floor = plot.getBoundingClientRect().bottom;
+    plot.querySelectorAll(".label").forEach(function (label) {
+      var a = hover.getBoundingClientRect();
+      var b = label.getBoundingClientRect();
+      if (a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom) {
+        hover.style.setProperty("bottom", floor - b.top + 2 + "px");
+      }
+    });
+  }
 
   function show(i) {
     var s = stops[i];
@@ -401,8 +440,7 @@ __PANELS__
     s.labels.forEach(function (label) { if (label[2] === "label") orange.push(label[0]); });
     bars.forEach(function (bar, value) {
       bar.setAttribute("height", s.h[value]);
-      if (orange.indexOf(value) >= 0) bar.setAttribute("class", "fav");
-      else bar.removeAttribute("class");
+      bar.classList.toggle("fav", orange.indexOf(value) >= 0);
     });
     plot.querySelectorAll(".label").forEach(function (label) { label.remove(); });
     s.labels.forEach(function (label) {
@@ -423,6 +461,7 @@ __PANELS__
     range.setAttribute("aria-valuetext", s.models + " released by " + s.date);
     rail.style.setProperty("--at", s.at);
     dots.forEach(function (dot, j) { dot.classList.toggle("in", j <= i); });
+    mark();
   }
 
   // The last stop on or before a day.
@@ -444,6 +483,24 @@ __PANELS__
     var i = Math.min(stops.length - 1, Math.max(0, shown + step));
     range.value = stops[i].day;
     if (i !== shown) show(i);
+  });
+
+  // A column is the whole width of its value, from the axis up, gaps and all,
+  // so a short bar is as easy to point at as a tall one. A finger is left out:
+  // the label would show for only as long as the tap.
+  plot.addEventListener("pointermove", function (event) {
+    if (event.pointerType === "touch") return;
+    var area = plot.getBoundingClientRect();
+    var value = Math.floor((event.clientX - area.left) / area.width * bars.length);
+    value = Math.min(bars.length - 1, Math.max(0, value));
+    if (value !== hovered) {
+      hovered = value;
+      mark();
+    }
+  });
+  plot.addEventListener("pointerleave", function () {
+    hovered = -1;
+    mark();
   });
   box.hidden = false;
 })();
