@@ -12,6 +12,7 @@ import statistics
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from randombench.build import DATA
 from randombench.checks import MULTIPLE_OF_5, MULTIPLE_OF_10, PRIME, REPEATED_DIGITS
@@ -96,6 +97,11 @@ def test_finding_no_model_comes_close():
     assert most_random.scores["headline"] + most_random.intervals["headline"] < 0.2
 
 
+# GPT-6.2 Sol's and GPT-6.2 Astra's 24-draw pilots favor 63 and 68, which the
+# finding's exceptions don't name. It waits to be rewritten until their full
+# runs, as the 13 flagship models' pilots did. strict, so the test fails here
+# if the finding comes true again before its mark is removed.
+@pytest.mark.xfail(strict=True, reason="the GPT-6.2 pilots break this finding: rewrite it after their full runs, then its test")
 def test_finding_three_numbers_dominate():
     favorite = {model: set(favorites(counts)[0]) for model, counts in COUNTS.items()}
     assert ALL[[42, 47, 73]].sum() > ALL.sum() / 2  # most of all the answers
@@ -114,8 +120,8 @@ def test_finding_three_numbers_dominate():
 def test_finding_newer_isnt_more_random():
     first, second = list(MODELS)[:2]
     assert first == GPT_54
-    later_gpts = [m for m in MODELS if (gpt_version(m) or 0) > 5.4]  # GPT-5.5 to GPT-6.1
-    assert len(later_gpts) >= 8 and max(map(gpt_version, later_gpts)) == 6.1
+    later_gpts = [m for m in MODELS if (gpt_version(m) or 0) > 5.4]  # GPT-5.5 to GPT-6.2
+    assert len(later_gpts) >= 10 and max(map(gpt_version, later_gpts)) == 6.2
     assert all(less_random(m, GPT_54) for m in later_gpts)
     assert second == GEMINI_25_FLASH
     newer_geminis = [m for m in MODELS if m.startswith("google/gemini-") and not m.startswith("google/gemini-2.5")]

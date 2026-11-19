@@ -29,8 +29,10 @@ import kaggle_benchmarks as kbench
 # costliest models made 96, to stay well inside the daily quota. Version 8
 # piloted the 13 flagship models with 24 draws each. Since version 9, each run
 # goes to the model with the fewest replies. Version 9's runs made 96, and
-# since version 10 they make 300.
-N_DRAWS = 300
+# version 10's 300. Version 11 pilots GPT-6.2 Astra and GPT-6.2 Sol with 24
+# draws each, and tries the two Gemini 2.5 models, which Kaggle had dropped
+# by 2026-11-18.
+N_DRAWS = 24
 # Draws made at once. Model Proxy holds each call's maximum possible cost
 # against the daily quota until it finishes (4.11), and a flagship model's
 # hold can be several dollars, so runs since the flagship pilots make one at
@@ -51,6 +53,8 @@ MODELS = (
     "google/gemma-4-26b-a4b",
     "openai/gpt-oss-120b",
     # Added in 4.10 (D23).
+    # Kaggle no longer listed the two Gemini 2.5 models on 2026-11-18. They
+    # stay here until we decide how to retire them.
     "google/gemini-2.5-flash",
     "google/gemini-2.5-pro",
     "google/gemini-3-flash-preview",
@@ -83,6 +87,9 @@ MODELS = (
     "openai/gpt-6-sol",
     "openai/gpt-6.1-sol",
     "openai/gpt-6-astra",
+    # Released 2026-11-17, and piloted in version 11.
+    "openai/gpt-6.2-astra",
+    "openai/gpt-6.2-sol",
 )
 
 
