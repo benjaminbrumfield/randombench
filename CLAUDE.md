@@ -7,7 +7,7 @@ RandomBench measures how well LLMs generate random integers from 0 to 99 and sco
 ## How we work
 
 - **One step at a time.** Each change is one small commit. This is a learning project, so explain what each change shows, and raise open decisions instead of settling them quietly.
-- **Ask before any LLM call.** Local task runs, probe scripts, and `kaggle b t run` all spend Model Proxy quota. Pushing `randombench-draws` doesn't: its creation run uses Gemini 3.8 Flash, which `MODELS` leaves out (PLAN.md D23). Adding Gemini 3.8 Flash back would make every push spend `N_DRAWS` calls. Say which models and how many calls, then wait for a yes. Read-only commands such as `kaggle b t models` are fine.
+- **Ask before any LLM call.** Local task runs, probe scripts, and `kaggle b t run` all spend Model Proxy quota. Pushing `randombench-draws` doesn't: its creation run uses Gemini 3.8 Flash, which `MODELS` leaves out (PLAN.md D23). Adding Gemini 3.8 Flash back would make every push spend 50 to 150 calls, the size of one run. Say which models and how many calls, then wait for a yes. Read-only commands such as `kaggle b t models` are fine.
 
 ## Writing tasks
 
@@ -77,6 +77,10 @@ python -m randombench.extract results/<slug>
 # Score every model's stored draws, offline
 python -m randombench.score
 
+# Count each model's replies, fewest first, and name the model the next run
+# goes to (the collect-draws skill). Read-only: it reads Kaggle's model list.
+python -m randombench.tally
+
 # Compare the models Kaggle lists with data/ and MODELS: new models, models
 # Kaggle dropped, and renamed ones. Read-only: it prompts no model.
 python -m randombench.models
@@ -102,4 +106,6 @@ kaggle b t publish <slug>
 
 `.claude/skills/` holds two vendored skills, `kaggle-benchmarks` and `kaggle-cli`. They're unmodified upstream copies pinned in [SOURCES.md](.claude/skills/SOURCES.md), so don't edit them. Where `kaggle-benchmarks` points at `src/kaggle_benchmarks/`, read the installed package instead: `python -c "import kaggle_benchmarks; print(kaggle_benchmarks.__file__)"`.
 
-It also holds one of the project's own skills, `check-models`. It runs `python -m randombench.models` and says what the report means for RandomBench. Edit it as the project changes.
+It also holds two of the project's own skills. Edit them as the project changes.
+- `check-models` runs `python -m randombench.models` and says what the report means for RandomBench.
+- `collect-draws` runs batches of draws in a loop, each on the model with the fewest replies, until less than $4 of the day's quota is left. `python -m randombench.tally` picks each batch's model.

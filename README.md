@@ -36,7 +36,7 @@ Out in the world, the right distribution is rarely known, so the gap is hard to 
 
 ## How it works
 
-1. **Draw.** Each model is asked for a random integer from 0 to 99, many times over. Every request is a fresh single-turn conversation with no system prompt and no tools, so the model never sees its earlier answers. The requests rotate through several wordings, each used equally often, from the terse `Random integer, 0–99 inclusive. Number only.` to a raffle draw ([randombench/prompts.py](randombench/prompts.py)). Every wording asks for a random integer, says both ends of the range count, and asks for the number only. None gives an example number or names a bias, since either could steer the answer. Claude Opus 5.5 drafted the wordings, and it's also one of the models scored (see [Limitations](#limitations)). Temperature and reasoning are left at each provider's default.
+1. **Draw.** Each model is asked for a random integer from 0 to 99, many times over. Every request is a fresh single-turn conversation with no system prompt and no tools, so the model never sees its earlier answers. Each request uses one of several wordings, picked at random, from the terse `Random integer, 0–99 inclusive. Number only.` to a raffle draw ([randombench/prompts.py](randombench/prompts.py)). Every wording asks for a random integer, says both ends of the range count, and asks for the number only. None gives an example number or names a bias, since either could steer the answer. Claude Opus 5.5 drafted the wordings, and it's also one of the models scored (see [Limitations](#limitations)). Temperature and reasoning are left at each provider's default.
 2. **Parse.** Each reply is read leniently on formatting and strictly on content ([randombench/parsing.py](randombench/parsing.py)). `Sure! **47**.` counts as 47. `47 or 52`, `47.0`, `100`, and `forty-seven` are invalid, and so is a reply that restates the range, since the prompt asked for the number only.
 3. **Score.** A model's valid answers, pooled across the wordings, are checked for the biases below ([randombench/checks.py](randombench/checks.py)). Every score is in [0, 1], about 1 for a perfect random source, and comes with a 95% interval from a bootstrap of the model's replies.
 
@@ -102,7 +102,7 @@ On Windows, set `PYTHONUTF8=1` first. Making new draws needs a Kaggle account an
 
 ## Repository
 
-- [randombench/](randombench/): the prompts, the parser, the checks, and the scripts that extract, score, build, and compare Kaggle's model list with the stored draws.
+- [randombench/](randombench/): the prompts, the parser, the checks, and the scripts that extract, score, build, count each model's replies, and compare Kaggle's model list with the stored draws.
 - [tasks/collect.py](tasks/collect.py): RandomBench Draws, the Kaggle task that makes the draws.
 - [tasks/scores/](tasks/scores/): the scoring tasks, one per score. `python -m randombench.build` generates them from [tasks/templates/score.py](tasks/templates/score.py), with the stored replies embedded.
 - [docs/index.html](docs/index.html): the leaderboard page. `python -m randombench.build` generates it from [randombench/page.html](randombench/page.html) and the stored replies, and GitHub Pages serves it. [tests/test_findings.py](tests/test_findings.py) checks each of its findings against the stored replies.

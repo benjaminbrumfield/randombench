@@ -75,8 +75,28 @@ def test_the_local_default_model_isnt_listed(task):
 def test_a_listed_model_gets_every_draw(task):
     nano = StandIn("openai/gpt-5.4-nano-2026-03-17")
     run = task["collect"].run(nano)
-    assert run.result == task["N_DRAWS"]  # draws with a reply (D14)
-    assert len(nano.prompts) == task["N_DRAWS"]
+    assert task["MIN_DRAWS"] <= len(nano.prompts) <= task["MAX_DRAWS"]
+    assert run.result == len(nano.prompts)  # draws with a reply (D14)
+
+
+def test_each_run_picks_its_own_number_of_draws(task, monkeypatch):
+    # random.randint picks it, so a run's size can be set here without
+    # changing the task.
+    picked = []
+    monkeypatch.setattr(task["random"], "randint", lambda a, b: picked.append((a, b)) or 53)
+    nano = StandIn("openai/gpt-5.4-nano-2026-03-17")
+    assert task["collect"].run(nano).result == 53
+    assert picked == [(50, 150)]
+
+
+def test_each_draw_gets_a_prompt_at_random(task):
+    ids = {p.id for p in task["PROMPTS"]}
+    assert len(task["random_schedule"](53)) == 53
+    # The chance that 600 draws miss one of the six prompts is about 2 in 10^47.
+    per_prompt = Counter(task["random_schedule"](600))
+    assert set(per_prompt) == ids
+    # Not a balanced shuffle (D9): exactly 100 each has a chance of about 2.5 in 10 million.
+    assert len(set(per_prompt.values())) > 1
 
 
 def test_the_run_files_extract(task, tmp_path):
@@ -89,12 +109,12 @@ def test_the_run_files_extract(task, tmp_path):
         shutil.move(str(f), run_dir)
 
     records = read_run(run_dir)
-    assert [r["draw_index"] for r in records] == list(range(task["N_DRAWS"]))
+    assert task["MIN_DRAWS"] <= len(records) <= task["MAX_DRAWS"]
+    assert [r["draw_index"] for r in records] == list(range(len(records)))
     assert {r["model"] for r in records} == {"openai/gpt-5.4-nano-2026-03-17"}
     assert {r["reply"] for r in records} == {"**37**"}
-    # The balanced schedule: every prompt equally often (D9).
-    per_prompt = Counter(r["prompt_id"] for r in records)
-    assert len(per_prompt) == 6 and len(set(per_prompt.values())) == 1
+    # Every draw's prompt is one of the six.
+    assert {r["prompt_id"] for r in records} <= {p.id for p in task["PROMPTS"]}
 
 
 # What the pilot reads in the run's log (4.1)

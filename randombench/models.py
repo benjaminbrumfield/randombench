@@ -159,8 +159,8 @@ def format_report(report: Report) -> str:
         f"Kaggle lists {len(report.listed)} models. RandomBench covers {len(report.covered)}:"
         " their draws are stored, and MODELS lists them.",
         "",
-        f"New ({len(report.new)}): listed, with no draws in data/. Each would need a pilot"
-        " before its full run (D23).",
+        f"New ({len(report.new)}): listed, with no draws in data/. A new model's first run"
+        " is its pilot (D23).",
     ]
     lines += _rows([(m.slug, m.name, m.llm_name or "(no Model Proxy name)",
                      released(m) + (", already in MODELS" if m.llm_name in report.allowed else ""))

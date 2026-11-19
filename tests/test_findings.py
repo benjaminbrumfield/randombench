@@ -98,10 +98,11 @@ def test_finding_no_model_comes_close():
 
 
 # GPT-6.2 Sol's and GPT-6.2 Astra's 24-draw pilots favor 63 and 68, which the
-# finding's exceptions don't name. It waits to be rewritten until their full
-# runs, as the 13 flagship models' pilots did. strict, so the test fails here
-# if the finding comes true again before its mark is removed.
-@pytest.mark.xfail(strict=True, reason="the GPT-6.2 pilots break this finding: rewrite it after their full runs, then its test")
+# finding's exceptions don't name. It waits to be rewritten until their
+# replies catch up with the other models', as the 13 flagship models' pilots
+# waited for their full runs. strict, so the test fails here if the finding
+# comes true again before its mark is removed.
+@pytest.mark.xfail(strict=True, reason="the GPT-6.2 pilots break this finding: rewrite it once their replies catch up, then its test")
 def test_finding_three_numbers_dominate():
     favorite = {model: set(favorites(counts)[0]) for model, counts in COUNTS.items()}
     assert ALL[[42, 47, 73]].sum() > ALL.sum() / 2  # most of all the answers

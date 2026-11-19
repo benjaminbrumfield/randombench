@@ -24,15 +24,19 @@ import pandas as pd
 
 import kaggle_benchmarks as kbench
 
-# A run's draws split evenly across the six prompts (D9). The full runs (4.3,
-# 4.8, 4.11) made 600, and the pilots (4.2, 4.7, 4.10) 24. In 4.11, the four
-# costliest models made 96, to stay well inside the daily quota. Version 8
-# piloted the 13 flagship models with 24 draws each. Since version 9, each run
-# goes to the model with the fewest replies. Version 9's runs made 96, and
-# version 10's 300. Version 11 pilots GPT-6.2 Astra and GPT-6.2 Sol with 24
-# draws each, and tries the two Gemini 2.5 models, which Kaggle had dropped
-# by 2026-11-18.
-N_DRAWS = 24
+# The full runs (4.3, 4.8, 4.11) made 600 draws, and the pilots (4.2, 4.7,
+# 4.10) 24. In 4.11, the four costliest models made 96, to stay well inside
+# the daily quota. Version 8 piloted the 13 flagship models with 24 draws
+# each. Since version 9, each run goes to the model with the fewest replies.
+# Version 9's runs made 96, and version 10's 300. Version 11 piloted GPT-6.2
+# Astra and GPT-6.2 Sol with 24 draws each. Its runs on the two Gemini 2.5
+# models, which Kaggle had dropped by 2026-11-18, never started.
+#
+# Since version 12, each run makes a random number of draws, from MIN_DRAWS to
+# MAX_DRAWS, both included, chosen when the run starts. Each draw's prompt is
+# chosen at random too, on its own, so a run's prompts can come up unequally
+# often. Until then, a run's draws split evenly across the six prompts (D9).
+MIN_DRAWS, MAX_DRAWS = 50, 150
 # Draws made at once. Model Proxy holds each call's maximum possible cost
 # against the daily quota until it finishes (4.11), and a flagship model's
 # hold can be several dollars, so runs since the flagship pilots make one at
@@ -231,13 +235,11 @@ PROMPTS = (
 PROMPTS_BY_ID = {p.id: p for p in PROMPTS}
 
 
-def balanced_schedule(n_draws: int) -> list[str]:
-    """Return a prompt id for each draw: every prompt equally often, in random order (D9)."""
-    if n_draws % len(PROMPTS):
-        raise ValueError(f"{n_draws} draws don't split evenly across {len(PROMPTS)} prompts")
-    schedule = [p.id for p in PROMPTS] * (n_draws // len(PROMPTS))
-    random.shuffle(schedule)
-    return schedule
+def random_schedule(n_draws: int) -> list[str]:
+    """Return a prompt id for each draw, each chosen at random, independently
+    of the others. Before version 12, a balanced shuffle gave every prompt
+    the same number of draws (D9)."""
+    return random.choices([p.id for p in PROMPTS], k=n_draws)
 
 
 # %%
@@ -315,16 +317,17 @@ def collect(llm) -> int:
         # A push's creation run, or a model RandomBench doesn't cover (D12).
         print(f"{llm.name} isn't one of RandomBench's models: no draws")
         return 0
-    schedule = balanced_schedule(N_DRAWS)
+    n_draws = random.randint(MIN_DRAWS, MAX_DRAWS)
+    schedule = random_schedule(n_draws)
     with RequestCounter(llm) as requests:
         draws = draw.evaluate(
             llm=[llm],
-            evaluation_data=pd.DataFrame({"draw_index": range(N_DRAWS), "prompt_id": schedule}),
+            evaluation_data=pd.DataFrame({"draw_index": range(n_draws), "prompt_id": schedule}),
             n_jobs=N_JOBS,
             on_failure="continue",
         )
     if requests.counting:
-        print(f"HTTP requests: {requests.count} for {N_DRAWS} draws, so {requests.count - N_DRAWS} were retries")
+        print(f"HTTP requests: {requests.count} for {n_draws} draws, so {requests.count - n_draws} were retries")
     else:
         print("HTTP requests: not counted, because the model's client has no httpx hooks")
     # The number of draws with a reply (D14).

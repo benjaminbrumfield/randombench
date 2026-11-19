@@ -45,15 +45,17 @@ Report briefly. For each new model, give its slug, its Model Proxy name, its rel
 
 ## 4. Propose, then stop
 
-For each usable new model, propose the path the earlier models took (PLAN.md 4.10, then 4.11), with its call count:
+For each usable new model, propose this path, with its call count. Since version 12, each run makes a random number of draws, from 50 to 150 (`MIN_DRAWS` and `MAX_DRAWS` in `tasks/collect.py`), so there's no separate pilot size:
 
-1. **Pilot, 24 calls per model, plus any retries.** Add the Model Proxy name to `MODELS`, set `N_DRAWS = 24`, push `randombench-draws`, and run it with `-m <slug>`. Run at most two collection runs at once (CLAUDE.md).
-2. **Check the pilot's draws** after `python -m randombench.extract`. A 404 means Model Proxy doesn't serve the model (D24). A refused call still counts as one request, so the log's retry count can't show it (4.11).
-3. **Full run.** Set `N_DRAWS` back to its current value, push, and run again. That costs `N_DRAWS` calls per model: read the value from `tasks/collect.py`. The pilot's stored costs give an estimate. Check `kaggle b quota` first.
+1. **First run, 50 to 150 calls per model, plus any retries.** Add the Model Proxy name to `MODELS`, push `randombench-draws`, and run it with `-m <slug>`. Run at most two collection runs at once (CLAUDE.md).
+2. **Check its draws** after `python -m randombench.extract`. A 404 means Model Proxy doesn't serve the model (D24). A refused call still counts as one request, so the log's retry count can't show it (4.11).
+3. **More runs.** Each costs another 50 to 150 calls. The first run's stored costs give an estimate. Check `kaggle b quota` first.
+
+The collect-draws skill can do all three: it asks about each usable new model, and a model it adds goes first, with no replies yet.
 
 Then wait for the user's yes before you edit, push, or run anything (CLAUDE.md, "Ask before any LLM call").
 
-The report can't rule out one risk. A push's creation run uses the server's default model, and the API doesn't say which model that is. If Kaggle made a model in `MODELS` its default, every push would draw `N_DRAWS` from it. `PYTHONUTF8=1 kaggle b t status randombench-draws` shows the current version's creation run. It's the earliest run, starts about a minute after "Created", and ends in the same second it starts. Name its model in the proposal, and say that a push spends quota if the default has since changed to a model in `MODELS`.
+The report can't rule out one risk. A push's creation run uses the server's default model, and the API doesn't say which model that is. If Kaggle made a model in `MODELS` its default, every push would draw 50 to 150 times from it. `PYTHONUTF8=1 kaggle b t status randombench-draws` shows the current version's creation run. It's the earliest run, starts about a minute after "Created", and ends in the same second it starts. Name its model in the proposal, and say that a push spends quota if the default has since changed to a model in `MODELS`.
 
 Once a new model's draws are stored, the follow-up step touches:
 - `MODELS` and its comments in `tasks/collect.py`, and the count in `tests/test_collect.py`.
