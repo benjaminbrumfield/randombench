@@ -94,7 +94,7 @@ tbody tr { border-bottom: 1px solid var(--rule); }
 .prov { color: var(--muted); font-size: var(--step--1); margin-left: 6px; }
 .scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
-/* What the models answer: a rect for each value in one stretched SVG, with HTML labels, circles, and axis placed over and under it by percentage.
+/* What the models answer: a rect for each value in one stretched SVG, with HTML labels and axis placed over and under it by percentage.
    The SVG is flipped, so each rect's height runs up from the axis. A label's --h is its bar's height, out of 100. */
 .dist { margin: 0; display: grid; gap: 0; }
 .dist-plot { position: relative; height: 220px; margin-top: 60px; }
@@ -108,13 +108,8 @@ tbody tr { border-bottom: 1px solid var(--rule); }
 .dist .label small { display: block; font-size: 0.75rem; font-weight: 400; color: var(--muted); }
 .dist .minor { bottom: calc(var(--h) * 1% + 4px); font-size: 0.875rem; font-weight: 650; color: var(--fg); }
 .dist .minor small { font-size: 0.6875rem; }
-.dist-base { position: relative; height: 18px; border-top: 1px solid var(--fg); }
-.dist-base i {
-  position: absolute; top: 5px; left: var(--x); width: 7px; height: 7px; transform: translateX(-50%);
-  border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--muted);
-}
 .dist-axis {
-  position: relative; height: 1.55em; padding-top: 3px;
+  position: relative; height: 1.55em; padding-top: 4px; border-top: 1px solid var(--fg);
   font-size: 0.75rem; color: var(--muted); font-variant-numeric: tabular-nums;
 }
 .dist-axis span { position: absolute; left: var(--x); }  /* each number starts where its value's bar does */
@@ -274,7 +269,6 @@ footer p { margin: 0 0 6px; }
   .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }  /* two to a row, not one */
   .dist-plot { height: 140px; margin-top: 8px; }
   .dist .label { display: none; }  /* 42 and 47 would overlap; the caption names them here */
-  .dist-base i { width: 3px; height: 3px; top: 5px; }
   h1 { font-size: 1.75rem; }
   .rank th, .rank td { padding-left: 6px; padding-right: 6px; }
   .rank .n { width: 2.6em; }
@@ -316,9 +310,8 @@ footer p { margin: 0 0 6px; }
     </div>
     <figure class="dist">
       <div class="dist-plot" role="img" aria-label="A bar for each value from 0 to 99, as tall as its average share of the answers. The tallest are 47 (28.4%), 42 (28.2%), 73 (20.5%), 37 (5.0%), and 57 (3.6%)."><svg viewBox="0 0 100 100" preserveAspectRatio="none"><rect x="0.1" width="0.8" height="0"/><rect x="1.1" width="0.8" height="0"/><rect x="2.1" width="0.8" height="0"/><rect x="3.1" width="0.8" height="0"/><rect x="4.1" width="0.8" height="0"/><rect x="5.1" width="0.8" height="0"/><rect x="6.1" width="0.8" height="1"/><rect x="7.1" width="0.8" height="1"/><rect x="8.1" width="0.8" height="1"/><rect x="9.1" width="0.8" height="0"/><rect x="10.1" width="0.8" height="0"/><rect x="11.1" width="0.8" height="1"/><rect x="12.1" width="0.8" height="1"/><rect x="13.1" width="0.8" height="1"/><rect x="14.1" width="0.8" height="1"/><rect x="15.1" width="0.8" height="1"/><rect x="16.1" width="0.8" height="0"/><rect x="17.1" width="0.8" height="1.47"/><rect x="18.1" width="0.8" height="1"/><rect x="19.1" width="0.8" height="1"/><rect x="20.1" width="0.8" height="0"/><rect x="21.1" width="0.8" height="1"/><rect x="22.1" width="0.8" height="1"/><rect x="23.1" width="0.8" height="1"/><rect x="24.1" width="0.8" height="1"/><rect x="25.1" width="0.8" height="1"/><rect x="26.1" width="0.8" height="1"/><rect x="27.1" width="0.8" height="1.23"/><rect x="28.1" width="0.8" height="1"/><rect x="29.1" width="0.8" height="1"/><rect x="30.1" width="0.8" height="1"/><rect x="31.1" width="0.8" height="1"/><rect x="32.1" width="0.8" height="0"/><rect x="33.1" width="0.8" height="0"/><rect x="34.1" width="0.8" height="1"/><rect x="35.1" width="0.8" height="1"/><rect x="36.1" width="0.8" height="1"/><rect x="37.1" width="0.8" height="17.8"/><rect x="38.1" width="0.8" height="1.48"/><rect x="39.1" width="0.8" height="1"/><rect x="40.1" width="0.8" height="1"/><rect x="41.1" width="0.8" height="1"/><rect class="fav" x="42.1" width="0.8" height="99.5"/><rect x="43.1" width="0.8" height="1"/><rect x="44.1" width="0.8" height="1"/><rect x="45.1" width="0.8" height="1"/><rect x="46.1" width="0.8" height="1"/><rect class="fav" x="47.1" width="0.8" height="100"/><rect x="48.1" width="0.8" height="1"/><rect x="49.1" width="0.8" height="1"/><rect x="50.1" width="0.8" height="1"/><rect x="51.1" width="0.8" height="1"/><rect x="52.1" width="0.8" height="1"/><rect x="53.1" width="0.8" height="1"/><rect x="54.1" width="0.8" height="1"/><rect x="55.1" width="0.8" height="1"/><rect x="56.1" width="0.8" height="1"/><rect x="57.1" width="0.8" height="12.85"/><rect x="58.1" width="0.8" height="4.23"/><rect x="59.1" width="0.8" height="1"/><rect x="60.1" width="0.8" height="1"/><rect x="61.1" width="0.8" height="1.41"/><rect x="62.1" width="0.8" height="1.85"/><rect x="63.1" width="0.8" height="8.49"/><rect x="64.1" width="0.8" height="2.96"/><rect x="65.1" width="0.8" height="0"/><rect x="66.1" width="0.8" height="1"/><rect x="67.1" width="0.8" height="5.76"/><rect x="68.1" width="0.8" height="4.09"/><rect x="69.1" width="0.8" height="1"/><rect x="70.1" width="0.8" height="0"/><rect x="71.1" width="0.8" height="1"/><rect x="72.1" width="0.8" height="1"/><rect class="fav" x="73.1" width="0.8" height="72.3"/><rect x="74.1" width="0.8" height="1"/><rect x="75.1" width="0.8" height="0"/><rect x="76.1" width="0.8" height="1"/><rect x="77.1" width="0.8" height="1"/><rect x="78.1" width="0.8" height="1"/><rect x="79.1" width="0.8" height="0"/><rect x="80.1" width="0.8" height="1"/><rect x="81.1" width="0.8" height="1.91"/><rect x="82.1" width="0.8" height="1"/><rect x="83.1" width="0.8" height="3.54"/><rect x="84.1" width="0.8" height="1.28"/><rect x="85.1" width="0.8" height="1"/><rect x="86.1" width="0.8" height="1"/><rect x="87.1" width="0.8" height="1.05"/><rect x="88.1" width="0.8" height="1"/><rect x="89.1" width="0.8" height="1"/><rect x="90.1" width="0.8" height="0"/><rect x="91.1" width="0.8" height="1"/><rect x="92.1" width="0.8" height="1"/><rect x="93.1" width="0.8" height="1"/><rect x="94.1" width="0.8" height="1"/><rect x="95.1" width="0.8" height="1"/><rect x="96.1" width="0.8" height="0"/><rect x="97.1" width="0.8" height="1"/><rect x="98.1" width="0.8" height="0"/><rect x="99.1" width="0.8" height="0"/></svg><span class="label minor" style="--x:37.5%;--h:17.8">37<small>5.0%</small></span><span class="label" style="--x:42.5%;--h:99.5">42<small>28.2%</small></span><span class="label" style="--x:47.5%;--h:100">47<small>28.4%</small></span><span class="label minor" style="--x:57.5%;--h:12.85">57<small>3.6%</small></span><span class="label" style="--x:73.5%;--h:72.3">73<small>20.5%</small></span></div>
-      <div class="dist-base" aria-hidden="true"><i style="--x:0.5%"></i><i style="--x:1.5%"></i><i style="--x:2.5%"></i><i style="--x:3.5%"></i><i style="--x:4.5%"></i><i style="--x:5.5%"></i><i style="--x:9.5%"></i><i style="--x:10.5%"></i><i style="--x:16.5%"></i><i style="--x:20.5%"></i><i style="--x:32.5%"></i><i style="--x:33.5%"></i><i style="--x:65.5%"></i><i style="--x:70.5%"></i><i style="--x:75.5%"></i><i style="--x:79.5%"></i><i style="--x:90.5%"></i><i style="--x:96.5%"></i><i style="--x:98.5%"></i><i style="--x:99.5%"></i></div>
       <div class="dist-axis" aria-hidden="true"><span style="--x:0%">0</span><span style="--x:10%">10</span><span style="--x:20%">20</span><span style="--x:30%">30</span><span style="--x:40%">40</span><span style="--x:50%">50</span><span style="--x:60%">60</span><span style="--x:70%">70</span><span style="--x:80%">80</span><span style="--x:90%">90</span></div>
-      <figcaption class="note"><span class="narrow">The tallest bars are <span id="dist-tallest">47 (28.4%), 42 (28.2%), 73 (20.5%), 37 (5.0%), and 57 (3.6%)</span>. </span>Circles mark the <span id="dist-never">20 values</span> none of these models has answered.</figcaption>
+      <figcaption class="note"><span class="narrow">The tallest bars are <span id="dist-tallest">47 (28.4%), 42 (28.2%), 73 (20.5%), 37 (5.0%), and 57 (3.6%)</span>. </span>None of these models has answered <span id="dist-never">20 values</span>.</figcaption>
     </figure>
     <div class="timeline" id="timeline" hidden>
       <p class="when"><strong>39 models</strong> released by <span class="date">November 18, 2026</span> · newest: <span class="newest">Gemini 4 Neon</span></p>
@@ -530,7 +523,6 @@ footer p { margin: 0 0 6px; }
   var dots = rail.querySelectorAll("i");
   var plot = document.querySelector(".dist-plot");
   var bars = plot.querySelectorAll("rect");
-  var base = document.querySelector(".dist-base");
   var shown = stops.length - 1;
 
   function show(i) {
@@ -553,13 +545,6 @@ footer p { margin: 0 0 6px; }
       small.textContent = label[1];
       span.append(String(label[0]), small);
       plot.appendChild(span);
-    });
-    base.textContent = "";
-    s.h.forEach(function (height, value) {
-      if (height) return;
-      var circle = document.createElement("i");
-      circle.style.setProperty("--x", data.x[value]);
-      base.appendChild(circle);
     });
     plot.setAttribute("aria-label", plot.getAttribute("aria-label").replace(/The tallest are .*/, "The tallest are " + s.tallest + "."));
     document.getElementById("dist-tallest").textContent = s.tallest;

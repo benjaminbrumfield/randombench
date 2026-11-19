@@ -262,7 +262,7 @@ def _tallest_text(shares: list[float]) -> str:
 
 
 def _x(value: int) -> str:
-    """Where a value's label and circle go in "What the models answer": the middle of its bar."""
+    """Where a value's label goes in "What the models answer": the middle of its bar."""
     return f"{value + 0.5:g}%"
 
 
@@ -294,10 +294,9 @@ def _distribution(d: dict) -> str:
     The bars are one SVG, 100 units wide, that stretches to the page's width.
     It holds a rect for every value, 0 tall for a value never given, so that
     a script can change any bar's height. The SVG is flipped, so each rect's
-    height runs up from the axis. The labels, the circles under the values
-    never given, and the axis are HTML placed by percentage, so that they keep
-    their shape as it stretches. The image's text for screen readers names
-    every labeled value.
+    height runs up from the axis. The labels and the axis are HTML placed by
+    percentage, so that they keep their shape as it stretches. The image's
+    text for screen readers names every labeled value.
     """
     if not any(d["h"]):
         return ""
@@ -308,12 +307,10 @@ def _distribution(d: dict) -> str:
         bars.append(f'<rect{fav} x="{value + 0.1:g}" width="0.8" height="{height:g}"/>')
     labels = "".join(f'<span class="{kind}" style="--x:{_x(value)};--h:{d["h"][value]:g}">{value}<small>{share}</small></span>'
                      for value, share, kind in d["labels"])
-    never = "".join(f'<i style="--x:{_x(value)}"></i>' for value, height in enumerate(d["h"]) if not height)
     ticks = "".join(f'<span style="--x:{v}%">{v}</span>' for v in range(0, N_VALUES, 10))
     return (f'      <div class="dist-plot" role="img" aria-label="A bar for each value from 0 to 99, '
             f'as tall as its average share of the answers. The tallest are {d["tallest"]}.">'
             f'<svg viewBox="0 0 {N_VALUES} 100" preserveAspectRatio="none">{"".join(bars)}</svg>{labels}</div>\n'
-            f'      <div class="dist-base" aria-hidden="true">{never}</div>\n'
             f'      <div class="dist-axis" aria-hidden="true">{ticks}</div>')
 
 
@@ -543,7 +540,7 @@ def _panels_json(panels: list[dict]) -> str:
 
 
 def _timeline_json(stops: list[dict]) -> str:
-    """The timeline's stops, as JSON, one to a line, after x: where each value's label and circle go."""
+    """The timeline's stops, as JSON, one to a line, after x: where each value's label goes."""
     return _script_json({"x": [_x(value) for value in range(N_VALUES)]}, "stops", stops)
 
 

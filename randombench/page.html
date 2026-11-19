@@ -94,7 +94,7 @@ tbody tr { border-bottom: 1px solid var(--rule); }
 .prov { color: var(--muted); font-size: var(--step--1); margin-left: 6px; }
 .scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
-/* What the models answer: a rect for each value in one stretched SVG, with HTML labels, circles, and axis placed over and under it by percentage.
+/* What the models answer: a rect for each value in one stretched SVG, with HTML labels and axis placed over and under it by percentage.
    The SVG is flipped, so each rect's height runs up from the axis. A label's --h is its bar's height, out of 100. */
 .dist { margin: 0; display: grid; gap: 0; }
 .dist-plot { position: relative; height: 220px; margin-top: 60px; }
@@ -108,13 +108,8 @@ tbody tr { border-bottom: 1px solid var(--rule); }
 .dist .label small { display: block; font-size: 0.75rem; font-weight: 400; color: var(--muted); }
 .dist .minor { bottom: calc(var(--h) * 1% + 4px); font-size: 0.875rem; font-weight: 650; color: var(--fg); }
 .dist .minor small { font-size: 0.6875rem; }
-.dist-base { position: relative; height: 18px; border-top: 1px solid var(--fg); }
-.dist-base i {
-  position: absolute; top: 5px; left: var(--x); width: 7px; height: 7px; transform: translateX(-50%);
-  border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--muted);
-}
 .dist-axis {
-  position: relative; height: 1.55em; padding-top: 3px;
+  position: relative; height: 1.55em; padding-top: 4px; border-top: 1px solid var(--fg);
   font-size: 0.75rem; color: var(--muted); font-variant-numeric: tabular-nums;
 }
 .dist-axis span { position: absolute; left: var(--x); }  /* each number starts where its value's bar does */
@@ -274,7 +269,6 @@ footer p { margin: 0 0 6px; }
   .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }  /* two to a row, not one */
   .dist-plot { height: 140px; margin-top: 8px; }
   .dist .label { display: none; }  /* 42 and 47 would overlap; the caption names them here */
-  .dist-base i { width: 3px; height: 3px; top: 5px; }
   h1 { font-size: 1.75rem; }
   .rank th, .rank td { padding-left: 6px; padding-right: 6px; }
   .rank .n { width: 2.6em; }
@@ -316,7 +310,7 @@ footer p { margin: 0 0 6px; }
     </div>
     <figure class="dist">
 __DIST__
-      <figcaption class="note"><span class="narrow">The tallest bars are <span id="dist-tallest">__TALLEST__</span>. </span>Circles mark the <span id="dist-never">__NEVER__</span> none of these models has answered.</figcaption>
+      <figcaption class="note"><span class="narrow">The tallest bars are <span id="dist-tallest">__TALLEST__</span>. </span>None of these models has answered <span id="dist-never">__NEVER__</span>.</figcaption>
     </figure>
 __SLIDER__
   </section>
@@ -398,7 +392,6 @@ __PANELS__
   var dots = rail.querySelectorAll("i");
   var plot = document.querySelector(".dist-plot");
   var bars = plot.querySelectorAll("rect");
-  var base = document.querySelector(".dist-base");
   var shown = stops.length - 1;
 
   function show(i) {
@@ -421,13 +414,6 @@ __PANELS__
       small.textContent = label[1];
       span.append(String(label[0]), small);
       plot.appendChild(span);
-    });
-    base.textContent = "";
-    s.h.forEach(function (height, value) {
-      if (height) return;
-      var circle = document.createElement("i");
-      circle.style.setProperty("--x", data.x[value]);
-      base.appendChild(circle);
     });
     plot.setAttribute("aria-label", plot.getAttribute("aria-label").replace(/The tallest are .*/, "The tallest are " + s.tallest + "."));
     document.getElementById("dist-tallest").textContent = s.tallest;
