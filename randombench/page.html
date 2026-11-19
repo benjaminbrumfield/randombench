@@ -94,18 +94,19 @@ tbody tr { border-bottom: 1px solid var(--rule); }
 .prov { color: var(--muted); font-size: var(--step--1); margin-left: 6px; }
 .scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
-/* What the models answer: bars in one stretched SVG, with HTML labels, circles, and axis placed over and under it by percentage */
+/* What the models answer: a rect for each value in one stretched SVG, with HTML labels, circles, and axis placed over and under it by percentage.
+   The SVG is flipped, so each rect's height runs up from the axis. A label's --h is its bar's height, out of 100. */
 .dist { margin: 0; display: grid; gap: 0; }
 .dist-plot { position: relative; height: 220px; margin-top: 60px; }
-.dist-plot svg { display: block; width: 100%; height: 100%; fill: var(--bar); }
+.dist-plot svg { display: block; width: 100%; height: 100%; fill: var(--bar); transform: scaleY(-1); }
 .dist-plot .fav { fill: var(--fav); }
 .dist .label {
-  position: absolute; left: var(--x); bottom: calc(var(--h) + 6px); transform: translateX(-50%);
+  position: absolute; left: var(--x); bottom: calc(var(--h) * 1% + 6px); transform: translateX(-50%);
   text-align: center; line-height: 1.2; white-space: nowrap; font-variant-numeric: tabular-nums;
   font-size: 1.5rem; font-weight: 700; color: var(--fav);
 }
 .dist .label small { display: block; font-size: 0.75rem; font-weight: 400; color: var(--muted); }
-.dist .minor { bottom: calc(var(--h) + 4px); font-size: 0.875rem; font-weight: 650; color: var(--fg); }
+.dist .minor { bottom: calc(var(--h) * 1% + 4px); font-size: 0.875rem; font-weight: 650; color: var(--fg); }
 .dist .minor small { font-size: 0.6875rem; }
 .dist-base { position: relative; height: 18px; border-top: 1px solid var(--fg); }
 .dist-base i {
@@ -336,6 +337,10 @@ __PANEL__
   </footer>
 </div>
 
+<!-- What the models answer on each day a model here was released, oldest first (randombench/page.py's timeline). -->
+<script type="application/json" id="timeline-data">
+__TIMELINE__
+</script>
 <script type="application/json" id="panel-data">
 __PANELS__
 </script>

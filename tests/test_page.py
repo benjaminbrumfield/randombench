@@ -25,6 +25,7 @@ from randombench.page import (
     _series,
     average_shares,
     axis,
+    distribution_data,
     favorites,
     newest,
     panel_data,
@@ -33,6 +34,7 @@ from randombench.page import (
     render_page,
     shade,
     tallest,
+    timeline,
 )
 from randombench.score import ModelScores, score_draws
 
@@ -96,6 +98,13 @@ def panel_json(text: str) -> dict:
     """Every model's panel data, from the page's JSON."""
     raw = re.search(r'<script type="application/json" id="panel-data">(.*?)</script>', text, re.S)[1]
     assert "<" not in raw  # so nothing in it can end the script early
+    return json.loads(raw)
+
+
+def timeline_json(text: str) -> dict:
+    """The timeline's stops, from the page's JSON."""
+    raw = re.search(r'<script type="application/json" id="timeline-data">(.*?)</script>', text, re.S)[1]
+    assert "<" not in raw
     return json.loads(raw)
 
 
@@ -211,6 +220,25 @@ def test_the_answers_chart_labels_its_five_tallest_bars():
     assert {int(v) for kind, v, _ in labels if kind == "label"} == set(by_share[:3])
     assert {int(v) for kind, v, _ in labels if kind == "label minor"} == set(by_share[3:5])
     assert all(share == f"{shares[int(v)]:.1%}" for _, v, share in labels)
+
+
+def test_the_timeline_adds_each_model_on_its_release_date():
+    text = PAGE.read_text(encoding="utf-8")
+    data = timeline_json(text)
+    assert data["x"] == [f"{v + 0.5:g}%" for v in range(100)]
+    models = ranked(EXPECTED)
+    days = sorted({RELEASED[r.model] for r in models})
+    assert [stop["date"] for stop in data["stops"]] == [f"{day:%B} {day.day}, {day.year}" for day in days]
+    for day, stop in zip(days, data["stops"]):
+        shown = [r for r in models if RELEASED[r.model] <= day]
+        assert stop["models"] == f"{len(shown)} model{'' if len(shown) == 1 else 's'}"
+        assert all(DISPLAY_NAMES[r.model][0] in stop["added"] for r in shown if RELEASED[r.model] == day)
+        shares = average_shares([r.counts for r in shown])
+        top = max(shares)
+        assert stop["h"] == pytest.approx([max(1, 100 * share / top) if share else 0 for share in shares], abs=5e-3)
+    # The page's chart is the last stop, which holds every model.
+    assert data["stops"][-1]["models"] == f"{len(models)} models"
+    assert _distribution(data["stops"][-1]) in text
 
 
 def test_the_panel_is_the_top_models():
@@ -339,18 +367,37 @@ def test_the_distribution_labels_its_tallest_bars_and_circles_values_never_given
     shares = [0.0] * 100
     for value, share in {42: 0.4, 47: 0.2, 73: 0.15, 37: 0.1, 57: 0.05, 7: 0.05, 9: 0.05}.items():
         shares[value] = share
-    chart = _distribution(shares)
-    orange = re.search(r'<path class="fav" d="([^"]*)"', chart)[1]
-    assert orange == "M42.1 100v-100h0.8V100zM47.1 100v-50h0.8V100zM73.1 100v-37.5h0.8V100z"
-    assert re.findall(r"M(\d+)\.1", re.search(r'<path d="([^"]*)"', chart)[1]) == ["7", "9", "37", "57"]
+    d = distribution_data(shares)
+    chart = _distribution(d)
+    bars = re.findall(r'<rect( class="fav")? x="([\d.]+)" width="0.8" height="([\d.]+)"/>', chart)
+    assert len(bars) == 100  # one for every value, so that a script can change any bar
+    assert [(x, h) for fav, x, h in bars if fav] == [("42.1", "100"), ("47.1", "50"), ("73.1", "37.5")]
+    assert [(x, h) for fav, x, h in bars if not fav and h != "0"] == [
+        ("7.1", "12.5"), ("9.1", "12.5"), ("37.1", "25"), ("57.1", "12.5")]
     # 7 and 57 tie for fifth, and the lower value gets the label.
     labels = re.findall(r'class="(label(?: minor)?)"[^>]*>(\d+)<small>([^<]*)', chart)
     assert labels == [("label minor", "7", "5.0%"), ("label minor", "37", "10.0%"), ("label", "42", "40.0%"),
                       ("label", "47", "20.0%"), ("label", "73", "15.0%")]
+    assert 'style="--x:73.5%;--h:37.5">73<small>' in chart  # over the middle of its bar, at its top
     assert "The tallest are 42 (40.0%), 47 (20.0%), 73 (15.0%), 37 (10.0%), and 7 (5.0%)." in chart
-    assert chart.count("<i ") == 93  # one circle for each value no model gave
+    assert chart.count("<i ") == 93 and d["never"] == "93 values"  # one circle for each value no model gave
     assert tallest([0.5, 0.5] + [0.0] * 98) == [0, 1]  # only values given get a label
-    assert _distribution([0.0] * 100) == ""
+    assert _distribution(distribution_data([0.0] * 100)) == ""
+
+
+def test_a_models_answers_join_the_timeline_on_its_release_date():
+    # Gemini 3.1 Flash-Lite was released on March 3, 2026, and GPT-5.4 nano on March 17.
+    draws = [{"model": GEMINI, "reply": "7"}] * 2 + [{"model": NANO, "reply": r} for r in ["42"] * 6 + ["37"] * 2]
+    first, second = timeline(ranked(score_draws(draws)))
+    assert (first["date"], first["models"], first["added"]) == ("March 3, 2026", "1 model",
+                                                                "Gemini 3.1 Flash-Lite (preview)")
+    assert [(v, h) for v, h in enumerate(first["h"]) if h] == [(7, 100)]
+    assert (second["date"], second["models"], second["added"]) == ("March 17, 2026", "2 models", "GPT-5.4 nano")
+    # Each model counts the same, though GPT-5.4 nano gave four times as many
+    # answers: 7 takes half, 42 three eighths, and 37 one eighth.
+    assert [(v, h) for v, h in enumerate(second["h"]) if h] == [(7, 100), (37, 25), (42, 75)]
+    assert second["labels"] == [[7, "50.0%", "label"], [37, "12.5%", "label"], [42, "37.5%", "label"]]
+    assert (second["tallest"], second["never"]) == ("7 (50.0%), 42 (37.5%), and 37 (12.5%)", "97 values")
 
 
 def test_the_panel_shades_each_square_by_the_square_root_of_its_count_over_the_favorites():

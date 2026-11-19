@@ -11,6 +11,12 @@ This computes all four, so none is a claim written by hand. Below them, "What
 the models answer" charts each value's share, averaged the same way, with the
 three tallest bars in orange.
 
+The page also carries, as JSON, that chart as it stood on each day a model
+here was released (RELEASED): a stop for each day, averaging the models
+released by then. A model's answers count from its release date, however
+late they were drawn. The last stop holds every model, and the build draws
+the page's chart from it.
+
 Ranking orders the models by the headline, charts each one's answers from 0
 to 99 on a square-root scale, with its favorite in orange, and draws each
 one's interval on a shared scale. Its ranks are ranges, from rank_ranges,
@@ -56,7 +62,7 @@ PAGE = ROOT / "docs" / "index.html"
 
 PLACEHOLDERS = {"__DATE__", "__ISODATE__", "__COUNT__", "__PROVIDERS__", "__ANSWERS__", "__BEST__",
                 "__BESTMODEL__", "__COMMON__", "__COMMONSHARE__", "__DIST__", "__TALLEST__",
-                "__NEVER__", "__PANEL__", "__PANELS__", "__STEPS__", "__TICKS__",
+                "__NEVER__", "__TIMELINE__", "__PANEL__", "__PANELS__", "__STEPS__", "__TICKS__",
                 "__RANKING__"}
 _PLACEHOLDER = re.compile(r"__[A-Z]+__")
 
@@ -252,41 +258,86 @@ def _tallest_text(shares: list[float]) -> str:
     return _series([f"{value} ({shares[value]:.1%})" for value in tallest(shares)])
 
 
-def _distribution(shares: list[float]) -> str:
-    """The chart under "What the models answer": a bar for each value's average share.
+def _x(value: int) -> str:
+    """Where a value's label and circle go in "What the models answer": the middle of its bar."""
+    return f"{value + 0.5:g}%"
 
-    The bars are one SVG, 100 units wide, that stretches to the page's width.
-    The labels, the circles under the values no model gave, and the axis are
-    HTML placed by percentage, so that they keep their shape as it stretches.
-    The BIG_LABELS tallest bars are orange, with large labels in orange, and
-    the next SMALL_LABELS have small labels. The image's text for screen
-    readers names all of them.
+
+def distribution_data(shares: list[float]) -> dict:
+    """What "What the models answer" shows for these average shares, each part formatted as it's shown.
+
+    h is each value's bar, out of 100: its share over the largest, but at
+    least MIN_DIST_BAR, so that a value given once still shows, and 0 for a
+    value never given. labels are the tallest() values, in order from 0 to
+    99, each with its share and its class: "label", large and in orange, for
+    the BIG_LABELS tallest, whose bars are orange too, and "label minor" for
+    the rest. tallest and never are the caption's words.
     """
     top = max(shares)
-    if not top:
+    labeled = tallest(shares)
+    never = sum(1 for share in shares if not share)
+    return {
+        "h": [round(max(MIN_DIST_BAR, 100 * share / top), 2) if share else 0 for share in shares],
+        "labels": [[value, f"{shares[value]:.1%}", "label" if labeled.index(value) < BIG_LABELS else "label minor"]
+                   for value in sorted(labeled)],
+        "tallest": _tallest_text(shares),
+        "never": f"{never} value{'' if never == 1 else 's'}",
+    }
+
+
+def _distribution(d: dict) -> str:
+    """The chart under "What the models answer", from distribution_data: a bar for each value's average share.
+
+    The bars are one SVG, 100 units wide, that stretches to the page's width.
+    It holds a rect for every value, 0 tall for a value never given, so that
+    a script can change any bar's height. The SVG is flipped, so each rect's
+    height runs up from the axis. The labels, the circles under the values
+    never given, and the axis are HTML placed by percentage, so that they keep
+    their shape as it stretches. The image's text for screen readers names
+    every labeled value.
+    """
+    if not any(d["h"]):
         return ""
-    rank = {value: i for i, value in enumerate(tallest(shares))}
-    others, big_bars, labels, never = [], [], [], []
-    for value, share in enumerate(shares):
-        x = f"--x:{value + 0.5:g}%"
-        if not share:
-            never.append(f'<i style="{x}"></i>')
-            continue
-        height = round(max(MIN_DIST_BAR, 100 * share / top), 2)
-        bar = f"M{value + 0.1:g} 100v-{height:g}h0.8V100z"
-        big = rank.get(value, BIG_LABELS) < BIG_LABELS
-        (big_bars if big else others).append(bar)
-        if value in rank:
-            kind = "label" if big else "label minor"
-            labels.append(f'<span class="{kind}" style="{x};--h:{height:g}%">{value}<small>{share:.1%}</small></span>')
-    paths = f'<path d="{"".join(others)}"/>' if others else ""
-    paths += f'<path class="fav" d="{"".join(big_bars)}"/>'
+    orange = {value for value, _, kind in d["labels"] if kind == "label"}
+    bars = []
+    for value, height in enumerate(d["h"]):
+        fav = ' class="fav"' if value in orange else ""
+        bars.append(f'<rect{fav} x="{value + 0.1:g}" width="0.8" height="{height:g}"/>')
+    labels = "".join(f'<span class="{kind}" style="--x:{_x(value)};--h:{d["h"][value]:g}">{value}<small>{share}</small></span>'
+                     for value, share, kind in d["labels"])
+    never = "".join(f'<i style="--x:{_x(value)}"></i>' for value, height in enumerate(d["h"]) if not height)
     ticks = "".join(f'<span style="--x:{v}%">{v}</span>' for v in range(0, N_VALUES, 10))
     return (f'      <div class="dist-plot" role="img" aria-label="A bar for each value from 0 to 99, '
-            f'as tall as its average share of the answers. The tallest are {_tallest_text(shares)}.">'
-            f'<svg viewBox="0 0 {N_VALUES} 100" preserveAspectRatio="none">{paths}</svg>{"".join(labels)}</div>\n'
-            f'      <div class="dist-base" aria-hidden="true">{"".join(never)}</div>\n'
+            f'as tall as its average share of the answers. The tallest are {d["tallest"]}.">'
+            f'<svg viewBox="0 0 {N_VALUES} 100" preserveAspectRatio="none">{"".join(bars)}</svg>{labels}</div>\n'
+            f'      <div class="dist-base" aria-hidden="true">{never}</div>\n'
             f'      <div class="dist-axis" aria-hidden="true">{ticks}</div>')
+
+
+def _long_date(day: date) -> str:
+    """A date as the page writes it, such as November 18, 2026."""
+    return f"{day:%B} {day.day}, {day.year}"
+
+
+def timeline(models: list[ModelScores]) -> list[dict]:
+    """The chart under "What the models answer" on each day a model here was released, oldest first.
+
+    Each stop averages the models released by its day, as average_shares
+    does, so a model's answers count from its release date, however late
+    they were drawn. It holds distribution_data, the day, how many models
+    the chart averages, and the names of the models released that day. The
+    last stop holds every model.
+    """
+    stops = []
+    for day in sorted({RELEASED[r.model] for r in models}):
+        shown = [r for r in models if RELEASED[r.model] <= day]
+        added = sorted((DISPLAY_NAMES[r.model][0] for r in shown if RELEASED[r.model] == day), key=str.casefold)
+        stops.append({
+            "date": _long_date(day),
+            "models": f"{len(shown)} model{'' if len(shown) == 1 else 's'}",
+            "added": _series(added),
+        } | distribution_data(average_shares([r.counts for r in shown])))
+    return stops
 
 
 # The Ranking's Answers chart: its height in SVG units, and the shortest a bar
@@ -418,14 +469,25 @@ def _panel(d: dict) -> str:
             f'    </aside>')
 
 
-def _panels_json(panels: list[dict]) -> str:
-    """Every model's panel_data, as the JSON the page's script reads, one model to a line.
+def _script_json(fields: dict, key: str, items: list[dict]) -> str:
+    """JSON for a script element to hold: the fields, then the items under key, one to a line.
 
     Each < is escaped, so that nothing in it can end the script early, as a
     </script> would. JSON.parse reads \\u003c back as <.
     """
-    models = ",\n".join(json.dumps(p, ensure_ascii=False, separators=(",", ":")) for p in panels)
-    return f'{{"dark":{HEAT_DARK},"models":[\n{models}\n]}}'.replace("<", "\\u003c")
+    head = "".join(f"{json.dumps(k)}:{json.dumps(v, separators=(',', ':'))}," for k, v in fields.items())
+    lines = ",\n".join(json.dumps(item, ensure_ascii=False, separators=(",", ":")) for item in items)
+    return f'{{{head}"{key}":[\n{lines}\n]}}'.replace("<", "\\u003c")
+
+
+def _panels_json(panels: list[dict]) -> str:
+    """Every model's panel_data, as the JSON the page's script reads, one model to a line."""
+    return _script_json({"dark": HEAT_DARK}, "models", panels)
+
+
+def _timeline_json(stops: list[dict]) -> str:
+    """The timeline's stops, as JSON, one to a line, after x: where each value's label and circle go."""
+    return _script_json({"x": [_x(value) for value in range(N_VALUES)]}, "stops", stops)
 
 
 def axis(top: float) -> tuple[float, int]:
@@ -554,9 +616,10 @@ def render_page(results: list[ModelScores], as_of: datetime) -> str:
     shares = average_shares([r.counts for r in models])
     common = max(range(N_VALUES), key=lambda v: shares[v]) if any(shares) else None
 
-    # What the models answer, whose caption names the labeled values on
-    # phones, where the labels are hidden.
-    never = sum(1 for share in shares if not share)
+    # What the models answer is the timeline's last stop, every model. Its
+    # caption names the labeled values on phones, where the labels are hidden.
+    stops = timeline(models)
+    chart = stops[-1] if stops else distribution_data(shares)
 
     panels = [panel_data(r, rank, len(models)) for rank, r in zip(ranks, models)]
 
@@ -565,7 +628,7 @@ def render_page(results: list[ModelScores], as_of: datetime) -> str:
     if found != PLACEHOLDERS:
         raise ValueError(f"the page template's placeholders are {sorted(found)}, not {sorted(PLACEHOLDERS)}")
     values = {
-        "__DATE__": f"{as_of:%B} {as_of.day}, {as_of.year}",
+        "__DATE__": _long_date(as_of),
         "__ISODATE__": f"{as_of:%Y-%m-%d}",
         "__COUNT__": str(len(models)),
         "__PROVIDERS__": str(len({DISPLAY_NAMES[r.model][1] for r in models})),
@@ -574,9 +637,10 @@ def render_page(results: list[ModelScores], as_of: datetime) -> str:
         "__BESTMODEL__": "No scores yet" if best is None else escape(DISPLAY_NAMES[best.model][0]),
         "__COMMON__": "—" if common is None else str(common),
         "__COMMONSHARE__": "—" if common is None else f"{shares[common]:.1%}",
-        "__DIST__": _distribution(shares),
-        "__TALLEST__": _tallest_text(shares),
-        "__NEVER__": f"{never} value{'' if never == 1 else 's'}",
+        "__DIST__": _distribution(chart),
+        "__TALLEST__": chart["tallest"],
+        "__NEVER__": chart["never"],
+        "__TIMELINE__": _timeline_json(stops),
         "__PANEL__": _panel(panels[0]) if panels else "",
         "__PANELS__": _panels_json(panels),
         "__STEPS__": str(steps),
