@@ -13,7 +13,8 @@ three tallest bars in orange.
 
 Ranking orders the models by the headline, charts each one's answers from 0
 to 99 on a square-root scale, with its favorite in orange, and draws each
-one's interval on a shared scale. Beside it, a panel shows one model's
+one's interval on a shared scale. Its ranks are ranges, from rank_ranges,
+because many models' scores are too close to call. Beside it, a panel shows one model's
 answers on a 10 by 10 grid, shaded on the same square-root scale, and its
 nine checks as bars, each filled from its check's lowest score to 1, as D28
 shaded the cells of the table it replaces. The build writes the top model's
@@ -288,7 +289,7 @@ def _scored(value: str, pm: str) -> str:
     return escape(value) + (f' <span class="pm">{escape(pm)}</span>' if pm else "")
 
 
-def panel_data(r: ModelScores, rank: int, of: int) -> dict:
+def panel_data(r: ModelScores, rank: tuple[int, int], of: int) -> dict:
     """What the panel shows for one model, each part formatted as it's shown.
 
     The build writes the top model's panel from it, and the page carries every
@@ -315,7 +316,7 @@ def panel_data(r: ModelScores, rank: int, of: int) -> dict:
         values, key = [], "No valid answers yet."
     return {
         "model": r.model,
-        "about": f"Rank {rank} of {of} · {provider} · {replies} repl{'y' if replies == 1 else 'ies'}",
+        "about": f"Rank {_rank(*rank)} of {of} · {provider} · {replies} repl{'y' if replies == 1 else 'ies'}",
         "name": name,
         "score": _pair(r.scores["headline"], r.intervals["headline"]),
         "fav": values,
@@ -429,6 +430,42 @@ def ranked(results: list[ModelScores]) -> list[ModelScores]:
                                            DISPLAY_NAMES[r.model][0]))
 
 
+def clearly_better(a: ModelScores, b: ModelScores) -> bool:
+    """Whether a's headline interval lies wholly above b's, so that their bars on the page don't overlap.
+
+    Intervals that only touch overlap. A model without a headline, with too
+    few valid answers, is below every model with one, as ranked() puts it.
+    """
+    if a.scores["headline"] is None:
+        return False
+    if b.scores["headline"] is None:
+        return True
+    return a.scores["headline"] - a.intervals["headline"] > b.scores["headline"] + b.intervals["headline"]
+
+
+def rank_ranges(models: list[ModelScores]) -> list[tuple[int, int]]:
+    """Each model's rank as a range, in the order of models: from 1 plus the
+    number of models clearly better than it, to the number of models minus
+    the number clearly worse.
+
+    "Clearly better" asks for intervals that don't overlap, as Chatbot
+    Arena's rank ranges do. That's strict: two models whose intervals overlap
+    can still differ. Being strict makes up, roughly, for comparing every
+    pair of models, hundreds of pairs, without a formal correction. A model
+    is never clearly better than one with a higher score, so each range holds
+    the rank ranked() gives, and models with equal scores and intervals get
+    equal ranges.
+    """
+    better = [sum(clearly_better(other, r) for other in models) for r in models]
+    worse = [sum(clearly_better(r, other) for other in models) for r in models]
+    return [(1 + b, len(models) - w) for b, w in zip(better, worse)]
+
+
+def _rank(low: int, high: int) -> str:
+    """A rank range as the page shows it, such as 4–6, or 1 alone when it's one place."""
+    return str(low) if low == high else f"{low}–{high}"
+
+
 def render_page(results: list[ModelScores], as_of: datetime) -> str:
     """Return the page's text for the models' scores, dated as_of."""
     models = ranked(results)
@@ -440,15 +477,16 @@ def render_page(results: list[ModelScores], as_of: datetime) -> str:
     def position(value: float) -> str:
         return f"{min(1.0, max(0.0, value / top)) * 100:.2f}%"
 
+    ranks = rank_ranges(models)
     ranking = []
-    for rank, r in enumerate(models, 1):
+    for rank, r in zip(ranks, models):
         score, half = r.scores["headline"], r.intervals["headline"]
         bar = ""
         if score is not None:
             bar = (f'<div class="strip" style="--lo:{position(score - half)};--hi:{position(score + half)};'
                    f'--x:{position(score)}"><i class="ci"></i><b class="dot"></b></div>')
         ranking.append(
-            f'<tr data-model="{escape(r.model)}"><td class="n">{rank}</td>{_model_cell(r.model)}'
+            f'<tr data-model="{escape(r.model)}"><td class="n">{_rank(*rank)}</td>{_model_cell(r.model)}'
             f'<td class="num replies">{r.draws - r.failed}</td>'
             f'<td class="num score">{_number(score)}{_plus_minus(half)}</td>'
             f'{_answers_cell(r.counts)}'
@@ -468,7 +506,7 @@ def render_page(results: list[ModelScores], as_of: datetime) -> str:
     # phones, where the labels are hidden.
     never = sum(1 for share in shares if not share)
 
-    panels = [panel_data(r, rank, len(models)) for rank, r in enumerate(models, 1)]
+    panels = [panel_data(r, rank, len(models)) for rank, r in zip(ranks, models)]
 
     text = TEMPLATE.read_text(encoding="utf-8")
     found = set(_PLACEHOLDER.findall(text))

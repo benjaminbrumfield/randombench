@@ -133,7 +133,7 @@ tbody tr { border-bottom: 1px solid var(--rule); }
 }
 .pick:hover .name { text-decoration: underline; text-underline-offset: 0.18em; text-decoration-thickness: 1px; }
 /* The model's name takes what's left after the other columns. */
-.rank .n { width: 2.2em; color: var(--muted); }
+.rank .n { width: 3.2em; color: var(--muted); white-space: nowrap; }  /* room for a range such as 20–30 */
 .rank .replies { width: 4em; color: var(--muted); }
 .rank .score { width: 7em; font-weight: 600; white-space: nowrap; }
 .rank .score .pm { font-weight: 400; margin-left: 3px; }
@@ -241,7 +241,7 @@ footer p { margin: 0 0 6px; }
   .dist-base i { width: 3px; height: 3px; top: 5px; }
   h1 { font-size: 1.75rem; }
   .rank th, .rank td { padding-left: 6px; padding-right: 6px; }
-  .rank .n { width: 1.6em; }
+  .rank .n { width: 2.6em; }
   .rank .replies, .rank .score { width: auto; }
   .rank .model .prov, .rank .score .pm { display: block; margin-left: 0; }
   .rank .plot { width: 34%; padding-left: 10px; }
@@ -308,6 +308,7 @@ __RANKING__
     </div>
     <p class="note answers-note">Answers draws how often the model gave each value, with its favorite in orange. The bars follow the square root of the counts, so a value given a quarter as often as the favorite is half as tall, and one given only once still shows.</p>
     <p class="note">Replies counts every call that got a reply, valid or not. Calls that failed, such as those the quota refused, aren't counted. Every score's 95% interval comes from 10,000 bootstrap resamples of the model's replies, so a model with fewer replies gets a wider interval, not a lower score.</p>
+    <p class="note">A rank is a range where scores are too close to call. A model ranks below every model whose interval lies wholly above its own, and above every model whose interval lies wholly below it. Where two intervals overlap, either model could be ahead. Each range compares the models two at a time, so with this many models, an end of a range may now and then be off by one.</p>
     <p class="note">The bias checks on a share of the answers, such as Multiples of 10, are lenient toward avoidance. A model that never answers a multiple of 10 is only 10% away from the ideal share, so it scores 0.900, and one that answers nothing else scores 0.100.</p>
     </div>
 __PANEL__
@@ -320,7 +321,7 @@ __PANEL__
     <div class="findings">
       <p data-finding="no-model-comes-close"><strong>No model comes close.</strong> Even the most random model scores less than 0.2, and the top of its interval is less than 0.2 too. A perfect random number generator scores about 1.</p>
       <p data-finding="three-numbers-dominate"><strong>Three numbers dominate.</strong> Nearly every model's favorite is 42, 47, or 73, and those three numbers make up most of all the answers. The exceptions are gpt-oss-120b, whose favorite is 57, and GPT-5.4, which answers 57 and 47 about equally often. Gemini 3.1 Flash-Lite and Claude Opus 4.6 have answered nothing but 42, and Claude Sonnet 5 and 5.5 answer 47 about 9 times in 10.</p>
-      <p data-finding="newer-isnt-more-random"><strong>Newer isn't more random.</strong> GPT-5.4 ranks first, ahead of every later GPT, from GPT-5.5 to GPT-6.2. Gemini 2.5 Flash, one of the oldest models here, ranks second, ahead of every newer Gemini. Grok 4.7 is less random than Grok 4.6, GPT-6 Luna than GPT-5.6 Luna, and Claude Sonnet 5 and 5.5 than Sonnet 4.6. Some go the other way: Claude Haiku 5.5 is more random than Haiku 4.5, and Claude Opus 5.5 is the most random Claude. None of these comparisons has overlapping intervals, except Gemini 4 Neon's with Gemini 2.5 Flash: Neon is the latest model added, and has too few replies so far to tell the two apart.</p>
+      <p data-finding="newer-isnt-more-random"><strong>Newer isn't more random.</strong> GPT-5.4 ranks first, ahead of every later GPT, from GPT-5.5 to GPT-6.2. Gemini 2.5 Flash, one of the oldest models here, has the second-highest score, ahead of every newer Gemini. Grok 4.7 is less random than Grok 4.6, GPT-6 Luna than GPT-5.6 Luna, and Claude Sonnet 5 and 5.5 than Sonnet 4.6. Some go the other way: Claude Haiku 5.5 is more random than Haiku 4.5, and Claude Opus 5.5 is the most random Claude. None of these comparisons has overlapping intervals, except Gemini 4 Neon's with Gemini 2.5 Flash: Neon is the latest model added, and has too few replies so far to tell the two apart.</p>
       <p data-finding="whole-regions-go-unused"><strong>Whole regions go unused.</strong> More than 95% of all answers lie between 20 and 79, and more than 90% end in 2, 3, or 7. Gemini 4 Neon is the exception: fewer than a third of its answers end in 2, 3, or 7, and more end in 8 than in any other digit. Only GPT-5.4, Gemini 2.5 Flash, and Grok 4.6, three of the four most random models, have answered above 89 or with a repeated digit like 77. Only GPT-5.4 and Grok 4.6 have answered below 10, and only GPT-5.4 and GPT-5.6 Terra with a multiple of 10. Every other model has avoided all of these, and multiples of 5 too, so they all get the same score on Multiples of 10, Multiples of 5, Edges, and Repeated Digits. Here the identical scores are the finding.</p>
       <p data-finding="a-share-check-can-pass-by-accident"><strong>A share check can pass by accident.</strong> gpt-oss-120b scores close to perfect on primes. Its share of primes is near the ideal 25%, but it comes from its three favorites, 57, 42, and 73, of which only 73 is prime. Every model whose favorite is 47 or 73, both prime, answers with a prime more than half the time, twice what chance would give. Claude Sonnet 5 and 5.5 do more than 95% of the time.</p>
       <p data-finding="nearly-every-reply-is-valid"><strong>Nearly every reply is valid.</strong> The one big exception is Claude Opus 4.8 when it's asked to draw a raffle winner. It declines nearly every time, saying it can't draw a truly random number, and suggests a better way, such as random.org, a spreadsheet's <code>RANDBETWEEN</code>, or Python. A few of those replies offer a casual pick anyway, and some warn that it would favor numbers like 37, 42, or 73. Its other replies are all valid. Grok 4.6 now and then adds a confidence score after its answer, as in <code>47\n\confidence{80}</code>, and the second number makes the reply invalid. Claude Opus 5.5 has slipped twice, once with an empty reply and once by writing out its reasoning before the number. Every other model's replies have all been valid.</p>

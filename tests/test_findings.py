@@ -17,7 +17,7 @@ import pytest
 from randombench.build import DATA
 from randombench.checks import MULTIPLE_OF_5, MULTIPLE_OF_10, PRIME, REPEATED_DIGITS
 from randombench.extract import load_draws
-from randombench.page import TEMPLATE, favorites, ranked
+from randombench.page import TEMPLATE, favorites, rank_ranges, ranked
 from randombench.parsing import parse_reply
 from randombench.score import score_draws
 
@@ -122,6 +122,7 @@ def test_finding_three_numbers_dominate():
 def test_finding_newer_isnt_more_random():
     first, second = list(MODELS)[:2]
     assert first == GPT_54
+    assert rank_ranges(list(MODELS.values()))[0] == (1, 1)  # "ranks first": its rank on the page is 1 alone
     later_gpts = [m for m in MODELS if (gpt_version(m) or 0) > 5.4]  # GPT-5.5 to GPT-6.2
     assert len(later_gpts) >= 10 and max(map(gpt_version, later_gpts)) == 6.2
     assert all(less_random(m, GPT_54) for m in later_gpts)

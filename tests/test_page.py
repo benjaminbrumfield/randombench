@@ -20,18 +20,20 @@ from randombench.page import (
     _answers_cell,
     _distribution,
     _panel,
+    _rank,
     _series,
     average_shares,
     axis,
     favorites,
     newest,
     panel_data,
+    rank_ranges,
     ranked,
     render_page,
     shade,
     tallest,
 )
-from randombench.score import score_draws
+from randombench.score import ModelScores, score_draws
 
 DRAWS = load_draws(DATA)
 EXPECTED = score_draws(DRAWS)  # what `python -m randombench.score` reports
@@ -164,11 +166,11 @@ def test_every_number_on_the_page_is_the_scorers():
 
     ranking = tables.rows("rank")
     assert [attrs["data-model"] for attrs, _ in ranking] == order
-    for rank, (attrs, cells) in enumerate(ranking, 1):
+    for rank, (attrs, cells) in zip(rank_ranges(ranked(EXPECTED)), ranking):
         r = by_model[attrs["data-model"]]
         name, provider = DISPLAY_NAMES[r.model]
         texts = [text for _, text in cells]
-        assert texts[:4] == [str(rank), f"{name} {provider}", str(r.draws - r.failed),
+        assert texts[:4] == [_rank(*rank), f"{name} {provider}", str(r.draws - r.failed),
                              shown(r.scores["headline"], r.intervals["headline"])]
     # Each model's checks are in its panel data, which the next tests check.
 
@@ -213,10 +215,10 @@ def test_every_models_panel_data_is_the_scorers():
     assert data["dark"] == HEAT_DARK
     models = ranked(EXPECTED)
     assert [m["model"] for m in data["models"]] == [r.model for r in models]
-    for rank, (m, r) in enumerate(zip(data["models"], models), 1):
+    for rank, m, r in zip(rank_ranges(models), data["models"], models):
         name, provider = DISPLAY_NAMES[r.model]
         assert m["name"] == name
-        assert m["about"] == f"Rank {rank} of {len(models)} · {provider} · {r.draws - r.failed} replies"
+        assert m["about"] == f"Rank {_rank(*rank)} of {len(models)} · {provider} · {r.draws - r.failed} replies"
         assert m["score"] == pair(r.scores["headline"], r.intervals["headline"])
         assert [c[:2] for c in m["checks"]] == [pair(r.scores[k], r.intervals[k]) for k in CHECK_NAMES]
         assert [c[2] for c in m["checks"]] == pytest.approx([shade(k, r.scores[k]) for k in CHECK_NAMES], abs=5e-4)
@@ -230,6 +232,11 @@ def test_every_models_panel_data_is_the_scorers():
 def test_the_headline_is_the_ranking():
     scores = [by.scores["headline"] for by in ranked(EXPECTED)]
     assert scores == sorted(scores, reverse=True)
+
+
+def test_every_rank_range_holds_the_models_place():
+    ranges = rank_ranges(ranked(EXPECTED))
+    assert all(low <= place <= high for place, (low, high) in enumerate(ranges, 1))
 
 
 def test_the_page_loads_nothing_from_other_sites():
@@ -262,11 +269,32 @@ def test_a_model_with_no_replies_is_left_out_and_one_with_no_headline_goes_last(
     ranking = Tables(text).rows("rank")
     assert [attrs["data-model"] for attrs, _ in ranking] == [NANO, GEMINI]
     assert [text for _, text in ranking[1][1]][3] == "—"
+    assert [cells[0][1] for _, cells in ranking] == ["1", "2"]  # below every model with a headline
     gemini = panel_json(text)["models"][1]
     assert gemini["score"] == ["—", ""]
     assert [c[:2] for c in gemini["checks"]] == [["0.000", "±0.000"]] + [["—", ""]] * 8
     assert (gemini["fav"], gemini["key"]) == ([], "No valid answers yet.")  # no favorite without a valid answer
     assert gemini["t"] == [0] * 100
+
+
+def test_a_rank_range_runs_from_the_models_clearly_better_to_those_clearly_worse():
+    def model(score, half):
+        return ModelScores(model="m", draws=1, failed=0, invalid=0, valid=1,
+                           scores={"headline": score}, intervals={"headline": half}, counts=())
+
+    ranges = rank_ranges([
+        model(0.5, 0.125),     # 0.375 to 0.625
+        model(0.375, 0.125),   # 0.25 to 0.5, overlapping the one above
+        model(0.25, 0.0625),   # 0.1875 to 0.3125, overlapping the one above, but not the first
+        model(0.15625, 0.03125),  # 0.125 to 0.1875, which only touches the one above, so overlaps it
+        model(0.0625, 0),      # an exact tie, each interval ±0
+        model(0.0625, 0),
+        model(None, None),     # no headline, so below every model with one
+    ])
+    # The second overlaps the first and the third, but the first is clearly
+    # better than the third: too close to call doesn't chain.
+    assert ranges == [(1, 2), (1, 3), (2, 4), (3, 4), (5, 6), (5, 6), (7, 7)]
+    assert [_rank(*r) for r in ranges[-3:]] == ["5–6", "5–6", "7"]
 
 
 def test_a_tie_for_favorite_shows_every_tied_value():
@@ -312,7 +340,7 @@ def test_the_distribution_labels_its_tallest_bars_and_circles_values_never_given
 def test_the_panel_shades_each_square_by_the_square_root_of_its_count_over_the_favorites():
     replies = ["42"] * 64 + ["37"] * 36 + ["47"] * 16 + ["7"]
     [r] = score_draws([{"model": NANO, "reply": x} for x in replies])
-    d = panel_data(r, 1, 1)
+    d = panel_data(r, (1, 1), 1)
     assert (d["fav"], d["t"][42], d["t"][37], d["t"][47], d["t"][0]) == ([42], 1, 0.75, 0.5, 0)
     assert '<i class="swatch"></i>Favorite <strong>42</strong>: 55% of its valid answers.' == d["key"]
     found = re.findall(r'<span(?: class="(\w+)")?(?: style="--t:([0-9.]+)")?>(\d+)</span>', _panel(d))
