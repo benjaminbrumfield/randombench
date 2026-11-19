@@ -310,7 +310,7 @@ footer p { margin: 0 0 6px; }
     </div>
     <figure class="dist">
 __DIST__
-      <figcaption class="note"><span class="narrow">The tallest bars are <span id="dist-tallest">__TALLEST__</span>. </span>None of these models has answered <span id="dist-never">__NEVER__</span>.</figcaption>
+      <figcaption class="note narrow">The tallest bars are <span id="dist-tallest">__TALLEST__</span>.</figcaption>
     </figure>
 __SLIDER__
   </section>
@@ -417,7 +417,6 @@ __PANELS__
     });
     plot.setAttribute("aria-label", plot.getAttribute("aria-label").replace(/The tallest are .*/, "The tallest are " + s.tallest + "."));
     document.getElementById("dist-tallest").textContent = s.tallest;
-    document.getElementById("dist-never").textContent = s.never;
     box.querySelector(".when strong").textContent = s.models;
     box.querySelector(".when .date").textContent = s.date;
     box.querySelector(".when .newest").textContent = s.added;

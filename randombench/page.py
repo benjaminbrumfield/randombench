@@ -65,7 +65,7 @@ PAGE = ROOT / "docs" / "index.html"
 
 PLACEHOLDERS = {"__DATE__", "__ISODATE__", "__COUNT__", "__PROVIDERS__", "__ANSWERS__", "__BEST__",
                 "__BESTMODEL__", "__COMMON__", "__COMMONSHARE__", "__DIST__", "__TALLEST__",
-                "__NEVER__", "__SLIDER__", "__TIMELINE__", "__PANEL__", "__PANELS__", "__STEPS__",
+                "__SLIDER__", "__TIMELINE__", "__PANEL__", "__PANELS__", "__STEPS__",
                 "__TICKS__", "__RANKING__"}
 _PLACEHOLDER = re.compile(r"__[A-Z]+__")
 
@@ -274,17 +274,16 @@ def distribution_data(shares: list[float]) -> dict:
     value never given. labels are the tallest() values, in order from 0 to
     99, each with its share and its class: "label", large and in orange, for
     the BIG_LABELS tallest, whose bars are orange too, and "label minor" for
-    the rest. tallest and never are the caption's words.
+    the rest. tallest is the caption's words, shown on narrow screens, where
+    the labels are hidden.
     """
     top = max(shares)
     labeled = tallest(shares)
-    never = sum(1 for share in shares if not share)
     return {
         "h": [round(max(MIN_DIST_BAR, 100 * share / top), 2) if share else 0 for share in shares],
         "labels": [[value, f"{shares[value]:.1%}", "label" if labeled.index(value) < BIG_LABELS else "label minor"]
                    for value in sorted(labeled)],
         "tallest": _tallest_text(shares),
-        "never": f"{never} value{'' if never == 1 else 's'}",
     }
 
 
@@ -693,7 +692,6 @@ def render_page(results: list[ModelScores], as_of: datetime) -> str:
         "__COMMONSHARE__": "—" if common is None else f"{shares[common]:.1%}",
         "__DIST__": _distribution(chart),
         "__TALLEST__": chart["tallest"],
-        "__NEVER__": chart["never"],
         "__SLIDER__": _slider(stops, release_days(models)),
         "__TIMELINE__": _timeline_json(stops),
         "__PANEL__": _panel(panels[0]) if panels else "",

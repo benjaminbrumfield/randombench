@@ -241,7 +241,6 @@ def test_the_timeline_adds_each_model_on_its_release_date():
     # The page's chart is the last stop, which holds every model.
     assert data["stops"][-1]["models"] == f"{len(models)} models"
     assert _distribution(data["stops"][-1]) in text
-    assert f'None of these models has answered <span id="dist-never">{data["stops"][-1]["never"]}</span>.' in text
 
 
 def test_the_slider_starts_at_the_last_stop_and_only_the_script_shows_it():
@@ -383,7 +382,7 @@ def test_the_answers_chart_draws_each_value_given_on_a_square_root_scale_with_th
     assert _answers_cell([0] * 100) == '<td class="answers"></td>'  # no valid answers
 
 
-def test_the_distribution_labels_its_tallest_bars_and_counts_values_never_given():
+def test_the_distribution_labels_its_tallest_bars():
     shares = [0.0] * 100
     for value, share in {42: 0.4, 47: 0.2, 73: 0.15, 37: 0.1, 57: 0.05, 7: 0.05, 9: 0.05}.items():
         shares[value] = share
@@ -400,7 +399,6 @@ def test_the_distribution_labels_its_tallest_bars_and_counts_values_never_given(
                       ("label", "47", "20.0%"), ("label", "73", "15.0%")]
     assert 'style="--x:73.5%;--h:37.5">73<small>' in chart  # over the middle of its bar, at its top
     assert "The tallest are 42 (40.0%), 47 (20.0%), 73 (15.0%), 37 (10.0%), and 7 (5.0%)." in chart
-    assert d["never"] == "93 values"  # the caption's count of the values no model gave
     assert tallest([0.5, 0.5] + [0.0] * 98) == [0, 1]  # only values given get a label
     assert _distribution(distribution_data([0.0] * 100)) == ""
 
@@ -418,7 +416,7 @@ def test_a_models_answers_join_the_timeline_on_its_release_date():
     # answers: 7 takes half, 42 three eighths, and 37 one eighth.
     assert [(v, h) for v, h in enumerate(second["h"]) if h] == [(7, 100), (37, 25), (42, 75)]
     assert second["labels"] == [[7, "50.0%", "label"], [37, "12.5%", "label"], [42, "37.5%", "label"]]
-    assert (second["tallest"], second["never"]) == ("7 (50.0%), 42 (37.5%), and 37 (12.5%)", "97 values")
+    assert second["tallest"] == "7 (50.0%), 42 (37.5%), and 37 (12.5%)"
 
 
 def test_the_slider_dates_its_ends_and_each_new_year_not_too_near_one():
