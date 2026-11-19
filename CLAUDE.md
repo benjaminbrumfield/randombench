@@ -81,6 +81,11 @@ python -m randombench.score
 # goes to (the collect-draws skill). Read-only: it reads Kaggle's model list.
 python -m randombench.tally
 
+# Describe one stored run's answers: how often each value came up, by decade,
+# by last digit, and by prompt, and its score beside the model's over all its
+# runs (the collect-draws skill's report after each batch). Offline.
+python -m randombench.batch data/<model>/<run_id>.jsonl
+
 # Compare the models Kaggle lists with data/ and MODELS: new models, models
 # Kaggle dropped, and renamed ones. Read-only: it prompts no model.
 python -m randombench.models

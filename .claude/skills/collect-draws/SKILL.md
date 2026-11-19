@@ -3,8 +3,8 @@ name: collect-draws
 description: >
   Collect more draws for RandomBench in a loop. It checks Kaggle for new
   models, then runs one batch of 100 to 300 draws on the model with the fewest
-  replies, shows every model's count, and repeats while at least $4 of the
-  day's quota is left. Use when asked to collect or top up draws, or to spend
+  replies, reports how that batch's answers fall and every model's count, and
+  repeats while at least $4 of the day's quota is left. Use when asked to collect or top up draws, or to spend
   the day's quota. It spends Model Proxy quota: invoking it is the user's yes
   for its runs.
 ---
@@ -40,12 +40,22 @@ Number the batches from 1. For each one:
 
 1. **Check the quota.** Run `kaggle b quota --format json`. If the Daily or the Monthly `remaining` is under $4, the loop ends. Otherwise note the daily `used`. One 300-draw batch on the costliest model, Gemini 4 Neon, would cost about $0.82 at 2026-11-19 prices, so a batch can't overrun the floor.
 2. **Pick.** Run `PYTHONUTF8=1 python -m randombench.tally`. Its last line, `Next: <slug>`, names the model the run goes to: the one with the fewest replies among the models a run can draw from. `Next: none` ends the loop.
+
+   From batch 2 on, the previous batch's step 4 has already run both commands, so use its output for steps 1 and 2 instead of running them again.
 3. **Run one batch.** Run `PYTHONUTF8=1 kaggle b t run randombench-draws -m <slug> --wait 5400` with `run_in_background: true`, and wait for the notification. Don't pipe it through `tail` or `head`, which hold its output until it ends. Then:
    - Check that `PYTHONUTF8=1 kaggle b t status randombench-draws -m <slug>` shows the new run as Completed. If the wait timed out, or the run errored, stop the loop and report its status. Don't start the run again: a second `run` makes a second batch.
    - `PYTHONUTF8=1 kaggle b t download randombench-draws -m <slug> -o results`
-   - `python -m randombench.extract results/randombench-draws`. It prints one line per run it finds: `<slug> <run_id> (v<version>): <n> draws, <e> errors`. The new run is the one with the highest run id for `<slug>`. Extracting older runs again rewrites the same files, so nothing is counted twice.
-   - Errors are refused calls. If every draw errored, Model Proxy may not serve the model (D24), or the quota ran out. Stop the loop and tell the user. Taking a model out of `MODELS` is the user's decision.
-4. **Show the table.** Run `PYTHONUTF8=1 python -m randombench.tally` again, and `kaggle b quota --format json`. Command output isn't reliably shown to the user, so paste the tally's table into your reply, under one line: `Batch <k>: <model>, <n> draws, <e> errors, $<spent>. $<left> of today's quota left.` The spend is the change in the daily `used` since step 1. Then go back to step 1.
+   - `python -m randombench.extract results/randombench-draws`. It prints one line per run it finds: `<slug> <run_id> (v<version>): <n> draws, <e> errors -> <file>`. The new run is the one with the highest run id for `<slug>`. Extracting older runs again rewrites the same files, so nothing is counted twice.
+   - Errors are refused calls. If every draw errored, Model Proxy may not serve the model (D24), or the quota ran out. Stop the loop and tell the user, after step 4's report. Taking a model out of `MODELS` is the user's decision.
+4. **Report the batch.** Run these three in one command: `PYTHONUTF8=1 python -m randombench.batch <file>`, with the new run's file from extract's line, then `kaggle b quota --format json`, then `PYTHONUTF8=1 python -m randombench.tally`.
+
+   The user can't see command output, so the report must be a message you write yourself. Write it before any tool call of the next batch, and after the last batch too. Never skip it or fold it into a later message: it's how the user follows the loop. It holds, in this order:
+   - One line: `Batch <k>: <model>, <n> draws, <e> errors, $<spent>. $<left> of today's quota left.` The spend is the change in the daily `used` since step 1.
+   - The batch command's output, pasted as it is. It gives the batch's summary, how often each value came up, the answers by decade, by last digit, and by prompt, and the batch's RandomBench Score beside the model's over all its runs.
+   - Two or three sentences on what stands out, each backed by a number from the output: a favorite that takes a large share, decades or last digits the model crowds or avoids, a prompt that answers unlike the others, and whether this batch's score and favorite agree with the model's earlier runs.
+   - The tally's table, pasted as it is.
+
+   Then go back to step 1, using this step's quota and tally.
 
 Run one batch at a time. CLAUDE.md allows two collection runs at once, but the loop needs each batch's count before it picks the next model.
 
