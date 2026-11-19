@@ -143,7 +143,13 @@ def test_finding_newer_isnt_more_random():
 
 def test_finding_whole_regions_go_unused():
     assert share(ALL, (VALUES >= 20) & (VALUES <= 79)) > 0.95
-    assert share(ALL, np.isin(VALUES % 10, [2, 3, 7])) > 0.95
+    two_three_seven = np.isin(VALUES % 10, [2, 3, 7])
+    assert share(ALL, two_three_seven) > 0.90
+    # Gemini 4 Neon is the exception: the one model with fewer than half its answers ending in 2, 3, or 7.
+    assert {m for m, counts in COUNTS.items() if share(counts, two_three_seven) < 0.5} == {GEMINI_4_NEON}
+    assert share(COUNTS[GEMINI_4_NEON], two_three_seven) < 1 / 3
+    neon_last_digits = np.bincount(VALUES % 10, weights=COUNTS[GEMINI_4_NEON])
+    assert neon_last_digits.argmax() == 8 and (neon_last_digits < neon_last_digits[8]).sum() == 9
     trio = {GPT_54, GEMINI_25_FLASH, GROK_46}
     assert trio <= set(list(MODELS)[:4])  # "three of the four most random models"
     assert answered(VALUES > 89) == trio
@@ -203,5 +209,5 @@ def test_finding_reasoning_helps_a_little():
     assert ranks["tokens"].corr(ranks["score"]) > 0.3
     assert next(iter(MODELS)) == GPT_54 and tokens[GPT_54] == 4
     assert all(m.startswith(("google/", "xai/")) or m == GPT_OSS for m in reasoners), reasoners
-    # "Still far from uniform": each scores less than 0.1 on Uniformity.
-    assert all(MODELS[m].scores["uniformity"] < 0.1 for m in reasoners)
+    # "Still far from uniform": none scores above 0.15 on Uniformity. Gemini 4 Neon's 0.11 is the highest.
+    assert all(MODELS[m].scores["uniformity"] <= 0.15 for m in reasoners)
