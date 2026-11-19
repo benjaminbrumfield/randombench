@@ -43,7 +43,7 @@ by the build, so rebuilding unchanged data writes the same bytes.
 import json
 import math
 import re
-from datetime import datetime
+from datetime import date, datetime
 from html import escape
 from pathlib import Path
 
@@ -102,6 +102,59 @@ DISPLAY_NAMES = {
     "openai/gpt-oss-120b": ("gpt-oss-120b", "OpenAI"),
     "xai/grok-4.6": ("Grok 4.6", "xAI"),
     "xai/grok-4.7": ("Grok 4.7", "xAI"),
+}
+
+# Each model's release date: the day its lab first let the public use the
+# model we query, in its API or its apps. A preview counts when it's the model
+# we query, such as Gemini 3 Flash (preview), but a release to selected
+# partners only doesn't. The dates come from the labs' announcements and the
+# news, looked up on 2026-11-19, not from Kaggle, which gives none for five of
+# these models. A test fails when a model with a display name has no date.
+RELEASED = {
+    "anthropic/claude-haiku-4-5@20251001": date(2025, 10, 15),
+    "anthropic/claude-haiku-5-5": date(2026, 10, 7),
+    "anthropic/claude-opus-4-5@20251101": date(2025, 11, 24),
+    "anthropic/claude-opus-4-6@default": date(2026, 2, 5),
+    "anthropic/claude-opus-4-7@default": date(2026, 4, 16),
+    "anthropic/claude-opus-4-8@default": date(2026, 5, 28),
+    "anthropic/claude-opus-5@default": date(2026, 7, 24),
+    "anthropic/claude-opus-5-5@default": date(2026, 9, 22),
+    "anthropic/claude-sonnet-4-6@default": date(2026, 2, 17),
+    "anthropic/claude-sonnet-5@default": date(2026, 6, 30),
+    "anthropic/claude-sonnet-5-5@default": date(2026, 9, 28),
+    # The stable models. Their previews came out from March 2025.
+    "google/gemini-2.5-flash": date(2025, 6, 17),
+    "google/gemini-2.5-pro": date(2025, 6, 17),
+    "google/gemini-3-flash-preview": date(2025, 12, 17),
+    "google/gemini-3.1-flash-lite-preview": date(2026, 3, 3),
+    "google/gemini-3.1-pro-preview": date(2026, 2, 19),
+    "google/gemini-3.5-flash-lite": date(2026, 7, 21),
+    "google/gemini-3.6-flash": date(2026, 7, 21),
+    "google/gemini-3.8-flash": date(2026, 9, 2),
+    # Announced on September 30, for the cyber defenders in Google's Fairwind
+    # program only.
+    "google/gemini-4-argon": date(2026, 10, 13),
+    "google/gemini-4-neon": date(2026, 11, 18),
+    "google/gemma-4-26b-a4b": date(2026, 4, 2),
+    "google/gemma-4-31b": date(2026, 4, 2),
+    "openai/gpt-5.4-2026-03-05": date(2026, 3, 5),
+    "openai/gpt-5.4-mini-2026-03-17": date(2026, 3, 17),
+    "openai/gpt-5.4-nano-2026-03-17": date(2026, 3, 17),
+    "openai/gpt-5.5-2026-04-23": date(2026, 4, 23),
+    # In preview from June 26, for partners approved by the US government only.
+    "openai/gpt-5.6-luna": date(2026, 7, 9),
+    "openai/gpt-5.6-sol": date(2026, 7, 9),
+    "openai/gpt-5.6-terra": date(2026, 7, 9),
+    # Rolled out to paying users over several days. Kaggle says September 4.
+    "openai/gpt-6-astra": date(2026, 9, 3),
+    "openai/gpt-6-luna": date(2026, 9, 22),
+    "openai/gpt-6-sol": date(2026, 9, 22),
+    "openai/gpt-6.1-sol": date(2026, 9, 29),
+    "openai/gpt-6.2-astra": date(2026, 11, 17),
+    "openai/gpt-6.2-sol": date(2026, 11, 17),
+    "openai/gpt-oss-120b": date(2025, 8, 5),
+    "xai/grok-4.6": date(2026, 8, 12),
+    "xai/grok-4.7": date(2026, 9, 21),
 }
 
 # The nine sub-scores in score_answers' order, named as their scoring tasks

@@ -29,7 +29,7 @@ Run `python -m randombench.models`, and read its report as the check-models skil
 
 - **Usable new model** (it has a Model Proxy name and isn't under Not allowed): ask the user with AskUserQuestion whether to add it. Give its name, slug, and release date. Say that its first batch makes 100 to 300 calls, and that this batch is its pilot. If the user says yes:
   - Add its Model Proxy name to `MODELS` with a comment giving its release date, and update the count in `tests/test_collect.py`.
-  - Add it to `DISPLAY_NAMES` in `randombench/page.py`, with Kaggle's display name and its maker.
+  - Add it to `DISPLAY_NAMES` in `randombench/page.py`, with Kaggle's display name and its maker, and to `RELEASED` there, with its release date. Look the date up on the web, by the rule in the comment above `RELEASED`. Don't take Kaggle's, which can be missing or off by a day.
   - Run `python -m pytest`, then push as above. This is the one push of uncommitted work: the commit after the loop holds the change. It has no replies, so the first batch goes to it.
 - **Renamed**: tell the user before running anything. New draws under the new name would count as a separate model. The table below marks the model as never drawn until `MODELS` changes.
 - **Gone**: mention it. The table already skips it.

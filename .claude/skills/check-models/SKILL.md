@@ -59,7 +59,7 @@ The report can't rule out one risk. A push's creation run uses the server's defa
 
 Once a new model's draws are stored, the follow-up step touches:
 - `MODELS` and its comments in `tasks/collect.py`, and the count in `tests/test_collect.py`.
-- `DISPLAY_NAMES` in `randombench/page.py`. A test fails when a stored model has no entry.
+- `DISPLAY_NAMES` and `RELEASED` in `randombench/page.py`. A test fails when a stored model has no entry in either. `RELEASED`'s dates come from the web, not from Kaggle.
 - `python -m randombench.build`. Afterwards, `tests/test_findings.py` may flag a finding to rewrite (D29).
 - Pushing the rebuilt scoring tasks and running each one on the new model. Scoring tasks never prompt a model.
 

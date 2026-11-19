@@ -17,6 +17,7 @@ from randombench.page import (
     HEAT_FLOOR,
     LOWEST,
     PAGE,
+    RELEASED,
     _answers_cell,
     _distribution,
     _panel,
@@ -103,6 +104,21 @@ def panel_json(text: str) -> dict:
 
 def test_every_model_in_data_has_a_display_name():
     assert {d["model"] for d in DRAWS} <= set(DISPLAY_NAMES)
+
+
+def test_every_model_with_a_display_name_has_a_release_date():
+    assert set(RELEASED) == set(DISPLAY_NAMES)
+
+
+def test_no_model_answered_before_its_release():
+    # Catches a mistyped date. A draw's started_at is in UTC, which runs ahead
+    # of the labs' US time zones, so a draw on release day still passes.
+    first = {}
+    for d in DRAWS:
+        if d.get("started_at"):
+            day = datetime.fromisoformat(d["started_at"]).date()
+            first[d["model"]] = min(day, first.get(d["model"], day))
+    assert {model: day for model, day in first.items() if day < RELEASED[model]} == {}
 
 
 def test_the_checks_are_named_as_their_scoring_tasks():
