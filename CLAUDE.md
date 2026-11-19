@@ -77,6 +77,10 @@ python -m randombench.extract results/<slug>
 # Score every model's stored draws, offline
 python -m randombench.score
 
+# Compare the models Kaggle lists with data/ and MODELS: new models, models
+# Kaggle dropped, and renamed ones. Read-only: it prompts no model.
+python -m randombench.models
+
 # Read a Benchmark's results at full precision, and the AI quota used. Both are
 # read-only. Benchmarks are created and edited only on the website (PLAN.md 4.9).
 # randombench-overall holds the headline, and randombench holds the nine
