@@ -153,7 +153,7 @@ def test_each_stored_model_gets_the_score_and_interval_the_analysis_gives(task, 
     for expected in EXPECTED:
         run = ns["score"].run(StandIn(expected.model))
         if not expected.scores:
-            # Every call failed, as Grok 4.5's did (4.10), so there's no reply to score.
+            # Every call failed, as when Model Proxy doesn't serve a model (D24), so there's no reply to score.
             assert run.result is False, expected.model
             continue
         # The same counts and the same seed give the same resamples, so it's exact.

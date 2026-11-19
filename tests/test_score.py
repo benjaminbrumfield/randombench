@@ -61,10 +61,10 @@ def test_main_prints_a_row_per_model(tmp_path, capsys):
 
 
 def test_main_leaves_out_a_model_whose_calls_all_failed(tmp_path, capsys):
-    grok = "xai/grok-4.5-0708"
+    unserved = "example/unserved"
     for model, records in [
         (NANO, [draw(NANO, "1", i, str(i)) for i in range(10)]),
-        (grok, [draw(grok, "2", i, error="NotFoundError") for i in range(3)]),
+        (unserved, [draw(unserved, "2", i, error="NotFoundError") for i in range(3)]),
     ]:
         run = tmp_path / model.split("/")[1] / "1.jsonl"
         run.parent.mkdir()
@@ -72,7 +72,7 @@ def test_main_leaves_out_a_model_whose_calls_all_failed(tmp_path, capsys):
     main(["--data", str(tmp_path)])
     out = capsys.readouterr().out
     assert out.count(NANO) == 2
-    assert out.count(grok) == 1 and "Left out: xai/grok-4.5-0708, whose 3 calls all failed." in out
+    assert out.count(unserved) == 1 and "Left out: example/unserved, whose 3 calls all failed." in out
 
 
 def test_main_says_so_when_there_are_no_draws(tmp_path, capsys):

@@ -106,7 +106,7 @@ def main(argv: list[str] | None = None) -> None:
     if not results:
         print(f"no draws in {args.data}")
         return
-    # A model whose calls all failed has nothing to score, like Grok 4.5 (D24).
+    # A model whose calls all failed, as when Model Proxy doesn't serve it (D24), has nothing to score.
     answered = [r for r in results if r.failed < r.draws]
     if answered:
         print(format_table(answered))

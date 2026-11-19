@@ -13,8 +13,8 @@ hold its `llm.name`. So the comparison matches Kaggle's list to data/ by slug,
 and to MODELS by `llm.name`.
 
 It can't tell two things:
-- Whether Model Proxy serves a model. The API allows Grok 4.5, yet all of
-  its calls got a 404 (D24). Only a pilot shows it.
+- Whether Model Proxy serves a model. The API can allow a model whose
+  every call gets a 404 (D24). Only a pilot shows it.
 - Which model is the server's default, the one every push's creation run
   uses (D23). `isDefault` marks each model's default version, and every
   model has one.
@@ -168,8 +168,7 @@ def format_report(report: Report) -> str:
     lines += ["", f"Gone ({len(report.gone)}): in data/ or MODELS, but Kaggle no longer lists it."]
     lines += _rows([(slug or "(no data/ folder)", name, kept_in(slug, name)) for slug, name in report.gone])
     lines += ["", f"Left out ({len(report.left_out)}): listed, with stored draws, but not in MODELS,"
-                  " so a run on it makes no draws. D23 leaves out the server's default model, and"
-                  " D24 leaves out Grok 4.5."]
+                  " so a run on it makes no draws. D23 leaves out the server's default model."]
     lines += _rows([(m.slug, m.name, m.llm_name or "(no Model Proxy name)") for m in report.left_out])
     lines += ["", f"Renamed ({len(report.renamed)}): its newest run in data/ holds another llm.name. A run"
                   " makes draws only if MODELS holds Kaggle's new name (D12)."]

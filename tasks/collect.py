@@ -67,7 +67,6 @@ MODELS = (
     "google/gemini-3.1-pro-preview",
     "google/gemini-3.6-flash",
     "google/gemini-4-argon",
-    # Not Grok 4.5: the server lists it, but Model Proxy doesn't serve it (D24).
     "xai/grok-4.6",
     "xai/grok-4.7",
     "openai/gpt-5.4-mini-2026-03-17",
@@ -78,8 +77,8 @@ MODELS = (
     "anthropic/claude-sonnet-4-6@default",
     "anthropic/claude-sonnet-5@default",
     "anthropic/claude-sonnet-5-5@default",
-    # The flagship models, added after 4.11: every model the server lists
-    # but Grok 4.5 (D24) and Gemini 3.8 Flash (D23).
+    # The flagship models, added after 4.11: every model the server listed
+    # and Model Proxy served, but Gemini 3.8 Flash (D23).
     "google/gemma-4-31b",
     "anthropic/claude-opus-4-5@20251101",
     "anthropic/claude-opus-4-6@default",

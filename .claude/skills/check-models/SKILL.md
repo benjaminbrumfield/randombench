@@ -25,7 +25,7 @@ It asks Kaggle's API for the list behind `kaggle b t models`, and compares it wi
 RandomBench covers every model Kaggle lists except the server's default model (D23) and models that Model Proxy doesn't serve (D24). That's the rule `MODELS` has followed since the flagship models were added.
 
 **New.** The candidates. A new model can be used if it has a Model Proxy name (the third column) and isn't also under Not allowed. That name is its exact `MODELS` entry, not a guess. On 2026-11-18, all 35 stored models' records held the name Kaggle gives. The report can't confirm the rest, which only a pilot shows:
-- Model Proxy serves it. It allowed Grok 4.5, yet all 24 of its calls got a 404 (D24).
+- Model Proxy serves it. It can allow a model whose every call gets a 404 (D24).
 - It accepts `seed=None`, and its replies parse ("Seed" in PLAN.md).
 - What a call costs.
 
@@ -33,7 +33,7 @@ RandomBench covers every model Kaggle lists except the server's default model (D
 
 **Gone.** Its draws and scores stay in `data/`, on the page, and on the Benchmarks. Kaggle no longer lists it, so `kaggle b t run -m` will likely refuse it (untested). Whether to take it out of `MODELS` is the user's decision: raise it, but don't edit anything. A row with "(no data/ folder)" is a `MODELS` entry that names no listed model: a typo, or a model Kaggle dropped before its first run. A run on it makes no draws (D12).
 
-**Left out.** By design, this holds exactly two models: `gemini-3.8-flash`, the server's default (D23), and `grok-4.5-0708` (D24). Any other model here is news. Its draws are stored, but `MODELS` doesn't list it.
+**Left out.** By design, this holds exactly one model: `gemini-3.8-flash`, the server's default (D23). Any other model here is news. Its draws are stored, but `MODELS` doesn't list it.
 
 **Renamed.** Kaggle now gives a slug a different `llm.name`. `MODELS` must hold the new name, or a run makes no draws (D12). Scoring, the scoring tasks, and the page also key draws by `llm.name` (PLAN.md 1.3). So new draws under the new name would count as a separate model. Raise this with the user before any run.
 

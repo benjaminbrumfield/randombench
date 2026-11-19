@@ -20,12 +20,12 @@ def listed(slug, llm_name, proxy=True):
 
 
 def test_counts_replies_not_draws(tmp_path):
-    folder = tmp_path / "grok-4.5-0708"
+    folder = tmp_path / "unserved"
     folder.mkdir()
-    draws = [{"model": "xai/grok-4.5", "run_id": "1", "draw_index": i, "reply": None} for i in range(3)]
+    draws = [{"model": "example/unserved", "run_id": "1", "draw_index": i, "reply": None} for i in range(3)]
     draws += [{"model": NANO, "run_id": "2", "draw_index": 0, "reply": "42"}]
     (folder / "1.jsonl").write_text("".join(json.dumps(d) + "\n" for d in draws), encoding="utf-8")
-    assert reply_counts(tmp_path) == {"xai/grok-4.5": 0, NANO: 1}
+    assert reply_counts(tmp_path) == {"example/unserved": 0, NANO: 1}
 
 
 def test_the_fewest_replies_go_first_and_ties_go_by_slug():

@@ -40,7 +40,7 @@ EXPECTED = score_draws(DRAWS)  # what `python -m randombench.score` reports
 
 NANO = "openai/gpt-5.4-nano-2026-03-17"
 GEMINI = "google/gemini-3.1-flash-lite-preview"
-GROK_45 = "xai/grok-4.5-0708"
+UNSERVED = "example/unserved"  # a model whose every call fails
 
 
 class Tables(HTMLParser):
@@ -161,8 +161,8 @@ def test_every_number_on_the_page_is_the_scorers():
     tables = Tables(PAGE.read_text(encoding="utf-8"))
     by_model = {r.model: r for r in EXPECTED}
     order = [r.model for r in ranked(EXPECTED)]
-    # Every model with a reply. Grok 4.5 has none (D24).
-    assert len(order) == 39 and GROK_45 not in order
+    # Every stored model, since each has a reply.
+    assert len(order) == len({d["model"] for d in DRAWS}) == 39
 
     ranking = tables.rows("rank")
     assert [attrs["data-model"] for attrs, _ in ranking] == order
@@ -263,7 +263,7 @@ def test_a_model_with_no_replies_is_left_out_and_one_with_no_headline_goes_last(
         {"model": NANO, "reply": r} for r in ["42", "42", "37"]
     ] + [
         {"model": GEMINI, "reply": "forty-two"},  # one reply, invalid, so no headline
-        {"model": GROK_45, "reply": None},  # a failed call
+        {"model": UNSERVED, "reply": None},  # a failed call
     ]
     text = render_page(score_draws(draws), datetime(2026, 1, 2, tzinfo=timezone.utc))
     ranking = Tables(text).rows("rank")

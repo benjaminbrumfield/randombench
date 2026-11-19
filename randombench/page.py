@@ -100,7 +100,6 @@ DISPLAY_NAMES = {
     "openai/gpt-6.2-astra": ("GPT-6.2 Astra", "OpenAI"),
     "openai/gpt-6.2-sol": ("GPT-6.2 Sol", "OpenAI"),
     "openai/gpt-oss-120b": ("gpt-oss-120b", "OpenAI"),
-    "xai/grok-4.5-0708": ("Grok 4.5", "xAI"),  # no replies, so not on the page (D24)
     "xai/grok-4.6": ("Grok 4.6", "xAI"),
     "xai/grok-4.7": ("Grok 4.7", "xAI"),
 }

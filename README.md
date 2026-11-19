@@ -106,7 +106,7 @@ On Windows, set `PYTHONUTF8=1` first. Making new draws needs a Kaggle account an
 - [tasks/collect.py](tasks/collect.py): RandomBench Draws, the Kaggle task that makes the draws.
 - [tasks/scores/](tasks/scores/): the scoring tasks, one per score. `python -m randombench.build` generates them from [tasks/templates/score.py](tasks/templates/score.py), with the stored replies embedded.
 - [docs/index.html](docs/index.html): the leaderboard page. `python -m randombench.build` generates it from [randombench/page.html](randombench/page.html) and the stored replies, and GitHub Pages serves it. [tests/test_findings.py](tests/test_findings.py) checks each of its findings against the stored replies.
-- [data/](data/): every raw reply, one JSON Lines file per Kaggle run. `data/grok-4.5-0708/` is a pilot whose calls all failed, because Kaggle's Model Proxy doesn't serve Grok 4.5. It's kept as the record and isn't scored.
+- [data/](data/): every raw reply, one JSON Lines file per Kaggle run.
 - [probes/](probes/): small experiments that tested the platform along the way.
 - [PLAN.md](PLAN.md): the design, every decision and the reasons for it, and what each step of the original build found. It's finished, so changes since then are recorded only in the commit history.
 

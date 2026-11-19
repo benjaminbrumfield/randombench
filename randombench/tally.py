@@ -39,7 +39,7 @@ class Row:
 
 def reply_counts(data_dir: Path) -> Counter:
     """Count each stored model's draws with a reply, by llm.name. A model whose
-    every draw failed, such as Grok 4.5 (D24), counts 0."""
+    every draw failed counts 0."""
     counts = Counter()
     for draw in load_draws(data_dir):
         counts[draw["model"]] += draw["reply"] is not None

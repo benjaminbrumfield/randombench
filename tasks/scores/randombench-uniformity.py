@@ -855,12 +855,6 @@ STORED = {
             '87': 1,
         },
     },
-    'xai/grok-4.5-0708': {
-        'runs': ['6842549'],
-        'failed': 24,
-        'replies': {
-        },
-    },
     'xai/grok-4.6': {
         'runs': ['6842550', '6844121', '6857879'],
         'failed': 0,
@@ -1278,7 +1272,7 @@ def score(llm) -> tuple[float, float]:
     answers = stored_answers(llm.name)
     if not answers:
         # A model RandomBench doesn't cover, such as .env's in a local run
-        # (D12), or one whose every call failed, such as Grok 4.5 (4.10).
+        # (D12), or one whose every call failed (D24).
         print(f"{llm.name} has no stored replies: no score")
         return False
     stored = STORED[llm.name]
