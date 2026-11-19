@@ -101,3 +101,5 @@ kaggle b t publish <slug>
 ## Skills
 
 `.claude/skills/` holds two vendored skills, `kaggle-benchmarks` and `kaggle-cli`. They're unmodified upstream copies pinned in [SOURCES.md](.claude/skills/SOURCES.md), so don't edit them. Where `kaggle-benchmarks` points at `src/kaggle_benchmarks/`, read the installed package instead: `python -c "import kaggle_benchmarks; print(kaggle_benchmarks.__file__)"`.
+
+It also holds one of the project's own skills, `check-models`. It runs `python -m randombench.models` and says what the report means for RandomBench. Edit it as the project changes.
