@@ -34,6 +34,7 @@ GEMINI_31_FLASH_LITE = "google/gemini-3.1-flash-lite-preview"
 GEMINI_4_NEON = "google/gemini-4-neon"
 GPT_OSS = "openai/gpt-oss-120b"
 GPT_54 = "openai/gpt-5.4-2026-03-05"
+GPT_55 = "openai/gpt-5.5-2026-04-23"
 GPT_56_LUNA = "openai/gpt-5.6-luna"
 GPT_56_TERRA = "openai/gpt-5.6-terra"
 GPT_6_LUNA = "openai/gpt-6-luna"
@@ -156,8 +157,8 @@ def test_finding_whole_regions_go_unused():
     assert answered(VALUES > 89) == trio
     assert answered(REPEATED_DIGITS) == trio
     assert answered(VALUES < 10) == {GPT_54, GROK_46}
-    assert answered(MULTIPLE_OF_10) == {GPT_54, GPT_56_TERRA}
-    venturers = trio | {GPT_56_TERRA}
+    assert answered(MULTIPLE_OF_10) == {GPT_54, GPT_55, GPT_56_TERRA}
+    venturers = trio | {GPT_55, GPT_56_TERRA}
     assert answered(MULTIPLE_OF_5 | (VALUES < 10) | (VALUES > 89) | REPEATED_DIGITS) == venturers
     # Every other model scores the same on the four checks.
     others = [r for model, r in MODELS.items() if model not in venturers]
