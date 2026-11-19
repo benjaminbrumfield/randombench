@@ -120,6 +120,41 @@ tbody tr { border-bottom: 1px solid var(--rule); }
 .dist-axis span { position: absolute; left: var(--x); }  /* each number starts where its value's bar does */
 .dist figcaption { margin-top: 10px; }
 
+/* The slider under What the models answer. Its rail and dates are inset by half the thumb's width, 9px, so that the
+   thumb's middle passes over each dot. The rail's line is teal up to the thumb, and so are the dots of the models shown. */
+.timeline { display: grid; gap: 4px; margin-top: 6px; }
+.timeline[hidden] { display: none; }
+.when { margin: 0; font-size: var(--step--1); color: var(--muted); }
+.when strong { color: var(--fg); font-weight: 650; }
+.track { position: relative; height: 28px; }
+.rail { position: absolute; top: 0; bottom: 0; left: 9px; right: 9px; pointer-events: none; }
+.rail::before, .rail::after { content: ""; position: absolute; left: 0; top: 13px; height: 2px; border-radius: 1px; }
+.rail::before { right: 0; background: var(--rule); }
+.rail::after { width: var(--at); background: var(--accent); }
+.rail i {
+  position: absolute; left: var(--x); top: 14px; width: 7px; height: 7px; transform: translate(-50%, -50%);
+  border-radius: 50%; background: var(--bg); box-shadow: inset 0 0 0 1.5px var(--muted);
+}
+.rail i.in { background: var(--accent); box-shadow: none; }
+.track input {
+  position: relative; display: block; box-sizing: border-box; width: 100%; height: 28px; margin: 0;
+  background: none; cursor: pointer; -webkit-appearance: none; appearance: none;
+}
+.track input::-webkit-slider-runnable-track { height: 28px; background: none; }
+.track input::-moz-range-track { height: 28px; background: none; }
+.track input::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; box-sizing: border-box; width: 18px; height: 18px; margin-top: 5px;
+  border-radius: 50%; border: 3px solid var(--card); background: var(--accent); box-shadow: 0 0 0 1px var(--accent);
+}
+.track input::-moz-range-thumb {
+  box-sizing: border-box; width: 18px; height: 18px;
+  border-radius: 50%; border: 3px solid var(--card); background: var(--accent); box-shadow: 0 0 0 1px var(--accent);
+}
+.dates { position: relative; height: 1.4em; margin: 0 9px; font-size: 0.75rem; color: var(--muted); }
+.dates span { position: absolute; left: var(--x); transform: translateX(-50%); white-space: nowrap; }
+.dates span:first-child { transform: none; }
+.dates span:last-child { transform: translateX(-100%); }
+
 /* Ranking, with the selected model's panel beside it, or under it on narrower screens */
 .ranking { gap: 14px; }
 .ranked { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 24px; align-items: start; }
@@ -281,8 +316,9 @@ footer p { margin: 0 0 6px; }
     </div>
     <figure class="dist">
 __DIST__
-      <figcaption class="note"><span class="narrow">The tallest bars are __TALLEST__. </span>Circles mark the __NEVER__ no model has ever answered.</figcaption>
+      <figcaption class="note"><span class="narrow">The tallest bars are <span id="dist-tallest">__TALLEST__</span>. </span>Circles mark the <span id="dist-never">__NEVER__</span> none of these models has answered.</figcaption>
     </figure>
+__SLIDER__
   </section>
 
   <section class="ranking" aria-labelledby="ranking-h">
@@ -345,6 +381,88 @@ __TIMELINE__
 __PANELS__
 </script>
 <script>
+// The slider under "What the models answer". The build writes the chart and
+// the slider at the last stop, every model, and every stop's chart as the
+// JSON above (randombench/page.py's timeline). Moving the slider shows the
+// chart of the last stop on or before its day: the models released by then.
+// Letting go moves the thumb to that stop's dot, and the arrow keys step from
+// one stop to the next. Every number and word comes formatted from the build,
+// and this only puts them in place.
+(function () {
+  var box = document.getElementById("timeline");
+  if (!box) return;
+  var data = JSON.parse(document.getElementById("timeline-data").textContent);
+  var stops = data.stops;
+  var range = box.querySelector("input");
+  var rail = box.querySelector(".rail");
+  var dots = rail.querySelectorAll("i");
+  var plot = document.querySelector(".dist-plot");
+  var bars = plot.querySelectorAll("rect");
+  var base = document.querySelector(".dist-base");
+  var shown = stops.length - 1;
+
+  function show(i) {
+    var s = stops[i];
+    shown = i;
+    var orange = [];
+    s.labels.forEach(function (label) { if (label[2] === "label") orange.push(label[0]); });
+    bars.forEach(function (bar, value) {
+      bar.setAttribute("height", s.h[value]);
+      if (orange.indexOf(value) >= 0) bar.setAttribute("class", "fav");
+      else bar.removeAttribute("class");
+    });
+    plot.querySelectorAll(".label").forEach(function (label) { label.remove(); });
+    s.labels.forEach(function (label) {
+      var span = document.createElement("span");
+      var small = document.createElement("small");
+      span.className = label[2];
+      span.style.setProperty("--x", data.x[label[0]]);
+      span.style.setProperty("--h", s.h[label[0]]);
+      small.textContent = label[1];
+      span.append(String(label[0]), small);
+      plot.appendChild(span);
+    });
+    base.textContent = "";
+    s.h.forEach(function (height, value) {
+      if (height) return;
+      var circle = document.createElement("i");
+      circle.style.setProperty("--x", data.x[value]);
+      base.appendChild(circle);
+    });
+    plot.setAttribute("aria-label", plot.getAttribute("aria-label").replace(/The tallest are .*/, "The tallest are " + s.tallest + "."));
+    document.getElementById("dist-tallest").textContent = s.tallest;
+    document.getElementById("dist-never").textContent = s.never;
+    box.querySelector(".when strong").textContent = s.models;
+    box.querySelector(".when .date").textContent = s.date;
+    box.querySelector(".when .newest").textContent = s.added;
+    range.setAttribute("aria-valuetext", s.models + " released by " + s.date);
+    rail.style.setProperty("--at", s.at);
+    dots.forEach(function (dot, j) { dot.classList.toggle("in", j <= i); });
+  }
+
+  // The last stop on or before a day.
+  function stopOn(day) {
+    var i = 0;
+    while (i + 1 < stops.length && stops[i + 1].day <= day) i++;
+    return i;
+  }
+
+  range.addEventListener("input", function () {
+    var i = stopOn(Number(range.value));
+    if (i !== shown) show(i);
+  });
+  range.addEventListener("change", function () { range.value = stops[shown].day; });
+  range.addEventListener("keydown", function (event) {
+    var step = { ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1 }[event.key];
+    if (!step) return;
+    event.preventDefault();
+    var i = Math.min(stops.length - 1, Math.max(0, shown + step));
+    range.value = stops[i].day;
+    if (i !== shown) show(i);
+  });
+  box.hidden = false;
+})();
+
 // The panel beside the Ranking. The build writes the top model's panel into
 // the page, so it reads without JavaScript, and every model's panel data as
 // the JSON above (randombench/page.py's panel_data). Selecting a row puts that

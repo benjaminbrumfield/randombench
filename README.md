@@ -71,7 +71,7 @@ Even a perfect random source isn't perfectly even over a finite sample, so it sc
 
 ## Results
 
-The [leaderboard page](https://benjaminbrumfield.github.io/randombench/) ranks every model, shows each score with its 95% interval, and says [what stands out](https://benjaminbrumfield.github.io/randombench/#findings): which numbers the models favor, which ones they avoid, and whether newer models are more random. A test checks each of those findings against the stored replies, so the page can't keep a claim the data no longer supports.
+The [leaderboard page](https://benjaminbrumfield.github.io/randombench/) ranks every model, shows each score with its 95% interval, and says [what stands out](https://benjaminbrumfield.github.io/randombench/#findings): which numbers the models favor, which ones they avoid, and whether newer models are more random. A slider under its chart of what the models answer steps back through the models' release dates, so the chart shows only the models released by then. A test checks each of those findings against the stored replies, so the page can't keep a claim the data no longer supports.
 
 Two Kaggle Benchmarks show the same scores, without the intervals: [RandomBench](https://www.kaggle.com/benchmarks/benjaminbrumfield/randombench-overall) ranks the models by RandomBench Score, and [RandomBench Biases](https://www.kaggle.com/benchmarks/benjaminbrumfield/randombench) shows the other nine. `python -m randombench.score` prints every score and interval from the stored replies.
 

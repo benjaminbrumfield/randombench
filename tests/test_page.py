@@ -23,6 +23,7 @@ from randombench.page import (
     _panel,
     _rank,
     _series,
+    _slider,
     average_shares,
     axis,
     distribution_data,
@@ -31,6 +32,7 @@ from randombench.page import (
     panel_data,
     rank_ranges,
     ranked,
+    release_days,
     render_page,
     shade,
     tallest,
@@ -239,6 +241,24 @@ def test_the_timeline_adds_each_model_on_its_release_date():
     # The page's chart is the last stop, which holds every model.
     assert data["stops"][-1]["models"] == f"{len(models)} models"
     assert _distribution(data["stops"][-1]) in text
+    assert f'<span id="dist-never">{data["stops"][-1]["never"]}</span> none of these models has answered' in text
+
+
+def test_the_slider_starts_at_the_last_stop_and_only_the_script_shows_it():
+    text = PAGE.read_text(encoding="utf-8")
+    stops = timeline_json(text)["stops"]
+    last = stops[-1]
+    slider = text[text.index('<div class="timeline"'):text.index("</section>", text.index('<div class="timeline"'))]
+    assert 'id="timeline" hidden' in slider
+    assert f'min="0" max="{last["day"]}" step="1" value="{last["day"]}"' in slider
+    assert f'aria-valuetext="{last["models"]} released by {last["date"]}"' in slider
+    # A dot for each stop, every one teal, and the rail teal all the way.
+    assert re.findall(r'<i class="in" style="--x:([^"]+)"></i>', slider) == [s["at"] for s in stops]
+    assert (stops[0]["day"], stops[0]["at"], last["at"]) == (0, "0.00%", "100.00%")
+    assert [s["day"] for s in stops] == sorted(s["day"] for s in stops)
+    assert f'style="--at:{last["at"]}"' in slider
+    when = re.sub(r"<[^>]+>", "", re.search(r'<p class="when">(.*?)</p>', slider)[1])
+    assert when == f'{last["models"]} released by {last["date"]} · newest: {last["added"]}'
 
 
 def test_the_panel_is_the_top_models():
@@ -393,11 +413,27 @@ def test_a_models_answers_join_the_timeline_on_its_release_date():
                                                                 "Gemini 3.1 Flash-Lite (preview)")
     assert [(v, h) for v, h in enumerate(first["h"]) if h] == [(7, 100)]
     assert (second["date"], second["models"], second["added"]) == ("March 17, 2026", "2 models", "GPT-5.4 nano")
+    assert [(s["day"], s["at"]) for s in (first, second)] == [(0, "0.00%"), (14, "100.00%")]
     # Each model counts the same, though GPT-5.4 nano gave four times as many
     # answers: 7 takes half, 42 three eighths, and 37 one eighth.
     assert [(v, h) for v, h in enumerate(second["h"]) if h] == [(7, 100), (37, 25), (42, 75)]
     assert second["labels"] == [[7, "50.0%", "label"], [37, "12.5%", "label"], [42, "37.5%", "label"]]
     assert (second["tallest"], second["never"]) == ("7 (50.0%), 42 (37.5%), and 37 (12.5%)", "97 values")
+
+
+def test_the_slider_dates_its_ends_and_each_new_year_not_too_near_one():
+    def dates(*models):
+        scored = ranked(score_draws([{"model": m, "reply": "42"} for m in models for _ in range(2)]))
+        slider = _slider(timeline(scored), release_days(scored))
+        return re.findall(r'<span style="--x:([^"]+)">([^<]+)</span>', slider[slider.index('class="dates"'):])
+
+    # gpt-oss-120b came out on August 5, 2025, and GPT-5.4 nano on March 17,
+    # 2026, 224 days later. January 1 is day 149.
+    assert dates("openai/gpt-oss-120b", NANO) == [("0.00%", "Aug 2025"), ("66.52%", "2026"), ("100.00%", "Mar 2026")]
+    # Gemini 3 Flash came out on December 17, 2025, so 2026 begins 15 days into
+    # 90, too near the start to mark.
+    assert dates("google/gemini-3-flash-preview", NANO) == [("0.00%", "Dec 2025"), ("100.00%", "Mar 2026")]
+    assert _slider([], []) == ""
 
 
 def test_the_panel_shades_each_square_by_the_square_root_of_its_count_over_the_favorites():

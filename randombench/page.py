@@ -11,11 +11,14 @@ This computes all four, so none is a claim written by hand. Below them, "What
 the models answer" charts each value's share, averaged the same way, with the
 three tallest bars in orange.
 
-The page also carries, as JSON, that chart as it stood on each day a model
-here was released (RELEASED): a stop for each day, averaging the models
-released by then. A model's answers count from its release date, however
-late they were drawn. The last stop holds every model, and the build draws
-the page's chart from it.
+A slider under the chart steps back through the days the models here were
+released (RELEASED). At each stop, the chart averages only the models
+released by then, so a model's answers count from its release date, however
+late they were drawn. The page carries every stop's chart as JSON, which the
+page's script puts in place, as it does the panel's. The last stop holds
+every model, and the build draws the page's chart and the slider at it, so
+the page reads the same without JavaScript, but for the slider, which only
+the script shows.
 
 Ranking orders the models by the headline, charts each one's answers from 0
 to 99 on a square-root scale, with its favorite in orange, and draws each
@@ -62,8 +65,8 @@ PAGE = ROOT / "docs" / "index.html"
 
 PLACEHOLDERS = {"__DATE__", "__ISODATE__", "__COUNT__", "__PROVIDERS__", "__ANSWERS__", "__BEST__",
                 "__BESTMODEL__", "__COMMON__", "__COMMONSHARE__", "__DIST__", "__TALLEST__",
-                "__NEVER__", "__TIMELINE__", "__PANEL__", "__PANELS__", "__STEPS__", "__TICKS__",
-                "__RANKING__"}
+                "__NEVER__", "__SLIDER__", "__TIMELINE__", "__PANEL__", "__PANELS__", "__STEPS__",
+                "__TICKS__", "__RANKING__"}
 _PLACEHOLDER = re.compile(r"__[A-Z]+__")
 
 # Each model's name and provider, as the README names them. A test fails when
@@ -319,25 +322,79 @@ def _long_date(day: date) -> str:
     return f"{day:%B} {day.day}, {day.year}"
 
 
+def release_days(models: list[ModelScores]) -> list[date]:
+    """Each day a model here was released, oldest first."""
+    return sorted({RELEASED[r.model] for r in models})
+
+
+def _at(offset: int, span: int) -> str:
+    """Where a day falls on the slider: offset days into a span of days, as a percentage."""
+    return f"{100 * offset / span if span else 100:.2f}%"
+
+
 def timeline(models: list[ModelScores]) -> list[dict]:
     """The chart under "What the models answer" on each day a model here was released, oldest first.
 
     Each stop averages the models released by its day, as average_shares
     does, so a model's answers count from its release date, however late
-    they were drawn. It holds distribution_data, the day, how many models
-    the chart averages, and the names of the models released that day. The
-    last stop holds every model.
+    they were drawn. It holds distribution_data, the date, how many models
+    the chart averages, and the names of the models released that day. day
+    is the slider's value at the stop, the days since the first stop, and
+    at is where the stop's dot goes. The last stop holds every model.
     """
+    days = release_days(models)
     stops = []
-    for day in sorted({RELEASED[r.model] for r in models}):
+    for day in days:
         shown = [r for r in models if RELEASED[r.model] <= day]
         added = sorted((DISPLAY_NAMES[r.model][0] for r in shown if RELEASED[r.model] == day), key=str.casefold)
+        offset = (day - days[0]).days
         stops.append({
             "date": _long_date(day),
             "models": f"{len(shown)} model{'' if len(shown) == 1 else 's'}",
             "added": _series(added),
+            "day": offset,
+            "at": _at(offset, (days[-1] - days[0]).days),
         } | distribution_data(average_shares([r.counts for r in shown])))
     return stops
+
+
+def _slider(stops: list[dict], days: list[date]) -> str:
+    """The slider under "What the models answer", at its last stop.
+
+    It's a range input over the days from the first stop to the last, with a
+    dot for each stop beneath it, placed by date. The rail that holds the
+    dots is inset by half the thumb's width, so that the thumb's middle
+    passes over each dot. Under it, the dates mark the first and last months
+    and each new year between them, except one within a fifth of the span of
+    an end, where on a phone its label could run into that end's. It's
+    hidden, and the page's script shows it.
+    """
+    if not stops:
+        return ""
+    last = stops[-1]
+    span = (days[-1] - days[0]).days
+    marks = [(0, f"{days[0]:%b %Y}")]
+    for year in range(days[0].year + 1, days[-1].year + 1):
+        offset = (date(year, 1, 1) - days[0]).days
+        if 0.2 * span < offset < 0.8 * span:
+            marks.append((offset, str(year)))
+    if span:
+        marks.append((span, f"{days[-1]:%b %Y}"))
+    dates = "".join(f'<span style="--x:{_at(offset, span)}">{label}</span>' for offset, label in marks)
+    dots = "".join(f'<i class="in" style="--x:{s["at"]}"></i>' for s in stops)
+    return (f'    <div class="timeline" id="timeline" hidden>\n'
+            f'      <p class="when"><strong>{escape(last["models"])}</strong> released by '
+            f'<span class="date">{escape(last["date"])}</span> · newest: '
+            f'<span class="newest">{escape(last["added"])}</span></p>\n'
+            f'      <div class="track">\n'
+            f'        <div class="rail" style="--at:{last["at"]}" aria-hidden="true">{dots}</div>\n'
+            f'        <input type="range" min="0" max="{last["day"]}" step="1" value="{last["day"]}" '
+            f'aria-label="Models released by" aria-valuetext="{escape(last["models"])} released by {escape(last["date"])}">\n'
+            f'      </div>\n'
+            f'      <div class="dates" aria-hidden="true">{dates}</div>\n'
+            f'      <p class="note">Each dot is a day a model came out. Move the slider back to chart only the models '
+            f'released by then.</p>\n'
+            f'    </div>')
 
 
 # The Ranking's Answers chart: its height in SVG units, and the shortest a bar
@@ -640,6 +697,7 @@ def render_page(results: list[ModelScores], as_of: datetime) -> str:
         "__DIST__": _distribution(chart),
         "__TALLEST__": chart["tallest"],
         "__NEVER__": chart["never"],
+        "__SLIDER__": _slider(stops, release_days(models)),
         "__TIMELINE__": _timeline_json(stops),
         "__PANEL__": _panel(panels[0]) if panels else "",
         "__PANELS__": _panels_json(panels),
