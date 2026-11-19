@@ -98,7 +98,7 @@ def test_finding_no_model_comes_close():
     assert most_random.scores["headline"] + most_random.intervals["headline"] < 0.2
 
 
-# GPT-6.2 Astra and GPT-6.2 Sol favor 63, and Gemini 4 Neon 83, which the
+# GPT-6.2 Astra and GPT-6.2 Sol favor 63, and Gemini 4 Neon 68, which the
 # finding's exceptions don't name. It waits to be rewritten until their
 # replies catch up with the other models', as the 13 flagship models' pilots
 # waited for their full runs. strict, so the test fails here if the finding
@@ -193,10 +193,15 @@ def test_finding_nearly_every_reply_is_valid():
     assert 1 <= sum(bool(re.search(r"\*\*\d+\*\*", d["reply"])) for d in declined) <= 0.2 * len(declined)
     assert sum(bool(re.search(r"like (37|42|73)\b", d["reply"])) for d in declined) >= 5
     assert all("\\confidence{" in d["reply"] for d in invalid_replies(GROK_46))
-    # Opus 5.5's two: an empty reply, and its reasoning written out before the number.
-    empty, reasoned = sorted(invalid_replies(OPUS_55), key=lambda d: len(d["reply"]))
+    # Opus 5.5's five: an empty reply, and four that write out its thinking,
+    # three ending in the number (73, **42**, and 37) and one with no number at all.
+    slips = sorted(invalid_replies(OPUS_55), key=lambda d: len(d["reply"]))
+    assert len(slips) == 5
+    empty, *thinking = slips
     assert empty["reply"].strip("\ufeff \n") == ""
-    assert reasoned["reply"].rstrip().endswith("73") and len(reasoned["reply"]) > 50
+    assert all(len(d["reply"]) > 50 for d in thinking)
+    assert sum(bool(re.search(r"\b\d+\**\s*$", d["reply"])) for d in thinking) == 3
+    assert sum(not re.search(r"\d", d["reply"]) for d in thinking) == 1
 
 
 def test_finding_reasoning_helps_a_little():
