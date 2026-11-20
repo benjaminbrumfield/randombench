@@ -180,10 +180,12 @@ def test_finding_whole_regions_go_unused():
     trio = {GPT_54, GEMINI_25_FLASH, GROK_46}
     assert trio <= set(list(MODELS)[:4])  # "three of the four most random models"
     assert answered(VALUES > 89) == trio
-    assert answered(REPEATED_DIGITS) == trio
+    # "apart from a single 77 from gpt-oss-120b"
+    assert answered(REPEATED_DIGITS) == trio | {GPT_OSS}
+    assert COUNTS[GPT_OSS][REPEATED_DIGITS].sum() == COUNTS[GPT_OSS][77] == 1
     assert answered(VALUES < 10) == {GPT_54, GROK_46}
     assert answered(MULTIPLE_OF_10) == {GPT_54, GPT_55, GPT_56_TERRA}
-    venturers = trio | {GPT_55, GPT_56_TERRA}
+    venturers = trio | {GPT_55, GPT_56_TERRA, GPT_OSS}
     assert answered(MULTIPLE_OF_5 | (VALUES < 10) | (VALUES > 89) | REPEATED_DIGITS) == venturers
     # Every other model scores the same on the four checks.
     others = [r for model, r in MODELS.items() if model not in venturers]
@@ -221,14 +223,18 @@ def test_finding_nearly_every_reply_is_valid():
     assert 1 <= sum(bool(re.search(r"\*\*\d+\*\*", d["reply"])) for d in declined) <= 0.2 * len(declined)
     assert sum(bool(re.search(r"like (37|42|73)\b", d["reply"])) for d in declined) >= 5
     assert all("\\confidence{" in d["reply"] for d in invalid_replies(GROK_46))
-    # Opus 5.5's five: an empty reply, and four that write out its thinking,
-    # three ending in the number (73, **42**, and 37) and one with no number at all.
-    slips = sorted(invalid_replies(OPUS_55), key=lambda d: len(d["reply"]))
-    assert len(slips) == 5
-    empty, *thinking = slips
-    assert empty["reply"].strip("\ufeff \n") == ""
+    # Opus 5.5's ten: four empty replies, five that write out its thinking, four
+    # ending in the number (73, **42**, **47**, and 37) and one with no number at
+    # all, and one that names the range along with its pick.
+    slips = invalid_replies(OPUS_55)
+    assert len(slips) == 10
+    empty = [d for d in slips if d["reply"].strip("\ufeff \n") == ""]
+    assert len(empty) == 4
+    range_pick = [d for d in slips if d["reply"] == "I chose 47 at random from 0\u201399, inclusive."]
+    assert len(range_pick) == 1
+    thinking = [d for d in slips if d not in empty and d not in range_pick]
     assert all(len(d["reply"]) > 50 for d in thinking)
-    assert sum(bool(re.search(r"\b\d+\**\s*$", d["reply"])) for d in thinking) == 3
+    assert sum(bool(re.search(r"\b\d+\**\s*$", d["reply"])) for d in thinking) == 4
     assert sum(not re.search(r"\d", d["reply"]) for d in thinking) == 1
 
 

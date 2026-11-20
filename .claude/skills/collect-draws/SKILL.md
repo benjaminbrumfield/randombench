@@ -19,7 +19,7 @@ Start every shell command with `source .venv/Scripts/activate`, because shell st
 
 ## Before the loop: Kaggle must run the committed task
 
-1. If `git status --short` shows uncommitted changes, stop and ask. A push would upload work that isn't committed yet, and the `git add -A` after the loop would sweep it into this step's commit.
+1. If `git status --short` shows uncommitted changes, stop and ask. A push would upload work that isn't committed yet, and the user's commit after the loop would mix it in with this step's changes.
 2. Read the current version's `Created` time (UTC) from `PYTHONUTF8=1 kaggle b t status randombench-draws`. If `git log --since="<Created>Z" --oneline -- tasks/collect.py` lists a commit, the version is older than the file, so push it: `PYTHONUTF8=1 kaggle b t push randombench-draws -f tasks/collect.py --wait`. An unneeded push does no harm: it spends no quota and makes a new version.
 3. After any push, check its creation run, which is the earliest run in `kaggle b t status randombench-draws`. It should be `gemini-3.8-flash`, the server's default model, which `MODELS` leaves out (D23). If it's a model in `MODELS`, the push drew 100 to 300 times from it. Stop and tell the user.
 
@@ -63,8 +63,7 @@ Run one batch at a time. CLAUDE.md allows two collection runs at once, but the l
 
 1. `python -m randombench.build` rebuilds the scoring tasks and the page from `data/`.
 2. `python -m pytest`. A failing `test_finding_` means the new draws broke a finding on the page: rewrite the finding in `randombench/page.html`, then its test (D29). A finding marked `xfail` is waiting for more draws. If the models it waits for have caught up with the others, rewrite it and remove the mark. Quote each old and new wording in the report, so the user can check them.
-3. Check README.md's claims about sample sizes, such as the "Unequal samples" bullet, against the new counts.
-4. Stage everything with `git add -A`, and end with the one-sentence commit message. Don't commit: the user commits each step.
+3. End with the one-sentence commit message. Don't stage or commit: the user does both.
 
 Report the batches run, the draws and replies added per model, the day's spend, and the quota left. Say that the rebuilt scoring tasks aren't pushed, so the Benchmarks don't show the new draws yet. Updating them means pushing each scoring task and running it on every model, which spends no quota but needs its own step. The page publishes when `main` is pushed.
 
@@ -74,4 +73,4 @@ Report the batches run, the draws and replies added per model, the day's spend, 
 - Add a model to `MODELS` without the user's yes in step 0.
 - Add the server's default model to `MODELS` (D23).
 - Start a batch with less than $4 of the daily or monthly quota left.
-- Push the scoring tasks, publish anything, or commit.
+- Push the scoring tasks, publish anything, or stage or commit anything.
