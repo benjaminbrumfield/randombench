@@ -66,7 +66,7 @@ Run one batch at a time. CLAUDE.md allows two collection runs at once, but the l
 2. `python -m pytest`. A failing `test_finding_` means the new draws broke a finding on the page: rewrite the finding in `randombench/page.html`, then its test (D29). A finding marked `xfail` is waiting for more draws. If the models it waits for have caught up with the others, rewrite it and remove the mark. Quote each old and new wording in the report, so the user can check them.
 3. End with the one-sentence commit message. Don't stage or commit: the user does both.
 
-Report the batches run, the draws and replies added per model, the day's spend, the quota left, and why the loop ended: the quota floor, every model a run can draw from at the cap, or a run that failed. Say that the rebuilt scoring tasks aren't pushed, so the Benchmarks don't show the new draws yet. Updating them means pushing each scoring task and running it on every model, which spends no quota but needs its own step. The page publishes when `main` is pushed.
+Report the batches run, the draws and replies added per model, the day's spend, the quota left, and why the loop ended: the quota floor, every model a run can draw from at the cap, or a run that failed. Say that the rebuilt scoring tasks aren't pushed, so the Benchmarks don't show the new draws yet. The update-leaderboards skill updates them, once the user has committed. It spends no quota, but takes about an hour. The page publishes when `main` is pushed.
 
 ## Never
 

@@ -61,7 +61,7 @@ Once a new model's draws are stored, the follow-up step touches:
 - `MODELS` and its comments in `tasks/collect.py`, and the count in `tests/test_collect.py`.
 - `DISPLAY_NAMES` and `RELEASED` in `randombench/page.py`. A test fails when a stored model has no entry in either. `RELEASED`'s dates come from the web, not from Kaggle.
 - `python -m randombench.build`. Afterwards, `tests/test_findings.py` may flag a finding to rewrite (D29).
-- Pushing the rebuilt scoring tasks and running each one on the new model. Scoring tasks never prompt a model.
+- The update-leaderboards skill, which pushes the rebuilt scoring tasks and runs each one on every model, the new one included. Scoring tasks never prompt a model. The user then adds the new model to both Benchmarks on the website.
 
 ## Never
 

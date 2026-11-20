@@ -102,7 +102,7 @@ On Windows, set `PYTHONUTF8=1` first. Making new draws needs a Kaggle account an
 
 ## Repository
 
-- [randombench/](randombench/): the prompts, the parser, the checks, and the scripts that extract, score, build, count each model's replies, and compare Kaggle's model list with the stored draws.
+- [randombench/](randombench/): the prompts, the parser, the checks, and the scripts that extract, score, build, count each model's replies, compare Kaggle's model list with the stored draws, and check the Benchmarks against them.
 - [tasks/collect.py](tasks/collect.py): RandomBench Draws, the Kaggle task that makes the draws.
 - [tasks/scores/](tasks/scores/): the scoring tasks, one per score. `python -m randombench.build` generates them from [tasks/templates/score.py](tasks/templates/score.py), with the stored replies embedded.
 - [docs/index.html](docs/index.html): the leaderboard page. `python -m randombench.build` generates it from [randombench/page.html](randombench/page.html) and the stored replies, and GitHub Pages serves it. [tests/test_findings.py](tests/test_findings.py) checks each of its findings against the stored replies.

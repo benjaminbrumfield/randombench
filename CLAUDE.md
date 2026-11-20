@@ -101,6 +101,11 @@ kaggle b leaderboard benjaminbrumfield/randombench-overall -s --format json
 kaggle b leaderboard benjaminbrumfield/randombench -s --format json
 kaggle b quota
 
+# Check both Benchmarks against data/: each model's result for each task, value
+# and interval, and the version each task row is pinned to (the
+# update-leaderboards skill's last step). Read-only: it prompts no model.
+python -m randombench.leaderboards
+
 # Make the task public. This can't be undone from the CLI, so ask first.
 kaggle b t publish <slug>
 ```
@@ -114,6 +119,7 @@ kaggle b t publish <slug>
 
 `.claude/skills/` holds two vendored skills, `kaggle-benchmarks` and `kaggle-cli`. They're unmodified upstream copies pinned in [SOURCES.md](.claude/skills/SOURCES.md), so don't edit them. Where `kaggle-benchmarks` points at `src/kaggle_benchmarks/`, read the installed package instead: `python -c "import kaggle_benchmarks; print(kaggle_benchmarks.__file__)"`.
 
-It also holds two of the project's own skills. Edit them as the project changes.
+It also holds three of the project's own skills. Edit them as the project changes.
 - `check-models` runs `python -m randombench.models` and says what the report means for RandomBench.
 - `collect-draws` runs batches of draws in a loop, each on the model with the fewest replies, until every model a run can draw from has reached the reply cap (`CAP` in `randombench/tally.py`) or less than $4 of the day's quota is left. `python -m randombench.tally` picks each batch's model.
+- `update-leaderboards` pushes the scoring tasks that changed, runs the new versions on every model, asks the user to move both Benchmarks to them on the website, and checks the result with `python -m randombench.leaderboards`. It spends no quota.
