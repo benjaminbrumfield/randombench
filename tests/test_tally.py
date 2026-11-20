@@ -71,19 +71,31 @@ def test_no_model_to_draw_from():
     assert format_tally(rows).endswith("Next: none")
 
 
-def test_the_table():
+def test_a_model_with_cap_replies_gets_no_more_runs():
     models = [listed("gpt-6.2-sol", SOL), listed("nano", NANO)]
-    rows = tally(models, {"gpt-6.2-sol": SOL, "nano": NANO, "old": "google/gemini-2.5-pro"},
-                 Counter({SOL: 24, NANO: 1624, "google/gemini-2.5-pro": 621}),
-                 (SOL, NANO, "google/gemini-2.5-pro"))
-    assert format_tally(rows).splitlines() == [
+    stored = {"gpt-6.2-sol": SOL, "nano": NANO}
+    rows = tally(models, stored, Counter({SOL: 799, NANO: 900}), (NANO, SOL))
+    assert next_model(rows, cap=800).slug == "gpt-6.2-sol"
+    # Once every model a run can draw from has the cap, the loop ends.
+    rows = tally(models, stored, Counter({SOL: 800, NANO: 900}), (NANO, SOL))
+    assert next_model(rows, cap=800) is None
+    assert format_tally(rows, cap=800).endswith("Next: none")
+
+
+def test_the_table():
+    models = [listed("gpt-6.2-sol", SOL), listed("gpt-6.2-astra", ASTRA), listed("nano", NANO)]
+    rows = tally(models, {"gpt-6.2-sol": SOL, "gpt-6.2-astra": ASTRA, "nano": NANO, "old": "google/gemini-2.5-pro"},
+                 Counter({SOL: 24, ASTRA: 700, NANO: 1624, "google/gemini-2.5-pro": 621}),
+                 (SOL, ASTRA, NANO, "google/gemini-2.5-pro"))
+    assert format_tally(rows, cap=800).splitlines() == [
         "| # | Model | -m slug | Replies | Next run |",
         "|---:|---|---|---:|---|",
         "| 1 | GPT-6.2 Sol | gpt-6.2-sol | 24 | next |",
         "| 2 | Gemini 2.5 Pro | - | 621 | never: Kaggle doesn't list it |",
-        "| 3 | GPT-5.4 nano | nano | 1,624 |  |",
+        "| 3 | GPT-6.2 Astra | gpt-6.2-astra | 700 |  |",
+        "| 4 | GPT-5.4 nano | nano | 1,624 | done: 800+ replies |",
         "",
-        "2,269 replies from 3 models, 2 of which a run can draw from.",
+        "2,969 replies from 4 models. A run can draw from 3 of them, 2 with fewer than 800 replies.",
         "Next: gpt-6.2-sol",
     ]
 

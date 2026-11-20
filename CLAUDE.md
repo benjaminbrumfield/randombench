@@ -80,7 +80,8 @@ python -m randombench.extract results/<slug>
 python -m randombench.score
 
 # Count each model's replies, fewest first, and name the model the next run
-# goes to (the collect-draws skill). Read-only: it reads Kaggle's model list.
+# goes to (the collect-draws skill). A model with CAP replies or more gets no
+# more runs. Read-only: it reads Kaggle's model list.
 python -m randombench.tally
 
 # Describe one stored run's answers: how often each value came up, by decade,
@@ -115,4 +116,4 @@ kaggle b t publish <slug>
 
 It also holds two of the project's own skills. Edit them as the project changes.
 - `check-models` runs `python -m randombench.models` and says what the report means for RandomBench.
-- `collect-draws` runs batches of draws in a loop, each on the model with the fewest replies, until less than $4 of the day's quota is left. `python -m randombench.tally` picks each batch's model.
+- `collect-draws` runs batches of draws in a loop, each on the model with the fewest replies, until every model a run can draw from has reached the reply cap (`CAP` in `randombench/tally.py`) or less than $4 of the day's quota is left. `python -m randombench.tally` picks each batch's model.

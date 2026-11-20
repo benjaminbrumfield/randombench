@@ -4,14 +4,15 @@ description: >
   Collect more draws for RandomBench in a loop. It checks Kaggle for new
   models, then runs one batch of 100 to 300 draws on the model with the fewest
   replies, reports how that batch's answers fall and every model's count, and
-  repeats while at least $4 of the day's quota is left. Use when asked to collect or top up draws, or to spend
-  the day's quota. It spends Model Proxy quota: invoking it is the user's yes
+  repeats until every model a run can draw from has reached the reply cap or
+  less than $4 of the day's quota is left. Use when asked to collect or top up
+  draws, or to spend the day's quota. It spends Model Proxy quota: invoking it is the user's yes
   for its runs.
 ---
 
 # Collect draws
 
-Each run of `randombench-draws` makes a random number of draws, from 100 to 300 (`MIN_DRAWS` and `MAX_DRAWS` in [tasks/collect.py](../../../tasks/collect.py)). This skill runs one batch at a time, always on the model with the fewest replies, so the models even out over time.
+Each run of `randombench-draws` makes a random number of draws, from 100 to 300 (`MIN_DRAWS` and `MAX_DRAWS` in [tasks/collect.py](../../../tasks/collect.py)). This skill runs one batch at a time, always on the model with the fewest replies, so the models even out over time. A model with 800 replies or more (`CAP` in [randombench/tally.py](../../../randombench/tally.py)) gets no more batches, so once every model a run can draw from has reached the cap the loop ends, however much quota is left.
 
 CLAUDE.md says to ask before any LLM call. The user invoking this skill is that yes, for as many runs as the loop below makes. Adding a model is not covered, so step 0 asks.
 
@@ -39,7 +40,7 @@ Run `python -m randombench.models`, and read its report as the check-models skil
 Number the batches from 1. For each one:
 
 1. **Check the quota.** Run `kaggle b quota --format json`. If the Daily or the Monthly `remaining` is under $4, the loop ends. Otherwise note the daily `used`. One 300-draw batch on the costliest model, Gemini 4 Neon, would cost about $0.82 at 2026-11-19 prices, so a batch can't overrun the floor.
-2. **Pick.** Run `PYTHONUTF8=1 python -m randombench.tally`. Its last line, `Next: <slug>`, names the model the run goes to: the one with the fewest replies among the models a run can draw from. `Next: none` ends the loop.
+2. **Pick.** Run `PYTHONUTF8=1 python -m randombench.tally`. Its last line, `Next: <slug>`, names the model the run goes to: the one with the fewest replies among the models a run can draw from, if it's under the cap. The table marks a model at the cap `done`. `Next: none` ends the loop.
 
    From batch 2 on, the previous batch's step 4 has already run both commands, so use its output for steps 1 and 2 instead of running them again.
 3. **Run one batch.** Run `PYTHONUTF8=1 kaggle b t run randombench-draws -m <slug> --wait 5400` with `run_in_background: true`, and wait for the notification. Don't pipe it through `tail` or `head`, which hold its output until it ends. Then:
@@ -65,7 +66,7 @@ Run one batch at a time. CLAUDE.md allows two collection runs at once, but the l
 2. `python -m pytest`. A failing `test_finding_` means the new draws broke a finding on the page: rewrite the finding in `randombench/page.html`, then its test (D29). A finding marked `xfail` is waiting for more draws. If the models it waits for have caught up with the others, rewrite it and remove the mark. Quote each old and new wording in the report, so the user can check them.
 3. End with the one-sentence commit message. Don't stage or commit: the user does both.
 
-Report the batches run, the draws and replies added per model, the day's spend, and the quota left. Say that the rebuilt scoring tasks aren't pushed, so the Benchmarks don't show the new draws yet. Updating them means pushing each scoring task and running it on every model, which spends no quota but needs its own step. The page publishes when `main` is pushed.
+Report the batches run, the draws and replies added per model, the day's spend, the quota left, and why the loop ended: the quota floor, every model a run can draw from at the cap, or a run that failed. Say that the rebuilt scoring tasks aren't pushed, so the Benchmarks don't show the new draws yet. Updating them means pushing each scoring task and running it on every model, which spends no quota but needs its own step. The page publishes when `main` is pushed.
 
 ## Never
 

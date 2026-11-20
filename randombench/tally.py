@@ -6,6 +6,10 @@ models a run can draw from: MODELS lists it, and Kaggle lists it under the
 same llm.name, with Model Proxy allowed. A tie goes to the first -m slug in
 alphabetical order.
 
+A model with CAP replies or more gets no more runs, so the collect-draws loop
+ends once every model a run can draw from has CAP. A run makes up to MAX_DRAWS
+draws (tasks/collect.py), so a model can end with up to CAP + MAX_DRAWS - 1.
+
 It prints a Markdown table of every model with stored draws or in MODELS,
 fewest replies first, then the next model's -m slug on the last line. It asks
 Kaggle for its model list, as `python -m randombench.models` does, so it's
@@ -24,6 +28,9 @@ from randombench.extract import load_draws
 from randombench.models import Listed, allowed_models, fetch_listed, stored_models
 from randombench.page import DISPLAY_NAMES
 from randombench.sync import ROOT
+
+# A model with this many replies or more gets no more runs.
+CAP = 800
 
 
 @dataclass(frozen=True)
@@ -77,20 +84,29 @@ def tally(listed: list[Listed], stored: dict[str, str], replies: Counter, allowe
     return sorted(rows, key=lambda r: (r.replies, r.slug, r.llm_name))
 
 
-def next_model(rows: list[Row]) -> Row | None:
-    """The model the next run goes to: the first a run can draw from."""
-    return next((r for r in rows if not r.why_not), None)
+def next_model(rows: list[Row], cap: int = CAP) -> Row | None:
+    """The model the next run goes to: the first a run can draw from that has
+    fewer than cap replies."""
+    return next((r for r in rows if not r.why_not and r.replies < cap), None)
 
 
-def format_tally(rows: list[Row]) -> str:
-    chosen = next_model(rows)
+def format_tally(rows: list[Row], cap: int = CAP) -> str:
+    chosen = next_model(rows, cap)
     lines = ["| # | Model | -m slug | Replies | Next run |", "|---:|---|---|---:|---|"]
     for i, r in enumerate(rows, 1):
-        status = "next" if r is chosen else (f"never: {r.why_not}" if r.why_not else "")
+        if r is chosen:
+            status = "next"
+        elif r.why_not:
+            status = f"never: {r.why_not}"
+        elif r.replies >= cap:
+            status = f"done: {cap:,}+ replies"
+        else:
+            status = ""
         lines.append(f"| {i} | {r.name} | {r.slug or '-'} | {r.replies:,} | {status} |")
-    drawable = sum(not r.why_not for r in rows)
-    lines += ["", f"{sum(r.replies for r in rows):,} replies from {len(rows)} models,"
-                  f" {drawable} of which a run can draw from.",
+    drawable = [r for r in rows if not r.why_not]
+    under = sum(r.replies < cap for r in drawable)
+    lines += ["", f"{sum(r.replies for r in rows):,} replies from {len(rows)} models."
+                  f" A run can draw from {len(drawable)} of them, {under} with fewer than {cap:,} replies.",
               f"Next: {chosen.slug if chosen else 'none'}"]
     return "\n".join(lines)
 
