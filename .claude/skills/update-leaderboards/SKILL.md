@@ -57,9 +57,10 @@ If the report lists a model under Renamed, stop and tell the user. A scoring tas
 
 **Batches.** Split the list, in `ls data` order, into batches of at most 11. In 4.6, 54 runs started at once, and the open-weight models' runs never began. In 4.12, batches of 11 all completed.
 
-**Runs.** One task at a time. For each task, start one Bash call with `run_in_background: true` that chains its batches with `;`, not `&&`. A batch with an errored run exits 1, and `&&` would skip every batch after it:
+**Runs.** One task at a time. For each task, start one Bash call with `run_in_background: true` that chains its batches with `;`, not `&&`. A batch with an errored run exits 1, and `&&` would skip every batch after it. Start the chain with a fresh token. On 2026-11-20 the 12-hour token expired during favorite-number's second batch, and its last two batches never started. Fetch it once per task, not once per batch: fetching it before every command got a "429 Too Many Requests" from Kaggle.
 
 ```bash
+export KAGGLE_API_TOKEN="$(kaggle auth print-access-token)"; \
 PYTHONUTF8=1 kaggle b t run <slug> -m <a> -m <b> ... --wait 900; \
 PYTHONUTF8=1 kaggle b t run <slug> -m <l> -m <m> ... --wait 900; ...
 ```
