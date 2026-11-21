@@ -31,7 +31,13 @@ RandomBench covers every model Kaggle lists except the server's default model (D
 
 "Already in MODELS" means the model was added, but no draws are stored: a pilot is pending, or its run wasn't extracted.
 
-**Gone.** Its draws and scores stay in `data/`, on the page, and on the Benchmarks. Kaggle no longer lists it, so `kaggle b t run -m` will likely refuse it (untested). Whether to take it out of `MODELS` is the user's decision: raise it, but don't edit anything. A row with "(no data/ folder)" is a `MODELS` entry that names no listed model: a typo, or a model Kaggle dropped before its first run. A run on it makes no draws (D12).
+**Gone.** Kaggle no longer lists it. Its draws stay in `data/`, so it stays on the page and in the findings, which are built from `data/` alone. It's off the Benchmarks, though. `kaggle b t run -m` refuses a model Kaggle doesn't list, and refuses the whole batch with it (the update-leaderboards skill's step 4), so no run can score it, and it dropped off at the first update after Kaggle stopped listing it. `python -m randombench.leaderboards` lists it under Not on Kaggle. A row with "(no data/ folder)" is a `MODELS` entry that names no listed model: a typo, or a model Kaggle dropped before its first run. A run on it makes no draws (D12).
+
+Whether to take a gone model out of `MODELS` is the user's decision: raise it, but don't edit anything. Tell them what it changes:
+- Nothing anyone can see. `data/`, the page, the findings, the scoring tasks, and the Benchmarks don't read `MODELS`.
+- What happens if Kaggle lists it again under the same name. Still in `MODELS`, it goes straight back into the collect-draws loop, first if it has the fewest replies. Taken out, it shows here under Left out, as news, and needs the user's yes like a new model.
+- `MODELS` follows its rule again: every model Kaggle lists, less the server's default and the models Model Proxy won't call.
+- The cost is small. It's an edit to `MODELS` and its comment, and to the count in `tests/test_collect.py`, and the collect-draws skill then pushes a new `randombench-draws` version, which spends no quota. The tally gives the model's reason as "not in MODELS" instead of "Kaggle doesn't list it", and this report's Gone row drops "in MODELS".
 
 **Left out.** By design, this holds exactly one model: `gemini-3.8-flash`, the server's default (D23). Any other model here is news. Its draws are stored, but `MODELS` doesn't list it.
 
