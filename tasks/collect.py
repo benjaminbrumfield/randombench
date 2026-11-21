@@ -58,11 +58,9 @@ MODELS = (
     "anthropic/claude-haiku-4-5@20251001",
     "google/gemma-4-26b-a4b",
     "openai/gpt-oss-120b",
-    # Added in 4.10 (D23).
-    # Kaggle no longer listed the two Gemini 2.5 models on 2026-11-18. They
-    # stay here until we decide how to retire them.
-    "google/gemini-2.5-flash",
-    "google/gemini-2.5-pro",
+    # Added in 4.10 (D23). So were Gemini 2.5 Flash and Pro, until Kaggle
+    # stopped listing them on 2026-11-18. Their draws stay in data/ and on the
+    # page, and if Kaggle lists them again, adding them back is a new decision.
     "google/gemini-3-flash-preview",
     "google/gemini-3.1-pro-preview",
     "google/gemini-3.6-flash",
