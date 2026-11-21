@@ -210,7 +210,7 @@ def test_finding_a_share_check_can_pass_by_accident():
 def test_finding_nearly_every_reply_is_valid():
     replies = [d for d in DRAWS if d["reply"] is not None]
     assert sum(parse_reply(d["reply"]) is not None for d in replies) > 0.99 * len(replies)
-    assert {model for model in MODELS if invalid_replies(model)} == {OPUS_48, GROK_46, OPUS_55}
+    assert {model for model in MODELS if invalid_replies(model)} == {OPUS_48, GROK_46, OPUS_55, GPT_OSS}
     # Opus 4.8's are all raffle draws, and it declines nearly every raffle draw.
     declined = invalid_replies(OPUS_48)
     raffles = [d for d in replies if d["model"] == OPUS_48 and d["prompt_id"] == RAFFLE]
@@ -236,6 +236,8 @@ def test_finding_nearly_every_reply_is_valid():
     assert all(len(d["reply"]) > 50 for d in thinking)
     assert sum(bool(re.search(r"\b\d+\**\s*$", d["reply"])) for d in thinking) == 4
     assert sum(not re.search(r"\d", d["reply"]) for d in thinking) == 1
+    # gpt-oss-120b's two: one empty reply and one refusal.
+    assert sorted(d["reply"] for d in invalid_replies(GPT_OSS)) == ["", "I’m sorry, but I can’t comply with that."]
 
 
 def test_finding_reasoning_helps_a_little():
